@@ -3,9 +3,21 @@
 munder は、AI チーム（りじちょー＋スタッフ5名）の働く様子をオフィス画面で見られるデスクトップアプリです。中では Claude Code が動いています。
 この手順では、**DAHanae のフォルダで りじちょー が返事をするところまで**進めます。所要時間は 30〜45 分です。
 
-> まず気軽に試したいだけなら、munder を入れなくても大丈夫です。[9. munder なしで試す](#9-munder-なしで試す) だけで、同じ AI チームが Claude Code 上で動きます。
+## 最初に：どの方法で進める？
 
-## 全体の流れ
+AI チームの中身は、DAHanae に入っている `.claude/agents/*.md` と `CLAUDE.md` です。どの方法を選んでも、りじちょー＋スタッフ5名の役割と話し方は変わりません。
+
+| あなたの状況 | 進め方 | 手間 |
+| --- | --- | --- |
+| 気軽に試したい／壁打ちやレビューに使いたいだけ | **[9. munder なしで試す](#9-munder-なしで試す)**（Claude Code だけ） | 5分 |
+| Tech0 の munder 配布リポ（Private）への**招待を受けている** | **0〜7 の順に進める**（Tech0 版 munder。チームが自動で登録される） | 30〜45分 |
+| 招待は受けていないが、オフィス画面を使いたい | **[10. 本家の munder で使う](#10-招待がない人本家の-munder-で使う)**（チームを手で登録する） | 45〜60分 |
+
+招待を受けているか分からないときは、https://github.com/nonooktk/munder-difflin-tech0/releases を開いてみてください。ページが表示されれば招待済み、404 なら未招待です。
+
+> **Tech0 版のインストーラー（dmg / exe）を、招待を受けていない人に渡さないでください。** 配布リポが Private なのは、運営が配る範囲を決めているためです。
+
+## 全体の流れ（Tech0 版）
 
 ```
 0. 前提を確認する（Claude Code・GitHub の招待）
@@ -28,7 +40,7 @@ munder は、AI チーム（りじちょー＋スタッフ5名）の働く様子
 | Claude のプランが Pro 以上 | claude.ai の設定で確認する |
 | munder の配布リポへの招待を受けている | https://github.com/nonooktk/munder-difflin-tech0/releases を開いて、ページが表示される |
 
-- munder の配布リポは **Private** です。ページが 404 になるときは、まだ招待を受けていません。Tech0 運営に Slack で GitHub のユーザー名を伝えて、招待してもらってください。
+- munder の配布リポは **Private** です。ページが 404 になるときは、まだ招待を受けていません。Tech0 の参加者なら、Tech0 運営に Slack で GitHub のユーザー名を伝えて、招待してもらってください。Tech0 の参加者でなければ、[9](#9-munder-なしで試す) か [10](#10-招待がない人本家の-munder-で使う) で進めます。
 - munder は中で `claude` コマンドを呼び出します。`claude --version` が動かない状態では、起動した後に止まってしまいます。
 
 ## 1. DAHanae を手元に用意する
@@ -193,7 +205,104 @@ claude
 りじちょー、CLAUDE.md と 00_ルール を読んで、このチームの進め方を 5 行で教えて
 ```
 
-## 10. 注意
+## 10. 招待がない人：本家の munder で使う
+
+本家の munder（[chaitanyagiri/munder-difflin](https://github.com/chaitanyagiri/munder-difflin)、MIT ライセンスで公開）を使い、りじちょーとスタッフを **手で登録** します。
+
+Tech0 版との違い:
+- りじちょーとスタッフは自動では登録されません。boss の名前変更と、スタッフ5名の読み込み（Import hire）を自分で行います。
+- 見た目（ドット絵）は本家のキャラクターです（boss = Michael、Kurosu = Angela など）。**役割と話し方は同じ**です（定義ファイルを読ませるため）。
+
+> この節は、Tech0 版 munder の手順と共通の定義ファイル（`munder/hires/*.json`、本家と同じ `munder-difflin/hire@1` 形式）をもとに書いています。本家 munder での動作はまだ試していません。画面の表示が違ったら、Slack で教えてください。
+
+### 10.1 本家 munder をインストールする
+
+https://github.com/chaitanyagiri/munder-difflin/releases から最新版（現在 v0.5.2）をダウンロードします。
+
+| OS | ファイル |
+| --- | --- |
+| Mac | `Munder-Difflin-0.5.2-mac-universal.dmg` |
+| Windows | `Munder-Difflin-0.5.2-win-x64-setup.exe` |
+
+インストールの仕方（右クリック → 開く、SmartScreen の「詳細情報 → 実行」）は、[3.](#3-munder-をインストールする) と同じです。
+
+### 10.2 初回設定
+
+1〜2（DAHanae の用意、inputs への資料配置）を済ませてから、[4.](#4-初回設定step-14) と同じ設定をします。STEP 1 は `<DAHANAE>/.munder`、モデルは Sonnet、auto mode は Off です。
+設定が終わると、boss は「Michael」のまま表示され、スタッフはいません。これは本家版の正常な状態です。
+
+### 10.3 boss を Rijicho にする
+
+1. 画面下の列の左端にある **「M… ✎ BOSS」** の鉛筆アイコン（✎）を押し、名前を `Rijicho` に変えて保存します（変わるのは表示名だけです）。
+2. BOSS カードを選び、右上の **edit** でモデルを Sonnet にします。
+3. TERMINAL に `▸▸ auto mode on` と表示されていたら、**Shift＋Tab** を押して消します。
+
+### 10.4 スタッフ5名の定義ファイルを用意する
+
+`munder/hires/*.json` の中にある `<KIT_PATH>` を、自分の DAHanae のパスに置き換えます。
+パスは人によって違うので、元のファイルは書き換えずに、**Git に入らない `.munder/hires/` にコピーしてから置き換えます。**
+
+DAHanae のフォルダで実行します。
+
+Mac:
+```bash
+mkdir -p .munder/hires && cp munder/hires/*.json .munder/hires/ && sed -i '' "s#<KIT_PATH>#$(pwd)#g" .munder/hires/*.json && grep -c "<KIT_PATH>" .munder/hires/*.json
+```
+
+Windows（PowerShell）:
+```powershell
+$p = (Get-Location).Path -replace '\\','/'
+New-Item -ItemType Directory -Force .munder\hires | Out-Null
+Get-ChildItem munder\hires\*.json | ForEach-Object {
+  $t = [IO.File]::ReadAllText($_.FullName) -replace '<KIT_PATH>', $p
+  [IO.File]::WriteAllText((Join-Path (Resolve-Path .munder\hires) $_.Name), $t)
+}
+Select-String -Path .munder\hires\*.json -Pattern '<KIT_PATH>'
+```
+
+- Mac では、6ファイルすべてに `:0` と表示されれば置き換えは完了です。Windows では、何も表示されなければ完了です。
+- Windows のパスは `/` 区切りに変えています（例 `C:/Users/名前/GitHub/DAHanae`）。`\` のままだと JSON として読めなくなるためです。
+
+### 10.5 スタッフ5名を読み込む（Import hire）
+
+Import hire はファイルの URL を指定する方式なので、手元で一時的にファイルを配信します。**新しいターミナル**を開き、DAHanae のフォルダで次を実行します。
+
+Mac:
+```bash
+cd .munder/hires && python3 -m http.server 8765
+```
+Windows:
+```powershell
+cd .munder\hires; python -m http.server 8765
+```
+
+munder に戻り、次の手順を **5人分** 繰り返します。
+
+1. 画面右下の **＋**（Add agent）を押す
+2. **import hire…** を選び、URL に `http://localhost:8765/takahiro.json` を入力する
+3. 読み込まれた内容を確認します。名前・モデル（sonnet）・作業フォルダが `<DAHANAE>` になっているかを見て、違っていたら直します。
+4. **spawn** を押す
+
+| 5人の URL |
+| --- |
+| `http://localhost:8765/takahiro.json` |
+| `http://localhost:8765/mirin.json` |
+| `http://localhost:8765/terao.json` |
+| `http://localhost:8765/kurosu.json` |
+| `http://localhost:8765/yamapi.json` |
+
+- `rijicho.json` は読み込みません。boss（10.3 で名前を変えたカード）が りじちょー になります。
+- 5人を読み込んだら、配信しているターミナルで **Ctrl＋C** を押して止めます。
+- 読み込んだスタッフの TERMINAL にも `auto mode on` と出ていたら、**Shift＋Tab** で消します。
+- Windows で `python` が見つからないときは、Microsoft Store の Python を入れるか、`npx http-server -p 8765` で配信します（Node.js が必要）。
+
+### 10.6 最初の指示
+
+[6.](#6-りじちょーに最初の指示を出す) と同じ文を、BOSS カードの QUEUE に貼って send します。進め方の5行が返ってくれば完了です。
+
+スタッフに自分から仕事を振ってもらいたい場合は、🔧 Settings → Autonomy & Budgets → **Who can add agents** を「me and Rijicho」にし、予算上限（tokenCap）を入れて保存します。
+
+## 11. 注意
 
 - **使用量:** munder では、りじちょーとスタッフ5人が同時に Claude を使います。Pro プランだと上限に早く届くので、使わない時間は munder を閉じておきましょう。
 - **ルールは Tech0 向けのまま:** `00_ルール/` や `CLAUDE.md` は Tech0 の講座用の内容（V字フロー、W0〜W4、「運営に相談」など）です。りじちょーが「運営に確認して」と言ってきたら、それは Tech0 向けのルールが残っているためです。合わないところは、チームで相談して書き換えて構いません（書き換えも PR で行います）。
