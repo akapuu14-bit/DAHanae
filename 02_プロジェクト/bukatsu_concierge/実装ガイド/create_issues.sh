@@ -19,7 +19,7 @@
 #
 # 再実行しても壊れないよう、作成前に既存タイトルの重複を確認する（setup_github.shと同方式）。
 #
-# 使い方（PM/担当者がgh認証・admin権限を確認した上で実行）：
+# 使い方（gh認証済みの write(コラボレーター)権限の担当者が実行。adminは不要）：
 #   chmod +x 02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh
 #   ./02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh
 
