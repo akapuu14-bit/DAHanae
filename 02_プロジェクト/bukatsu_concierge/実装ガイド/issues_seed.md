@@ -6,6 +6,8 @@
 
 `タスクバックログ.md`（Wave0〜4、全36タスク）を、`scripts/setup_github.sh`が既に作った既存のラベル体系・マイルストーンにそのまま乗る形でGitHub Issue化する下書き。実行スクリプトは`create_issues.sh`に分離し、本書はレビュー用の一覧（タイトル・本文要旨・ラベル・マイルストーン・担当）を示す。
 
+**Wave0-4の36件（本書＋`create_issues.sh`）が正式なタスクIssue。`setup_github.sh`のseed Issue作成は行わない**（`setup_github.sh`はLabel/Milestone作成のみに変更済み前提。kurosu横断レビュー指摘S-2、Issue二重化の裁定に基づく。`setup_github.sh`本体の修正はterao担当）。
+
 ### 0.1 既存のラベル・マイルストーン体系（setup_github.sh確認済み）
 
 - Label: `area:be` / `area:ui` / `area:pdm` / `type:feature` / `type:bug` / `prio:high` / `prio:mid` / `prio:low`
@@ -41,7 +43,7 @@
 | ID | タイトル | 目的 | 対応SP/F | 依存 | 受入基準 | 触るファイル | ラベル | 担当 |
 |---|---|---|---|---|---|---|---|---|
 | T-B03 | [Wave1][BE] services/errors.py：共通例外定義 | I-F契約.md0.4の共通例外5種を定義する | I-F契約.md0.4 | なし | 5種すべてimport可能 | `app/frontend/services/errors.py` | area:be, type:feature, wave:1 | @Hiroki0023 |
-| T-B04 | [Wave1][BE] repositories/employees_repo.py | I-F契約.md2.1の全関数を実装する | F-35〜F-42, F-56 | T-B01 | `get_by_id`が大文字小文字を区別せず引ける | `app/frontend/repositories/employees_repo.py` | area:be, type:feature, wave:1 | @Hiroki0023 |
+| T-B04 | [Wave1][BE] repositories/employees_repo.py | I-F契約.md2.1の全関数を実装する | F-35〜F-43 | T-B01 | `get_by_id`が大文字小文字を区別せず引ける | `app/frontend/repositories/employees_repo.py` | area:be, type:feature, wave:1 | @Hiroki0023 |
 | T-B05 | [Wave1][BE] repositories/activities_repo.py | I-F契約.md2.2の全関数を実装する | F-13, F-35 | T-B01 | 全関数実装 | `app/frontend/repositories/activities_repo.py` | area:be, type:feature, wave:1 | @Hiroki0023 |
 | T-B06 | [Wave1][BE] repositories/clubs_repo.py | I-F契約.md2.3の全関数を実装する | F-17, F-44〜F-45 | T-B01, T-B05 | `search`がSP-20のAND/ORに対応 | `app/frontend/repositories/clubs_repo.py` | area:be, type:feature, wave:1 | @Hiroki0023 |
 | T-B07 | [Wave1][BE] repositories/club_members_repo.py | I-F契約.md2.4の全関数を実装する | F-42, F-48 | T-B01 | 全関数実装 | `app/frontend/repositories/club_members_repo.py` | area:be, type:feature, wave:1 | @Hiroki0023 |

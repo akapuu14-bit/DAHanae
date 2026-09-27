@@ -6,6 +6,10 @@
 # 既存マイルストーン（〜9/29 アプリのカタチ／〜10/2 8割／10/7-12 最終）に乗せる。
 # 追加で wave:0〜4 ラベルを作成する。
 #
+# 【裁定：Issue二重化解消】Wave0-4の36件（本スクリプト）が正式なタスクIssue。
+# setup_github.sh のseed Issue作成は行わない（setup_github.shはLabel/Milestone作成のみに
+# 変更済み前提。kurosu横断レビュー指摘S-2に基づく。setup_github.sh本体の修正はterao担当）。
+#
 # 前提：
 #   - scripts/setup_github.sh を先に実行し、既存Label/Milestoneが作成済みであること
 #     （本スクリプトは既存Label/Milestoneの作成は行わない。wave:0-4のみ新規作成）
@@ -108,7 +112,7 @@ create_issue \
 
 create_issue \
   "[Wave1][BE] repositories/employees_repo.py" \
-  $'タスクバックログ.md T-B04 より。I-F契約.md2.1の全関数（get_by_id/search/count/update_public_settings/get_interests/set_interests）を実装する。\n\n対応: F-35〜F-42, F-56\n依存: T-B01\n受入基準: get_by_idが大文字小文字を区別せず引ける\n触るファイル: app/frontend/repositories/employees_repo.py\n\n担当: @Hiroki0023' \
+  $'タスクバックログ.md T-B04 より。I-F契約.md2.1の全関数（get_by_id/search/count/update_public_settings/get_interests/set_interests）を実装する。\n\n対応: F-35〜F-43\n依存: T-B01\n受入基準: get_by_idが大文字小文字を区別せず引ける\n触るファイル: app/frontend/repositories/employees_repo.py\n\n担当: @Hiroki0023' \
   "area:be,type:feature,wave:1" "$M_KATACHI"
 
 create_issue \
