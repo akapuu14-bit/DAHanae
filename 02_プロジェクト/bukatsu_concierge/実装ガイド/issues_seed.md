@@ -4,9 +4,9 @@
 
 ## 0. 本書の位置づけ
 
-`タスクバックログ.md`（Wave0〜4、全36タスク）を、`scripts/setup_github.sh`が既に作った既存のラベル体系・マイルストーンにそのまま乗る形でGitHub Issue化する下書き。実行スクリプトは`create_issues.sh`に分離し、本書はレビュー用の一覧（タイトル・本文要旨・ラベル・マイルストーン・担当）を示す。
+`タスクバックログ.md`（Wave0〜4、全37タスク。T-B0S「共有Supabaseプロジェクトの作成と接続情報の共有」追加後）を、`scripts/setup_github.sh`が既に作った既存のラベル体系・マイルストーンにそのまま乗る形でGitHub Issue化する下書き。実行スクリプトは`create_issues.sh`に分離し、本書はレビュー用の一覧（タイトル・本文要旨・ラベル・マイルストーン・担当）を示す。
 
-**Wave0-4の36件（本書＋`create_issues.sh`）が正式なタスクIssue。`setup_github.sh`のseed Issue作成は行わない**（`setup_github.sh`はLabel/Milestone作成のみに変更済み前提。kurosu横断レビュー指摘S-2、Issue二重化の裁定に基づく。`setup_github.sh`本体の修正はterao担当）。
+**Wave0-4の37件（本書＋`create_issues.sh`）が正式なタスクIssue。`setup_github.sh`のseed Issue作成は行わない**（`setup_github.sh`はLabel/Milestone作成のみに変更済み前提。kurosu横断レビュー指摘S-2、Issue二重化の裁定に基づく。`setup_github.sh`本体の修正はterao担当）。
 
 ### 0.1 既存のラベル・マイルストーン体系（setup_github.sh確認済み）
 
@@ -34,7 +34,8 @@
 
 | ID | タイトル | 目的 | 対応SP/N | 依存 | 受入基準 | 触るファイル | ラベル | 担当 |
 |---|---|---|---|---|---|---|---|---|
-| T-B00 | [Wave0][BE] Supabaseスキーマ作成（10テーブル） | 設計.md3章の型・制約・インデックス方針どおりに10テーブルを作成する | 仕様.md3章, 設計.md3章, N-02 | なし | 外部キー・一意制約（club_members, employee_interests）が設計.md3章どおり | Supabase側スキーマ定義 | area:be, type:feature, wave:0 | @Hiroki0023（terao支援） |
+| T-B0S | [Wave0][BE] 共有Supabaseプロジェクトの作成と接続情報の共有 | PM決定：Supabaseはチームで1プロジェクト共有（各自個別ではない）とし、その基盤を最初に整える | 実装計画.md1.1表, N-02 | なし | チーム共有のSupabaseプロジェクトが1つ存在し、接続URL/anon keyがSecrets運用の手順で全員に共有されている（実キーはコミットしない） | Supabaseダッシュボード＋各自の`.streamlit/secrets.toml`（コード変更なし） | area:be, type:feature, wave:0 | @Hiroki0023 |
+| T-B00 | [Wave0][BE] Supabaseスキーマ作成（10テーブル） | 設計.md3章の型・制約・インデックス方針どおりに10テーブルを作成する（T-B0Sで作成する共有プロジェクト上に作る） | 仕様.md3章, 設計.md3章, N-02 | T-B0S | 外部キー・一意制約（club_members, employee_interests）が設計.md3章どおり | Supabase側スキーマ定義 | area:be, type:feature, wave:0 | @Hiroki0023（terao支援） |
 | T-B01 | [Wave0][BE] db/client.py：Supabaseクライアント初期化 | Secretsから接続情報を読みモジュールレベルで1クライアントを生成する | 設計.md6章, N-02, N-04 | T-B00 | `st.secrets`から接続情報を読める | `app/frontend/db/client.py` | area:be, type:feature, wave:0 | @Hiroki0023（terao支援） |
 | T-B02 | [Wave0][PDM] Secrets雛形作成 | supabase_url/supabase_key/common_passwordのキー名をT-B01と一致させた雛形を用意する | N-04 | T-B00 | T-B01とキー名が一致 | `app/frontend/.streamlit/secrets.toml.example` | area:pdm, type:feature, wave:0 | @HanaeSakamoto（takahiro支援） |
 
