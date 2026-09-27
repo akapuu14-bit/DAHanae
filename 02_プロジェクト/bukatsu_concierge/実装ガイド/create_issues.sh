@@ -84,8 +84,13 @@ M_SAISHU="10/7-12 最終"
 # --- Wave 0：DB基盤 ---------------------------------------------------------
 
 create_issue \
+  "[Wave0][BE] 共有Supabaseプロジェクトの作成と接続情報の共有" \
+  $'タスクバックログ.md T-B0S より。PM決定：Supabaseはチームで1プロジェクト共有（各自個別ではない）とし、その基盤を最初に整える。\n\n対応: 実装計画.md1.1表, N-02\n依存: なし\n受入基準: チーム共有のSupabaseプロジェクトが1つ存在し、接続URL/anon keyがSecrets運用の手順で全員に共有されている（実キーはコミットしない）\n触るファイル: Supabaseダッシュボード＋各自の.streamlit/secrets.toml（コード変更なし）\n\n担当: @Hiroki0023' \
+  "area:be,type:feature,wave:0" "$M_KATACHI"
+
+create_issue \
   "[Wave0][BE] Supabaseスキーマ作成（10テーブル）" \
-  $'タスクバックログ.md T-B00 より。設計.md3章の型・制約・インデックス方針どおりに10テーブルを作成する。\n\n対応: 仕様.md3章, 設計.md3章, N-02\n依存: なし\n受入基準: 外部キー・一意制約（club_members, employee_interests）が設計.md3章どおりに入っている\n触るファイル: Supabase側スキーマ定義\n\n担当: @Hiroki0023（terao支援）' \
+  $'タスクバックログ.md T-B00 より。設計.md3章の型・制約・インデックス方針どおりに10テーブルを作成する（T-B0Sで作成する共有プロジェクト上に作る）。\n\n対応: 仕様.md3章, 設計.md3章, N-02\n依存: T-B0S\n受入基準: 外部キー・一意制約（club_members, employee_interests）が設計.md3章どおりに入っている\n触るファイル: Supabase側スキーマ定義\n\n担当: @Hiroki0023（terao支援）' \
   "area:be,type:feature,wave:0" "$M_KATACHI"
 
 create_issue \
