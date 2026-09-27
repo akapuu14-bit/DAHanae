@@ -387,7 +387,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <h1>部活コンシェルジュ 開発ダッシュボード</h1>
-  <p class="updated">最終更新: {generated_at} / リポジトリ: {repo}</p>
+  <p class="updated">最終更新: {generated_at} / リポジトリ: {repo} / <a href="./hub.html">開発ハブへ</a></p>
 
   <h2>担当者別 進捗</h2>
   <div class="grid">{assignee_cards}</div>

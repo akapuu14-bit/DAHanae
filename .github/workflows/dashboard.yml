@@ -39,6 +39,9 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/gen_dashboard.py
 
+      - name: Copy dev hub into Pages output
+        run: mkdir -p site && cp docs/hub.html site/hub.html
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
