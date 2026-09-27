@@ -6,11 +6,19 @@
 このドキュメントは T-007（GitHub純正のIssue/Project/Milestone/Label、Actions→Pagesダッシュボード自動更新）の
 実行手順です。ファイル一式の作成まではTeraoが行いました。ここから先（gh実行・Pages有効化）は人間側の作業です。
 
+> **このドキュメントがLabel/Milestone一覧の正本です。** `docs/進捗管理ガイド.md`側の同じ一覧はリンク参照のみとし、
+> 重複記載はしていません（T-016）。
+
 ## 0. できあがるもの
 
-- **段階1**：GitHub純正のLabel・Milestone・seed Issueのセットアップ資材（`scripts/setup_github.sh`）
+- **段階1**：GitHub純正のLabel・Milestoneのセットアップ資材（`scripts/setup_github.sh`）
 - **段階2**：Issue/PRの状態を集計し、担当者別・Milestone別の進捗をHTMLダッシュボードとしてGitHub Pagesに自動公開する仕組み
   （`.github/workflows/dashboard.yml` + `scripts/gen_dashboard.py`）
+
+> **S-2運用注記（kurosuの横断レビュー裁定・T-016）**：タスクIssueの作成は
+> `02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh`（Wave0-4、36件）が正式版です。
+> `scripts/setup_github.sh`は seed Issue を作らず、Label・Milestoneの作成のみを行います
+> （Issue二重化を避けるための裁定）。
 
 ## 1. gh CLI のインストールと認証
 
@@ -40,9 +48,9 @@ gh auth login
 gh auth status
 ```
 
-## 2. Label・Milestone・Issueの作成（段階1）
+## 2. Label・Milestoneの作成（段階1）
 
-リポジトリのルートで実行します。再実行しても、既存のLabel/Milestone/Issueがあれば作り直さずスキップするので、
+リポジトリのルートで実行します。再実行しても、既存のLabel/Milestoneがあれば作り直さずスキップするので、
 何度流しても壊れません。
 
 ```bash
@@ -50,17 +58,25 @@ chmod +x scripts/setup_github.sh
 ./scripts/setup_github.sh
 ```
 
-作られるもの：
+作られるもの（**この一覧が正本**）：
 
 - Label：`area:be` `area:ui` `area:pdm` `type:feature` `type:bug` `prio:high` `prio:mid` `prio:low`
 - Milestone（実装計画.md R-48のスケジュール3節）：
   - `〜9/29 アプリのカタチ`（due: 2026-09-29）
   - `〜10/2 8割`（due: 2026-10-02）
   - `10/7-12 最終`（due: 2026-10-12）
-- Seed Issue：実装計画.md 2章「実装順序（マイルストーン）」のW3-1〜W3-4を、そのままIssue化したもの（計12件）
 
-> **保留**：seed Issueのmilestone・assigneeは、実装計画.mdに「どのIssueをどのMilestoneに入れるか」の明記が
-> なかったため、スクリプト側では設定していません。GitHub Projects上でPM（はなえ）が割り振ってください。
+### タスクIssueの作成
+
+`scripts/setup_github.sh`はIssueを作りません。Label・Milestoneの作成後に、続けて次を実行してください。
+
+```bash
+chmod +x 02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh
+./02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh
+```
+
+`create_issues.sh`は`実装ガイド/issues_seed.md`のWave0-4（36件）をそのままIssue化する正式版です。
+既存タイトルの重複チェックがあり、再実行しても壊れません。詳細は`実装ガイド/issues_seed.md`を参照してください。
 
 ## 3. GitHub Projectsボードの作成
 
@@ -131,6 +147,5 @@ open site/index.html   # macOS
 
 ## 6. 保留（PM判断が必要な点）
 
-- seed Issueへのmilestone紐付け（上記2章参照）
-- seed Issueのassignee（あかぷ／だーあさ／はなえの実際のGitHubアカウント名が未確認のため空欄にしています）
+- `create_issues.sh`で作成するIssueのmilestone紐付け・assignee（`実装ガイド/issues_seed.md`側の保留を参照）
 - Projectボードのビュー構成（カラム名・自動化ルール）は本手順書のたたき台以外、未確定です

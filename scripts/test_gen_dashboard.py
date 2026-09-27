@@ -54,13 +54,13 @@ def sample_items():
             "user": {"login": "alice"},
             "pull_request": {"merged_at": "2026-09-27T10:00:00Z"},
         },
-        {  # PR: closed but NOT merged（対象外）
+        {  # PR: closed but NOT merged（対象外。Milestoneにも紐づく）
             "number": 11,
             "title": "wip: 未マージPR",
             "state": "closed",
             "assignees": [{"login": "bob"}],
             "labels": [],
-            "milestone": None,
+            "milestone": {"title": "〜9/29 アプリのカタチ"},
             "html_url": "https://github.com/example/repo/pull/11",
             "user": {"login": "bob"},
             "pull_request": {"merged_at": None},
@@ -82,11 +82,18 @@ class TestAggregateByAssignee(unittest.TestCase):
         self.assertEqual(board["alice"]["closed"], 2)
         self.assertEqual(board["alice"]["open"], 0)
         self.assertEqual(board["alice"]["areas"]["area:be"], 2)
-        # bob: Issue#2(open) + PR#11(closed, but counted as closed state)
+        # bob: Issue#2(open)のみ。PR#11(closed but未マージ)は完了に数えず、
+        # 集計そのものから除外する（T-016: kurosuの横断レビュー指摘の修正）
         self.assertEqual(board["bob"]["open"], 1)
-        self.assertEqual(board["bob"]["closed"], 1)
+        self.assertEqual(board["bob"]["closed"], 0)
         # 未アサイン: Issue#3(open)
         self.assertEqual(board[gd.UNASSIGNED]["open"], 1)
+
+    def test_closed_but_unmerged_pr_excluded_from_counts(self):
+        board = gd.aggregate_by_assignee(sample_items())
+        # PR#11分がclosedにもopenにも計上されていないこと
+        total_bob = board["bob"]["open"] + board["bob"]["closed"]
+        self.assertEqual(total_bob, 1, "未マージclosed PRはopen/closedどちらにも数えない")
 
     def test_unassigned_bucket_used_when_no_assignees(self):
         board = gd.aggregate_by_assignee(sample_items())
@@ -99,6 +106,8 @@ class TestAggregateByMilestone(unittest.TestCase):
         by_title = {r["title"]: r for r in result}
         m1 = by_title["〜9/29 アプリのカタチ"]
         # Issue#1(closed) + Issue#2(open) が紐づく → 1/2 = 50%
+        # PR#11（同じMilestoneに紐づくが、closedで未マージ）は集計から除外される
+        # （T-016: kurosuの横断レビュー指摘の修正。totalが3にならないことを確認）
         self.assertEqual(m1["total"], 2)
         self.assertEqual(m1["closed"], 1)
         self.assertEqual(m1["pct"], 50)

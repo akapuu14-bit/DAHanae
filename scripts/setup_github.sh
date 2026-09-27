@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# 部活コンシェルジュ：GitHub Issue/Project運用の初期セットアップ（段階1）
+# 部活コンシェルジュ：GitHub Label/Milestone運用の初期セットアップ（段階1）
 #
 # 作るもの:
 #   - Label: area:be / area:ui / area:pdm / type:feature / type:bug / prio:high / prio:mid / prio:low
 #   - Milestone: 実装計画.md R-48のスケジュール3節（due日付つき）
-#   - Seed Issue: 実装計画.md 2章「実装順序（マイルストーン）」の分担をそのままIssue化（W3-1〜W3-4）
+#
+# Issue作成は 実装ガイド/create_issues.sh で行う（本スクリプトはseed Issueを作らない。
+# kurosuの横断レビュー裁定・T-016により、create_issues.sh（36件）を正としてseed Issue作成は廃止した）。
 #
 # 前提: gh CLI がインストール・認証済み（gh auth login 済み）で、
 #       このリポジトリのディレクトリ内で実行すること。
@@ -76,82 +78,6 @@ create_milestone "〜9/29 アプリのカタチ" "2026-09-29T14:59:59Z" "R-48 �
 create_milestone "〜10/2 8割"          "2026-10-02T14:59:59Z" "R-48 第2節：実装8割の目安"
 create_milestone "10/7-12 最終"        "2026-10-12T14:59:59Z" "R-48 第3節：最終調整・デモ・プレゼン（10/7〜10/12）"
 
-# ---------------------------------------------------------------------------
-# 3. Seed Issue（実装計画.md 2章の分担をそのままIssue化。W3-1〜W3-4）
-# ---------------------------------------------------------------------------
 echo ""
-echo "== Seed Issue =="
-echo "  (注) milestone・assigneeは実装計画.mdに明記の対応がないため未設定。PM/担当者が後で紐付けてください。"
-
-create_issue() {
-  local title="$1" body="$2" labels="$3"
-  if gh issue list --state all --search "in:title \"$title\"" --json title --jq '.[].title' | grep -Fxq "$title"; then
-    echo "  skip (既存): $title"
-  else
-    gh issue create --title "$title" --body "$body" --label "$labels" >/dev/null
-    echo "  created: $title"
-  fi
-}
-
-create_issue \
-  "[W3-1][BE] Supabaseスキーマ作成" \
-  $'実装計画.md W3-1 より。設計.md 3章の型/制約/インデックスどおりに Supabase(PostgreSQL) のスキーマを作成する。\n\n対応: 設計.md 3章 / 一次情報コミット 9a6a20f' \
-  "area:be,type:feature"
-
-create_issue \
-  "[W3-1][BE] db/client.py・Secrets接続" \
-  $'実装計画.md W3-1 より。Supabase接続クライアントとStreamlit Secretsの雛形を作成する。\n\n対応: 設計.md / N-01〜N-04' \
-  "area:be,type:feature"
-
-create_issue \
-  "[W3-1][PDM] ダミーデータ生成 scripts/reset_data.py" \
-  $'実装計画.md W3-1 より。社員500名・部活15件、実在情報不使用、seed固定でダミーデータを再投入するスクリプト。\n\n対応: SP-78 / N-07〜N-09' \
-  "area:pdm,type:feature"
-
-create_issue \
-  "[W3-2a][BE] repositories/ 実装（9本）" \
-  $'実装計画.md W3-2a より。データアクセス層 repositories/ 一式（9本）を実装する。\n\n対応: 設計.md 層分離 / 実装計画.md 1.1表' \
-  "area:be,type:feature"
-
-create_issue \
-  "[W3-2a][BE] services/ 実装：申込・キャンセル・初参加判定・未読・権限・操作履歴" \
-  $'実装計画.md W3-2a より。サービス層 services/ 一式（申込/キャンセル/初参加判定/未読/権限/操作履歴）を実装する。\n\n対応: SP-66〜SP-71, SP-76, SP-77' \
-  "area:be,type:feature"
-
-create_issue \
-  "[W3-2b][UI] app.py ルーティング・session_state" \
-  $'実装計画.md W3-2b より。app.py の画面ルーティングとsession_state管理を実装する。\n\n対応: SP-01〜SP-03' \
-  "area:ui,type:feature"
-
-create_issue \
-  "[W3-2b][UI] 画面：S03部活検索・S04部活詳細" \
-  $'実装計画.md W3-2b より。S03部活検索・S04部活詳細（申込フォーム含む）を実装する。\n\n対応: SP-19〜SP-32' \
-  "area:ui,type:feature"
-
-create_issue \
-  "[W3-2b][UI] 画面：S06メッセージ・S08社員検索・S09プロフィール・S10管理" \
-  $'実装計画.md W3-2b より。S06メッセージ・S08社員検索・S09社員プロフィール・S10部活/開催の管理を実装する。\n\n対応: SP-35〜SP-62' \
-  "area:ui,type:feature"
-
-create_issue \
-  "[W3-2b][UI/PDM] 画面：S05申込完了・S07通知一覧（自己完結）" \
-  $'実装計画.md W3-2b／はなえ担当分（20%）より。自己完結した表示中心の画面2つ。\n\n対応: SP-33〜SP-34, SP-44〜SP-46' \
-  "area:ui,area:pdm,type:feature"
-
-create_issue \
-  "[W3-2b][UI/PDM] 共通部品 rule_notice/error_banner・固定文言" \
-  $'実装計画.md W3-2b／はなえ担当分より。共通部品 rule_notice / error_banner と、運営ルールの固定文言を実装する。\n\n対応: SP-04, SP-06' \
-  "area:ui,area:pdm,type:feature"
-
-create_issue \
-  "[W3-3] 結合：画面×サービス×DBの通し、単体テスト添付" \
-  $'実装計画.md W3-3 より。画面・サービス・DBを通しで結合し、各実装者が単体テスト(U-xx)を添付する。\n\n対応: 実装計画.md 4章 完了の定義' \
-  "type:feature,prio:high"
-
-create_issue \
-  "[W3-4] テスト実行：結合(I-001〜I-120)・システム(S-01〜S-60)" \
-  $'実装計画.md W3-4 より。kurosuが結合テスト・システムテストを実行し、テスト結果.mdに合否と実行ログを固定する。\n\n対応: テスト設計.md I/S節' \
-  "type:feature,prio:high"
-
-echo ""
-echo "完了。GitHub Projects（board）の作成と、Issue/PRの紐付けは docs/github-管理セットアップ.md の手順に従ってください。"
+echo "完了。Issueの作成は 実装ガイド/create_issues.sh を実行してください。"
+echo "GitHub Projects（board）の作成と、Issue/PRの紐付けは docs/github-管理セットアップ.md の手順に従ってください。"

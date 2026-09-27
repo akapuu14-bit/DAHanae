@@ -88,6 +88,29 @@ def is_merged(item: dict) -> bool:
     return bool(pr.get("merged_at"))
 
 
+def is_done(item: dict) -> bool:
+    """集計上の「完了」判定。
+
+    Issueはstate=='closed'で完了。PRはマージされて初めて完了（is_merged）とする。
+    クローズされただけで未マージのPR（取り下げ等）は「完了」に含めない
+    （kurosuの横断レビュー指摘・T-016で修正）。
+    """
+    if is_pull_request(item):
+        return is_merged(item)
+    return item.get("state") == "closed"
+
+
+def is_counted(item: dict) -> bool:
+    """集計対象かどうか。
+
+    マージされずクローズされたPRは、完了でも未完了（作業中）でもないため、
+    担当者別・Milestone別の集計そのものから除外する。
+    """
+    if is_pull_request(item) and item.get("state") == "closed" and not is_merged(item):
+        return False
+    return True
+
+
 def area_labels_of(item: dict) -> list[str]:
     names = [lbl.get("name", "") for lbl in item.get("labels", []) if isinstance(lbl, dict)]
     return [n for n in names if n in AREA_LABELS]
@@ -101,12 +124,14 @@ def assignees_of(item: dict) -> list[str]:
 def aggregate_by_assignee(items: list[dict]) -> dict:
     board: dict[str, dict] = {}
     for it in items:
+        if not is_counted(it):
+            continue
         for login in assignees_of(it):
             entry = board.setdefault(
                 login,
                 {"open": 0, "closed": 0, "areas": {k: 0 for k in AREA_LABELS}},
             )
-            if it.get("state") == "closed":
+            if is_done(it):
                 entry["closed"] += 1
             else:
                 entry["open"] += 1
@@ -118,12 +143,14 @@ def aggregate_by_assignee(items: list[dict]) -> dict:
 def aggregate_by_milestone(items: list[dict], milestones: list[dict]) -> list[dict]:
     counts: dict[str, dict] = {}
     for it in items:
+        if not is_counted(it):
+            continue
         ms = it.get("milestone")
         if not ms:
             continue
         title = ms.get("title", "")
         entry = counts.setdefault(title, {"open": 0, "closed": 0})
-        if it.get("state") == "closed":
+        if is_done(it):
             entry["closed"] += 1
         else:
             entry["open"] += 1
