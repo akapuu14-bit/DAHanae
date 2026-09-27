@@ -5,6 +5,9 @@
 .DS_Store
 ~$*
 
+# ダッシュボード生成物（Actionsが都度生成、コミット不要）
+/site/
+
 # 案件資料（社外秘・大容量のため手元のみ）
 02_プロジェクト/bukatsu_concierge/inputs/*.pdf
 02_プロジェクト/bukatsu_concierge/inputs/*.docx
