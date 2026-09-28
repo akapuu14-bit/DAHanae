@@ -19,7 +19,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 API_ROOT = "https://api.github.com"
 PER_PAGE = 100
@@ -129,8 +129,9 @@ def aggregate_by_assignee(items: list[dict]) -> dict:
         for login in assignees_of(it):
             entry = board.setdefault(
                 login,
-                {"open": 0, "closed": 0, "areas": {k: 0 for k in AREA_LABELS}},
+                {"open": 0, "closed": 0, "areas": {k: 0 for k in AREA_LABELS}, "tasks": []},
             )
+            entry["tasks"].append(task_of(it, login))
             if is_done(it):
                 entry["closed"] += 1
             else:
@@ -218,7 +219,85 @@ def area_chips(entry_areas: dict) -> str:
     return "".join(chips) if chips else '<span class="chip chip-empty">-</span>'
 
 
-def render_assignee_cards(board: dict) -> str:
+JST = timezone(timedelta(hours=9))
+
+
+def task_of(item: dict, login: str) -> dict:
+    """担当者カードの内訳（タスク行）用に、Issue/PR 1件分の表示データを作る。"""
+    ms = item.get("milestone") or {}
+    return {
+        "number": item.get("number"),
+        "title": item.get("title", ""),
+        "assignee": login,
+        "done": is_done(item),
+        "is_pr": is_pull_request(item),
+        "milestone_title": ms.get("title", ""),
+        "due_on": ms.get("due_on"),
+        "areas": area_labels_of(item),
+        "html_url": item.get("html_url", ""),
+    }
+
+
+def due_date_of(due_on: str | None) -> date | None:
+    """Milestoneのdue_on(ISO8601)を日本時間の日付にする。不正・未設定はNone。"""
+    if not due_on:
+        return None
+    try:
+        dt = datetime.fromisoformat(due_on.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(JST).date()
+
+
+def deadline_badge(done: bool, due_on: str | None, today: date) -> tuple[str, str]:
+    """状態バッジ (ラベル, CSSクラス)。期限=Milestoneのdue_on、todayは実行日(JST)。"""
+    if done:
+        return "完了", "badge-done"
+    due = due_date_of(due_on)
+    if due is None:
+        return "期限未設定", "badge-none"
+    diff = (due - today).days
+    if diff < 0:
+        return f"遅延 {-diff}日", "badge-late"
+    if diff == 0:
+        return "本日締切", "badge-today"
+    return f"期限内(残{diff}日)", "badge-ok"
+
+
+def render_task_rows(tasks: list[dict], today: date) -> str:
+    def sort_key(t):
+        due = due_date_of(t["due_on"])
+        return (t["done"], due is None, due or date.max, t["number"] or 0)
+
+    rows = []
+    for t in sorted(tasks, key=sort_key):
+        label, cls = deadline_badge(t["done"], t["due_on"], today)
+        due = due_date_of(t["due_on"])
+        due_str = due.isoformat() if due else "-"
+        state = "完了" if t["done"] else "未完了"
+        kind = "PR " if t["is_pr"] else ""
+        areas = "".join(
+            f'<span class="chip" style="--chip-color:{AREA_LABELS[a]["color"]}">{html.escape(AREA_LABELS[a]["name"])}</span>'
+            for a in t["areas"]
+        )
+        rows.append(
+            f"""
+            <li class="task {'task-done' if t['done'] else 'task-open'}">
+              <div class="task-main">
+                <a href="{html.escape(t['html_url'])}" target="_blank" rel="noopener">{kind}#{t['number']} {html.escape(t['title'])}</a>
+                <span class="badge {cls}">{html.escape(label)}</span>
+              </div>
+              <div class="task-meta">担当: {html.escape(t['assignee'])} ・ 状態: {state} ・ {html.escape(t['milestone_title'] or 'Milestone未設定')} ・ 期限: {due_str} {areas}</div>
+            </li>
+            """
+        )
+    return f'<ul class="task-list">{"".join(rows)}</ul>' if rows else ""
+
+
+def render_assignee_cards(board: dict, today: date | None = None) -> str:
+    today = today or datetime.now(JST).date()
     cards = []
     # 未完了が多い順→名前順
     ordered = sorted(board.items(), key=lambda kv: (-kv[1]["open"], kv[0]))
@@ -239,6 +318,10 @@ def render_assignee_cards(board: dict) -> str:
               </div>
               <div class="progress"><div class="progress-bar" style="width:{pct}%"></div></div>
               <div class="chips">{area_chips(e['areas'])}</div>
+              <details class="breakdown">
+                <summary>内訳を開く</summary>
+                {render_task_rows(e['tasks'], today)}
+              </details>
             </div>
             """
         )
@@ -365,6 +448,20 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
     border: 1px solid var(--chip-color);
   }}
   .chip-empty {{ color: var(--muted); border-color: var(--border); background: none; }}
+  .breakdown {{ margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }}
+  .breakdown summary {{ cursor: pointer; color: var(--accent); font-size: 0.85rem; }}
+  .task-list {{ list-style: none; padding: 0; margin: 8px 0 0; }}
+  .task {{ padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }}
+  .task-main {{ display: flex; justify-content: space-between; gap: 6px; align-items: flex-start; }}
+  .task-main a {{ color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }}
+  .task-done .task-main a {{ color: var(--muted); text-decoration: line-through; }}
+  .task-meta {{ color: var(--muted); font-size: 0.72rem; margin-top: 2px; overflow-wrap: anywhere; }}
+  .badge {{ font-size: 0.7rem; padding: 1px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; border: 1px solid; }}
+  .badge-done {{ color: #6b7280; border-color: #9ca3af; background: color-mix(in srgb, #9ca3af 18%, transparent); }}
+  .badge-late {{ color: #dc2626; border-color: #dc2626; background: color-mix(in srgb, #dc2626 15%, transparent); }}
+  .badge-today {{ color: #ea580c; border-color: #ea580c; background: color-mix(in srgb, #ea580c 15%, transparent); }}
+  .badge-ok {{ color: #16a34a; border-color: #16a34a; background: color-mix(in srgb, #16a34a 15%, transparent); }}
+  .badge-none {{ color: var(--muted); border-color: var(--border); }}
   .milestone {{
     background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px; margin-bottom: 12px;
@@ -422,7 +519,7 @@ def main() -> int:
     html_out = PAGE_TEMPLATE.format(
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         repo=html.escape(repo_full),
-        assignee_cards=render_assignee_cards(board),
+        assignee_cards=render_assignee_cards(board, datetime.now(JST).date()),
         milestone_bars=render_milestone_bars(ms_progress),
         recent_prs=render_recent_prs(prs),
     )
