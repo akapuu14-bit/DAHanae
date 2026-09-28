@@ -268,7 +268,14 @@ def deadline_badge(done: bool, due_on: str | None, today: date) -> tuple[str, st
     return f"期限内(残{diff}日)", "badge-ok"
 
 
-def render_task_rows(tasks: list[dict], today: date, show_milestone: bool = True) -> str:
+def render_task_rows(
+    tasks: list[dict],
+    today: date,
+    show_milestone: bool = True,
+    show_assignee: bool = True,
+) -> str:
+    """タスク行。担当者内訳は担当(show_assignee=False)、Milestone内訳はMilestone名を省く。"""
+
     def sort_key(t):
         due = due_date_of(t["due_on"])
         return (t["done"], due is None, due or date.max, t["number"] or 0)
@@ -278,38 +285,37 @@ def render_task_rows(tasks: list[dict], today: date, show_milestone: bool = True
         label, cls = deadline_badge(t["done"], t["due_on"], today)
         due = due_date_of(t["due_on"])
         due_str = due.isoformat() if due else "-"
-        state = "完了" if t["done"] else "未完了"
         kind = "PR " if t["is_pr"] else ""
+        meta = []
+        if show_assignee:
+            meta.append(f"担当: {html.escape(t['assignee'])}")
+        if show_milestone:
+            meta.append(html.escape(t["milestone_title"] or "Milestone未設定"))
+        meta.append(f"期限: {due_str}")
         areas = "".join(
-            f'<span class="chip" style="--chip-color:{AREA_LABELS[a]["color"]}">{html.escape(AREA_LABELS[a]["name"])}</span>'
+            f'<span class="chip chip-sm" style="--chip-color:{AREA_LABELS[a]["color"]}">{html.escape(AREA_LABELS[a]["name"])}</span>'
             for a in t["areas"]
         )
-        ms_part = f" ・ {html.escape(t['milestone_title'] or 'Milestone未設定')}" if show_milestone else ""
         rows.append(
             f"""
             <li class="task {'task-done' if t['done'] else 'task-open'}">
-              <div class="task-main">
-                <a href="{html.escape(t['html_url'])}" target="_blank" rel="noopener">{kind}#{t['number']} {html.escape(t['title'])}</a>
+              <div class="task-line">
+                <span class="task-no">{kind}#{t['number']}</span>
+                <a class="task-title" href="{html.escape(t['html_url'])}" target="_blank" rel="noopener">{html.escape(t['title'])}</a>
                 <span class="badge {cls}">{html.escape(label)}</span>
               </div>
-              <div class="task-meta">担当: {html.escape(t['assignee'])} ・ 状態: {state}{ms_part} ・ 期限: {due_str} {areas}</div>
+              <div class="task-meta">{" ・ ".join(meta)}{areas}</div>
             </li>
             """
         )
     return f'<ul class="task-list">{"".join(rows)}</ul>' if rows else ""
 
 
-def render_assignee_cards(board: dict, today: date | None = None) -> str:
-    today = today or datetime.now(JST).date()
-    cards = []
-    # 未完了が多い順→名前順
-    ordered = sorted(board.items(), key=lambda kv: (-kv[1]["open"], kv[0]))
-    for login, e in ordered:
-        total = e["open"] + e["closed"]
-        pct = round(e["closed"] / total * 100) if total else 0
-        cards.append(
-            f"""
-            <div class="card">
+def _render_card(login: str, e: dict, today: date, muted: bool = False) -> str:
+    total = e["open"] + e["closed"]
+    pct = round(e["closed"] / total * 100) if total else 0
+    return f"""
+            <div class="card{' card-muted' if muted else ''}">
               <div class="card-head">
                 <span class="avatar">{html.escape(login[:1].upper() if login != UNASSIGNED else "?")}</span>
                 <span class="login">{html.escape(login)}</span>
@@ -323,14 +329,39 @@ def render_assignee_cards(board: dict, today: date | None = None) -> str:
               <div class="chips">{area_chips(e['areas'])}</div>
               <details class="breakdown">
                 <summary>内訳を開く</summary>
-                {render_task_rows(e['tasks'], today)}
+                {render_task_rows(e['tasks'], today, show_assignee=False)}
               </details>
             </div>
             """
-        )
+
+
+def render_assignee_cards(board: dict, today: date | None = None) -> str:
+    """担当者(assigneeあり)のカードのみ。未アサインは render_unassigned_block で別ブロックに出す。"""
+    today = today or datetime.now(JST).date()
+    # 未完了が多い順→名前順
+    people = sorted(
+        ((k, v) for k, v in board.items() if k != UNASSIGNED),
+        key=lambda kv: (-kv[1]["open"], kv[0]),
+    )
+    cards = [_render_card(login, e, today) for login, e in people]
     if not cards:
         return '<p class="empty">Issue/PRがまだありません。</p>'
     return "".join(cards)
+
+
+def render_unassigned_block(board: dict, today: date | None = None) -> str:
+    """(未アサイン)を人のグリッドと分けた控えめな別ブロックにする。0件なら空文字。"""
+    today = today or datetime.now(JST).date()
+    e = board.get(UNASSIGNED)
+    if not e or (e["open"] + e["closed"]) == 0:
+        return ""
+    return f"""
+  <section class="unassigned">
+    <h3>未アサイン</h3>
+    <p class="unassigned-note">担当者が設定されていない完了Issue・マージ済みPRなど</p>
+    <div class="grid">{_render_card(UNASSIGNED, e, today, muted=True)}</div>
+  </section>
+"""
 
 
 def render_milestone_bars(milestones: list[dict], today: date | None = None) -> str:
@@ -350,7 +381,7 @@ def render_milestone_bars(milestones: list[dict], today: date | None = None) -> 
               <div class="ms-counts">完了 {m['closed']} / 全体 {m['total']}（{m['pct']}%）</div>
               <details class="breakdown">
                 <summary>内訳を開く</summary>
-                {render_task_rows(m.get('tasks', []), today, show_milestone=False)
+                {render_task_rows(m.get('tasks', []), today, show_milestone=False, show_assignee=True)
                  or '<p class="empty">このMilestoneのタスクはまだありません</p>'}
               </details>
             </div>
@@ -423,7 +454,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   h2 {{ font-size: 1.1rem; margin: 32px 0 12px; }}
   .grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
     gap: 12px;
   }}
   .card {{
@@ -460,11 +491,24 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .breakdown {{ margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }}
   .breakdown summary {{ cursor: pointer; color: var(--accent); font-size: 0.85rem; }}
   .task-list {{ list-style: none; padding: 0; margin: 8px 0 0; }}
-  .task {{ padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }}
-  .task-main {{ display: flex; justify-content: space-between; gap: 6px; align-items: flex-start; }}
-  .task-main a {{ color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }}
-  .task-done .task-main a {{ color: var(--muted); text-decoration: line-through; }}
-  .task-meta {{ color: var(--muted); font-size: 0.72rem; margin-top: 2px; overflow-wrap: anywhere; }}
+  .task {{ padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; line-height: 1.5; }}
+  .task:last-child {{ border-bottom: none; }}
+  .task-line {{ display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 8px; align-items: baseline; }}
+  .task-no {{ font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }}
+  .task-title {{ color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }}
+  .task-title:hover {{ text-decoration: underline; }}
+  .task-done .task-title {{ color: var(--muted); text-decoration: line-through; }}
+  .task-meta {{ color: var(--muted); font-size: 0.72rem; margin-top: 3px; padding-left: 0; overflow-wrap: anywhere; }}
+  .chip-sm {{ font-size: 0.62rem; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }}
+  .unassigned {{ margin-top: 20px; }}
+  .unassigned h3 {{ font-size: 0.9rem; margin: 0 0 2px; color: var(--muted); }}
+  .unassigned-note {{ font-size: 0.75rem; color: var(--muted); margin: 0 0 8px; }}
+  .card-muted {{ background: transparent; border-style: dashed; opacity: 0.85; }}
+  .card-muted .avatar {{ background: var(--muted); }}
+  @media (max-width: 420px) {{
+    .task-line {{ grid-template-columns: auto minmax(0, 1fr); }}
+    .task-line .badge {{ grid-column: 2; justify-self: start; }}
+  }}
   .badge {{ font-size: 0.7rem; padding: 1px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; border: 1px solid; }}
   .badge-done {{ color: #6b7280; border-color: #9ca3af; background: color-mix(in srgb, #9ca3af 18%, transparent); }}
   .badge-late {{ color: #dc2626; border-color: #dc2626; background: color-mix(in srgb, #dc2626 15%, transparent); }}
@@ -497,6 +541,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 
   <h2>担当者別 進捗</h2>
   <div class="grid">{assignee_cards}</div>
+  {unassigned_block}
 
   <h2>Milestone 進捗</h2>
   {milestone_bars}
@@ -529,6 +574,7 @@ def main() -> int:
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         repo=html.escape(repo_full),
         assignee_cards=render_assignee_cards(board, datetime.now(JST).date()),
+        unassigned_block=render_unassigned_block(board, datetime.now(JST).date()),
         milestone_bars=render_milestone_bars(ms_progress, datetime.now(JST).date()),
         recent_prs=render_recent_prs(prs),
     )

@@ -221,25 +221,64 @@ class TestAssigneeBreakdown(unittest.TestCase):
         out = gd.render_assignee_cards(board, self.TODAY)
         self.assertIn("<details", out)
         self.assertIn("内訳を開く", out)
-        self.assertIn("#1 遅れてるタスク", out)
+        self.assertIn('<span class="task-no">#1</span>', out)
+        self.assertIn("遅れてるタスク", out)
         self.assertIn("遅延 3日", out)
         self.assertIn("完了", out)
-        self.assertIn("担当: alice", out)
         self.assertIn("期限: 2026-09-25", out)
+        self.assertIn("〜9/29 アプリのカタチ ・ 期限: 2026-09-25", out)
+        # T-023: 担当者カードの内訳では『担当:』『状態:』を省略（カードの主が担当・状態はバッジ）
+        self.assertNotIn("担当:", out)
+        self.assertNotIn("状態:", out)
         self.assertIn('target="_blank" rel="noopener"', out)
 
     def test_unassigned_and_no_milestone_visible_without_crash(self):
         board = gd.aggregate_by_assignee(self.items())
-        out = gd.render_assignee_cards(board, self.TODAY)
-        self.assertIn(f"担当: {gd.UNASSIGNED}", out)
+        out = gd.render_unassigned_block(board, self.TODAY)
         self.assertIn("期限未設定", out)
         self.assertIn("Milestone未設定", out)
+        self.assertIn("期限: -", out)
 
     def test_title_is_html_escaped(self):
         board = gd.aggregate_by_assignee(self.items())
-        out = gd.render_assignee_cards(board, self.TODAY)
+        out = gd.render_unassigned_block(board, self.TODAY) + gd.render_assignee_cards(board, self.TODAY)
         self.assertNotIn("<script>alert(1)</script>", out)
         self.assertIn("&lt;script&gt;", out)
+
+    def test_people_cards_exclude_unassigned(self):
+        board = gd.aggregate_by_assignee(self.items())
+        people = gd.render_assignee_cards(board, self.TODAY)
+        self.assertIn("alice", people)
+        self.assertNotIn(gd.UNASSIGNED, people)
+        self.assertNotIn("card-muted", people)
+        self.assertNotIn("script", people)
+
+    def test_unassigned_rendered_as_separate_muted_block_with_details(self):
+        board = gd.aggregate_by_assignee(self.items())
+        block = gd.render_unassigned_block(board, self.TODAY)
+        self.assertIn('class="unassigned"', block)
+        self.assertIn("<h3>未アサイン</h3>", block)
+        self.assertIn("card-muted", block)
+        self.assertIn(gd.UNASSIGNED, block)
+        self.assertEqual(block.count("<details"), 1)
+        self.assertIn("内訳を開く", block)
+        self.assertNotIn("alice", block)
+
+    def test_unassigned_block_hidden_when_none(self):
+        items = [i for i in self.items() if i["assignees"]]
+        board = gd.aggregate_by_assignee(items)
+        self.assertEqual(gd.render_unassigned_block(board, self.TODAY), "")
+
+    def test_page_places_unassigned_after_people_grid(self):
+        board = gd.aggregate_by_assignee(self.items())
+        page = gd.PAGE_TEMPLATE.format(
+            generated_at="t", repo="o/r",
+            assignee_cards=gd.render_assignee_cards(board, self.TODAY),
+            unassigned_block=gd.render_unassigned_block(board, self.TODAY),
+            milestone_bars="", recent_prs="",
+        )
+        self.assertLess(page.index("alice"), page.index('class="unassigned"'))
+        self.assertLess(page.index('class="unassigned"'), page.index("Milestone 進捗"))
 
 
 class TestMilestoneBreakdown(unittest.TestCase):
@@ -274,8 +313,9 @@ class TestMilestoneBreakdown(unittest.TestCase):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
         self.assertEqual(out.count("<details"), 3)
-        self.assertIn("#1 遅れてる", out)
-        self.assertIn("担当: alice", out)
+        self.assertIn('<span class="task-no">#1</span>', out)
+        self.assertIn("遅れてる", out)
+        self.assertIn("担当: alice", out)  # Milestone内訳は担当を残す(T-023でも維持)
         self.assertIn("遅延 3日", out)
         self.assertIn("期限内(残4日)", out)
         self.assertIn("完了 1 / 全体 2（50%）", out)
@@ -284,9 +324,10 @@ class TestMilestoneBreakdown(unittest.TestCase):
     def test_milestone_column_omitted_in_milestone_view(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
-        self.assertNotIn("状態: 未完了 ・ 〜9/29", out)
+        self.assertNotIn("・ 〜9/29", out)
+        self.assertNotIn("状態:", out)
         board = gd.aggregate_by_assignee(self.items())
-        self.assertIn("・ 〜9/29 アプリのカタチ ・ 期限", gd.render_assignee_cards(board, self.TODAY))
+        self.assertIn("〜9/29 アプリのカタチ ・ 期限", gd.render_assignee_cards(board, self.TODAY))
 
     def test_empty_milestone_shows_empty_message(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
