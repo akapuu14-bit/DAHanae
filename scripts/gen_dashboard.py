@@ -421,48 +421,61 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>部活コンシェルジュ 開発ダッシュボード</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
   :root {{
-    --bg: #f7f7f9;
-    --card-bg: #ffffff;
-    --text: #1a1a1a;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --accent: #2563eb;
-    --progress-bg: #e5e7eb;
-  }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{
-      --bg: #14161a;
-      --card-bg: #1e2126;
-      --text: #f1f1f1;
-      --muted: #9aa0aa;
-      --border: #2c2f36;
-      --accent: #60a5fa;
-      --progress-bg: #2c2f36;
-    }}
+    --board: #e8ebf2;
+    --card-bg: #fff;
+    --text: #1f2a44;
+    --muted: #5b6475;
+    --border: #d9dfd8;
+    --accent: #243b67;
+    --accent-soft: #e7ebf4;
+    --tape: rgba(242, 194, 48, .86);
+    --progress-bg: #dfe5df;
+    --shadow: 0 8px 20px rgba(31, 42, 68, .09), 0 2px 5px rgba(31, 42, 68, .07);
   }}
   * {{ box-sizing: border-box; }}
   body {{
     margin: 0;
-    padding: 16px;
-    background: var(--bg);
+    background-color: var(--board);
+    background-image: radial-gradient(rgba(31, 42, 68, .055) .7px, transparent .7px);
+    background-size: 7px 7px;
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-family: "Noto Sans JP", sans-serif;
+    line-height: 1.6;
   }}
-  h1 {{ font-size: 1.4rem; margin: 0 0 4px; }}
-  .updated {{ color: var(--muted); font-size: 0.85rem; margin: 0 0 24px; }}
-  h2 {{ font-size: 1.1rem; margin: 32px 0 12px; }}
+  .wrap {{ max-width: 1100px; margin: 0 auto; padding: 42px 20px 72px; }}
+  .hero {{
+    position: relative; background: var(--card-bg); padding: 28px 32px 24px;
+    box-shadow: var(--shadow); transform: rotate(-.2deg); margin-bottom: 34px;
+  }}
+  .hero::before, .card::before, .milestone::before {{
+    content: ""; position: absolute; top: -9px; left: 50%; width: 76px; height: 19px;
+    background: var(--tape); transform: translateX(-50%) rotate(-1.5deg);
+    clip-path: polygon(3% 4%, 98% 0, 96% 96%, 0 100%);
+  }}
+  h1 {{ font-family: "Zen Kaku Gothic New", sans-serif; font-size: clamp(1.55rem, 4vw, 2.2rem); font-weight: 900; margin: 0 0 4px; }}
+  .updated {{ color: var(--muted); font-size: 0.85rem; margin: 0; }}
+  .updated a {{ color: var(--accent); font-weight: 700; }}
+  h2 {{
+    display: inline-block; font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: 1.15rem; font-weight: 900; margin: 34px 0 17px 5px;
+    padding: 3px 10px 5px; background: var(--card-bg); box-shadow: 3px 3px 0 rgba(36, 59, 103, .22);
+  }}
   .grid {{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-    gap: 12px;
+    gap: 18px;
   }}
   .card {{
+    position: relative;
     background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
+    border: 0;
+    border-top: 5px solid var(--accent);
+    padding: 20px 16px 15px;
+    box-shadow: var(--shadow);
   }}
+  .card::before {{ width: 58px; height: 17px; top: -10px; }}
   .card-head {{ display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }}
   .avatar {{
     width: 28px; height: 28px; border-radius: 50%;
@@ -489,7 +502,8 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   }}
   .chip-empty {{ color: var(--muted); border-color: var(--border); background: none; }}
   .breakdown {{ margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }}
-  .breakdown summary {{ cursor: pointer; color: var(--accent); font-size: 0.85rem; }}
+  .breakdown summary {{ cursor: pointer; color: var(--accent); font-size: 0.85rem; font-weight: 700; }}
+  .breakdown summary:focus-visible, a:focus-visible {{ outline: 3px solid var(--tape); outline-offset: 3px; }}
   .task-list {{ list-style: none; padding: 0; margin: 8px 0 0; }}
   .task {{ padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; line-height: 1.5; }}
   .task:last-child {{ border-bottom: none; }}
@@ -503,7 +517,8 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .unassigned {{ margin-top: 20px; }}
   .unassigned h3 {{ font-size: 0.9rem; margin: 0 0 2px; color: var(--muted); }}
   .unassigned-note {{ font-size: 0.75rem; color: var(--muted); margin: 0 0 8px; }}
-  .card-muted {{ background: transparent; border-style: dashed; opacity: 0.85; }}
+  .card-muted {{ background: rgba(255,255,255,.55); border: 2px dashed #aeb8ad; box-shadow: none; opacity: 0.85; }}
+  .card-muted::before {{ display: none; }}
   .card-muted .avatar {{ background: var(--muted); }}
   @media (max-width: 420px) {{
     .task-line {{ grid-template-columns: auto minmax(0, 1fr); }}
@@ -516,28 +531,36 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .badge-ok {{ color: #16a34a; border-color: #16a34a; background: color-mix(in srgb, #16a34a 15%, transparent); }}
   .badge-none {{ color: var(--muted); border-color: var(--border); }}
   .milestone {{
-    background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
-    padding: 14px; margin-bottom: 12px;
+    position: relative; background: var(--card-bg); border: 0; border-left: 6px solid var(--accent);
+    padding: 21px 18px 16px; margin-bottom: 18px; box-shadow: var(--shadow);
   }}
+  .milestone::before {{ left: auto; right: 26px; width: 62px; height: 17px; transform: rotate(2deg); }}
   .milestone-head {{ display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }}
   .ms-title {{ font-weight: 600; }}
   .ms-due {{ color: var(--muted); font-size: 0.85rem; }}
   .ms-counts {{ color: var(--muted); font-size: 0.85rem; margin-top: 6px; }}
   .pr-list {{ list-style: none; padding: 0; margin: 0; }}
   .pr-list li {{
-    background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 14px; margin-bottom: 8px;
+    background: var(--card-bg); border: 0; border-left: 4px solid var(--accent);
+    padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 3px 9px rgba(31, 42, 68, .07);
   }}
   .pr-list a {{ color: var(--accent); text-decoration: none; font-weight: 600; }}
   .pr-list a:hover {{ text-decoration: underline; }}
   .pr-meta {{ color: var(--muted); font-size: 0.8rem; margin-top: 4px; }}
   .empty {{ color: var(--muted); }}
-  footer {{ margin-top: 40px; color: var(--muted); font-size: 0.75rem; }}
+  footer {{ margin-top: 44px; color: var(--muted); font-size: 0.75rem; text-align: center; }}
+  @media (max-width: 600px) {{
+    .wrap {{ padding: 30px 14px 52px; }}
+    .hero {{ padding: 26px 21px 21px; }}
+  }}
 </style>
 </head>
 <body>
-  <h1>部活コンシェルジュ 開発ダッシュボード</h1>
-  <p class="updated">最終更新: {generated_at} / リポジトリ: {repo} / <a href="./hub.html">開発ハブへ</a></p>
+<main class="wrap">
+  <header class="hero">
+    <h1>部活コンシェルジュ 開発ダッシュボード</h1>
+    <p class="updated">最終更新: {generated_at} / リポジトリ: {repo} / <a href="./hub.html">開発ハブへ</a></p>
+  </header>
 
   <h2>担当者別 進捗</h2>
   <div class="grid">{assignee_cards}</div>
@@ -550,6 +573,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   {recent_prs}
 
   <footer>Generated by scripts/gen_dashboard.py (GitHub Actions)</footer>
+</main>
 </body>
 </html>
 """

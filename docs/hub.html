@@ -5,63 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>開発ハブ | 部活コンシェルジュ</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
   :root {
-    --bg: #f5f6f8;
-    --card-bg: #ffffff;
-    --text: #1c1f26;
-    --muted: #5b6270;
-    --border: #e2e5ea;
-    --accent: #2563eb;
-    --tag-bg: #eef2ff;
-    --tag-text: #3730a3;
-    --hot-bg: #fff1e6;
-    --hot-border: #f4a261;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #14161c;
-      --card-bg: #1d2027;
-      --text: #eef0f4;
-      --muted: #9aa1b0;
-      --border: #2b2f3a;
-      --accent: #6ea8fe;
-      --tag-bg: #26304a;
-      --tag-text: #b6c6ff;
-      --hot-bg: #2e2016;
-      --hot-border: #b5732e;
-    }
+    --board: #e8ebf2;
+    --paper: #fff;
+    --ink: #1f2a44;
+    --muted: #5b6475;
+    --court: #243b67;
+    --court-soft: #e7ebf4;
+    --tape: rgba(242, 194, 48, .86);
+    --line: #d9dfd8;
+    --shadow: 0 9px 22px rgba(31, 42, 68, .10), 0 2px 5px rgba(31, 42, 68, .08);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-    line-height: 1.6;
+    background-color: var(--board);
+    background-image: radial-gradient(rgba(31, 42, 68, .055) .7px, transparent .7px);
+    background-size: 7px 7px;
+    color: var(--ink);
+    font-family: "Noto Sans JP", sans-serif;
+    line-height: 1.7;
   }
   .wrap {
-    max-width: 960px;
+    max-width: 1040px;
     margin: 0 auto;
-    padding: 24px 16px 64px;
+    padding: 42px 20px 72px;
+  }
+  header {
+    position: relative;
+    background: var(--paper);
+    padding: 30px 34px 26px;
+    margin: 0 0 26px;
+    box-shadow: var(--shadow);
+    transform: rotate(-.25deg);
+  }
+  header::before, .howto::before, a.card::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    width: 92px;
+    height: 22px;
+    background: var(--tape);
+    transform: translateX(-50%) rotate(-1.5deg);
+    clip-path: polygon(3% 4%, 98% 0, 96% 96%, 0 100%);
   }
   header h1 {
-    font-size: 1.5rem;
-    margin: 0 0 4px;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: clamp(1.65rem, 4vw, 2.35rem);
+    font-weight: 900;
+    letter-spacing: .02em;
+    margin: 0 0 3px;
   }
   header .sub {
     color: var(--muted);
-    font-size: 0.9rem;
-    margin-bottom: 20px;
+    font-size: .9rem;
   }
   .howto {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 28px;
+    position: relative;
+    background: #fffdf2;
+    border: 0;
+    border-left: 6px solid var(--court);
+    padding: 20px 24px;
+    margin: 0 8px 38px;
+    box-shadow: var(--shadow);
   }
+  .howto::before { left: auto; right: 28px; transform: rotate(3deg); width: 72px; }
   .howto h2 {
-    font-size: 1rem;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: 1.05rem;
+    font-weight: 900;
     margin: 0 0 10px;
   }
   .howto ol {
@@ -71,42 +85,58 @@
   .howto .rule {
     font-size: 0.85rem;
     color: var(--muted);
-    border-top: 1px dashed var(--border);
+    border-top: 1px dashed #c9c5aa;
     padding-top: 10px;
     margin-top: 10px;
   }
   section.group {
-    margin-bottom: 28px;
+    margin-bottom: 38px;
   }
   section.group h2 {
-    font-size: 1.05rem;
-    margin: 0 0 12px;
+    display: inline-block;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: 1.15rem;
+    font-weight: 900;
+    margin: 0 0 17px 5px;
+    padding: 3px 10px 5px;
+    background: var(--paper);
+    box-shadow: 3px 3px 0 rgba(36, 59, 103, .22);
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    gap: 18px;
   }
   a.card {
+    position: relative;
     display: block;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 16px;
+    background: var(--paper);
+    border: 0;
+    padding: 23px 19px 17px;
     text-decoration: none;
-    color: var(--text);
-    transition: transform 0.1s ease, border-color 0.1s ease;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    transform: rotate(-.35deg);
+    transition: transform .16s ease, box-shadow .16s ease;
   }
+  a.card:nth-child(even) { transform: rotate(.35deg); }
+  a.card::before { width: 64px; height: 18px; top: -8px; opacity: .9; }
   a.card:hover {
-    border-color: var(--accent);
-    transform: translateY(-1px);
+    transform: translateY(-4px) rotate(0);
+    box-shadow: 0 13px 27px rgba(31, 42, 68, .16), 0 3px 7px rgba(31, 42, 68, .09);
+  }
+  a.card:focus-visible {
+    outline: 3px solid var(--court);
+    outline-offset: 4px;
   }
   a.card.hot {
-    background: var(--hot-bg);
-    border-color: var(--hot-border);
+    border-top: 5px solid var(--court);
+    padding-top: 18px;
   }
   .card .name {
-    font-weight: 600;
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 900;
+    font-size: 1.02rem;
     margin-bottom: 4px;
   }
   .card .desc {
@@ -121,9 +151,10 @@
   }
   .tag {
     font-size: 0.72rem;
-    background: var(--tag-bg);
-    color: var(--tag-text);
-    padding: 2px 8px;
+    font-weight: 700;
+    background: var(--court-soft);
+    color: var(--court);
+    padding: 2px 9px;
     border-radius: 999px;
   }
   .placeholder {
@@ -137,6 +168,20 @@
     font-size: 0.8rem;
     text-align: center;
     margin-top: 32px;
+  }
+  code {
+    background: rgba(31, 42, 68, .07);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  @media (max-width: 600px) {
+    .wrap { padding: 30px 14px 52px; }
+    header { padding: 27px 22px 22px; }
+    .howto { margin-inline: 2px; padding: 18px 18px; }
+    .grid { gap: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    a.card { transition: none; }
   }
 </style>
 </head>
