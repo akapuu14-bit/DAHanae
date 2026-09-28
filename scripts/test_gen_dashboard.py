@@ -275,7 +275,7 @@ class TestAssigneeBreakdown(unittest.TestCase):
             generated_at="t", repo="o/r",
             assignee_cards=gd.render_assignee_cards(board, self.TODAY),
             unassigned_block=gd.render_unassigned_block(board, self.TODAY),
-            milestone_bars="", recent_prs="",
+            milestone_bars=gd.render_section("Milestone 進捗", "<p>x</p>"), recent_prs="",
         )
         self.assertLess(page.index("alice"), page.index('class="unassigned"'))
         self.assertLess(page.index('class="unassigned"'), page.index("Milestone 進捗"))
@@ -312,7 +312,7 @@ class TestMilestoneBreakdown(unittest.TestCase):
     def test_milestone_bar_has_details_with_task_rows(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
-        self.assertEqual(out.count("<details"), 3)
+        self.assertEqual(out.count("<details"), 2)  # タスク0件のMilestoneは内訳を出さない
         self.assertIn('<span class="task-no">#1</span>', out)
         self.assertIn("遅れてる", out)
         self.assertIn("担当: alice", out)  # Milestone内訳は担当を残す(T-023でも維持)
@@ -329,17 +329,63 @@ class TestMilestoneBreakdown(unittest.TestCase):
         board = gd.aggregate_by_assignee(self.items())
         self.assertIn("〜9/29 アプリのカタチ ・ 期限", gd.render_assignee_cards(board, self.TODAY))
 
-    def test_empty_milestone_shows_empty_message(self):
+    def test_empty_milestone_has_no_breakdown_or_placeholder(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
-        self.assertIn("このMilestoneのタスクはまだありません", out)
+        self.assertNotIn("このMilestoneのタスクはまだありません", out)
+        self.assertIn("10/7-12 最終", out)  # バー自体は0%でも残す
 
     def test_title_escaped_and_no_crash_without_tasks_key(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
         self.assertIn("&lt;i&gt;別MS&lt;/i&gt;", out)
         legacy = [{"title": "x", "due_on": None, "open": 0, "closed": 0, "total": 0, "pct": 0}]
-        self.assertIn("タスクはまだありません", gd.render_milestone_bars(legacy, self.TODAY))
+        self.assertNotIn("<details", gd.render_milestone_bars(legacy, self.TODAY))
+
+
+class TestTidyDefaults(unittest.TestCase):
+    TODAY = date(2026, 9, 28)
+
+    def _data(self):
+        board = gd.aggregate_by_assignee(sample_items())
+        ms = gd.aggregate_by_milestone(sample_items(), sample_milestones())
+        return board, ms
+
+    def test_details_are_closed_by_default(self):
+        board, ms = self._data()
+        out = gd.render_assignee_cards(board, self.TODAY) + gd.render_milestone_bars(ms, self.TODAY)
+        self.assertIn("<details", out)
+        self.assertNotRegex(out, r"<details[^>]*\bopen\b")
+
+    def test_recent_prs_section_hidden_when_no_merged_pr(self):
+        self.assertEqual(gd.render_recent_prs([]), "")
+        self.assertEqual(gd.render_section("直近マージ済み PR", gd.render_recent_prs([])), "")
+
+    def test_recent_prs_section_shown_when_merged_pr_exists(self):
+        prs = gd.recent_merged_prs(sample_items())
+        self.assertGreater(len(prs), 0)
+        sec = gd.render_section("直近マージ済み PR", gd.render_recent_prs(prs))
+        self.assertIn("<h2>直近マージ済み PR</h2>", sec)
+        self.assertIn("pr-list", sec)
+
+    def test_empty_sections_output_no_placeholder(self):
+        self.assertEqual(gd.render_milestone_bars([], self.TODAY), "")
+        self.assertEqual(gd.render_assignee_cards({}, self.TODAY), "")
+        page = gd.PAGE_TEMPLATE.format(
+            generated_at="t", repo="o/r", assignee_cards="", unassigned_block="",
+            milestone_bars=gd.render_section("Milestone 進捗", ""),
+            recent_prs=gd.render_section("直近マージ済み PR", ""),
+        )
+        for text in ("直近マージ済み PR", "Milestone 進捗", "担当者別 進捗", "まだありません", "未作成"):
+            self.assertNotIn(text, page)
+
+    def test_milestone_without_tasks_has_no_details(self):
+        ms = [{"title": "空", "due_on": None, "state": "open", "closed": 0, "open": 0, "total": 0, "pct": 0, "tasks": []}]
+        out = gd.render_milestone_bars(ms, self.TODAY)
+        self.assertIn("空", out)
+        self.assertIn("progress-bar", out)
+        self.assertNotIn("<details", out)
+        self.assertNotIn("まだありません", out)
 
 
 if __name__ == "__main__":
