@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>開発ロードマップ | 部活コンシェルジュ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
+  :root {
+    --board: #e8ebf2;
+    --paper: #fff;
+    --paper-2: #fffdf2;
+    --ink: #1f2a44;
+    --muted: #5b6475;
+    --court: #243b67;
+    --court-soft: #e7ebf4;
+    --tape: rgba(242, 194, 48, .86);
+    --line: #d5dae6;
+    --shadow: 0 9px 22px rgba(31, 42, 68, .10), 0 2px 5px rgba(31, 42, 68, .08);
+    --c-ui: #2f6fdb; --c-ui-soft: #e4edfc;
+    --c-be: #1f8a70; --c-be-soft: #ddf3ec;
+    --c-pm: #c2571a; --c-pm-soft: #fbe8db;
+    --dot: rgba(31, 42, 68, .055);
+    --link: #1d4fbf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --board: #15181f;
+      --paper: #1e222b;
+      --paper-2: #232833;
+      --ink: #e9ecf3;
+      --muted: #a2a9b8;
+      --court: #9db8f0;
+      --court-soft: #2a3450;
+      --tape: rgba(214, 170, 40, .75);
+      --line: #333a49;
+      --shadow: 0 9px 22px rgba(0, 0, 0, .35), 0 2px 5px rgba(0, 0, 0, .3);
+      --c-ui: #6ea8fe; --c-ui-soft: #1f2e4a;
+      --c-be: #4cc3a1; --c-be-soft: #17332d;
+      --c-pm: #f0a070; --c-pm-soft: #3a271b;
+      --dot: rgba(255, 255, 255, .04);
+      --link: #8db4ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--board);
+    background-image: radial-gradient(var(--dot) .7px, transparent .7px);
+    background-size: 7px 7px;
+    color: var(--ink);
+    font-family: "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  a { color: var(--link); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 42px 20px 72px; }
+  header {
+    position: relative;
+    background: var(--paper);
+    padding: 30px 34px 24px;
+    margin: 0 0 26px;
+    box-shadow: var(--shadow);
+    transform: rotate(-.25deg);
+  }
+  header::before, section.card-sec::before {
+    content: "";
+    position: absolute;
+    top: -10px; left: 50%;
+    width: 92px; height: 22px;
+    background: var(--tape);
+    transform: translateX(-50%) rotate(-1.5deg);
+    clip-path: polygon(3% 4%, 98% 0, 96% 96%, 0 100%);
+  }
+  header h1 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 900;
+    margin: 0 0 3px;
+  }
+  header .sub { color: var(--muted); font-size: .9rem; }
+  nav.crumbs { margin-top: 10px; font-size: .88rem; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  section.card-sec {
+    position: relative;
+    background: var(--paper);
+    padding: 26px 26px 22px;
+    margin: 0 0 34px;
+    box-shadow: var(--shadow);
+  }
+  section.card-sec::before { left: auto; right: 28px; width: 72px; transform: rotate(3deg); }
+  h2 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: 1.2rem; font-weight: 900;
+    margin: 0 0 8px;
+  }
+  h3 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-size: .92rem; font-weight: 900;
+    margin: 22px 0 10px;
+    color: var(--court);
+  }
+  .lead { margin: 0; font-size: .95rem; }
+
+  /* (1) 全体像 */
+  .flow, .prep {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px;
+  }
+  .flow li { display: flex; align-items: center; gap: 6px; }
+  .flow li:not(:last-child)::after { content: "→"; color: var(--muted); font-weight: 700; }
+  .step {
+    background: var(--court-soft); color: var(--court);
+    font-weight: 700; font-size: .88rem;
+    padding: 7px 13px; border-radius: 999px; line-height: 1.4;
+  }
+  .step small { display: block; font-weight: 500; font-size: .72rem; color: var(--muted); }
+  .step.admin { background: var(--c-pm-soft); color: var(--c-pm); }
+  .step.admin small { color: var(--c-pm); }
+  .stack-wrap { display: grid; grid-template-columns: 1fr minmax(120px, 170px); gap: 12px; align-items: stretch; }
+  .stack { display: flex; flex-direction: column; gap: 4px; }
+  .layer { border-left: 8px solid var(--lc); background: var(--ls); padding: 9px 14px; line-height: 1.5; }
+  .layer b { font-size: .95rem; }
+  .layer span { display: block; font-size: .82rem; color: var(--muted); }
+  .layer.ui, .role.ui { --lc: var(--c-ui); --ls: var(--c-ui-soft); }
+  .layer.be, .role.be { --lc: var(--c-be); --ls: var(--c-be-soft); }
+  .role.pm { --lc: var(--c-pm); --ls: var(--c-pm-soft); }
+  .call { text-align: center; font-size: .75rem; color: var(--muted); line-height: 1.2; }
+  .common { background: var(--c-pm-soft); border-top: 8px solid var(--c-pm); padding: 10px 12px; font-size: .82rem; line-height: 1.55; }
+  .common b { display: block; font-size: .95rem; color: var(--c-pm); }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
+  .role { border-top: 6px solid var(--lc); background: var(--ls); padding: 10px 14px 12px; font-size: .85rem; line-height: 1.55; }
+  .role b { display: block; font-size: 1rem; }
+  .role .part { color: var(--muted); font-size: .78rem; }
+
+  /* (2)(4) 実装フェーズの地図 */
+  .now-line { margin: 0 0 14px; font-size: .9rem; color: var(--muted); }
+  .timeline { list-style: none; margin: 0; padding: 0 0 0 26px; position: relative; }
+  .timeline::before {
+    content: ""; position: absolute; left: 8px; top: 8px; bottom: 8px;
+    width: 4px; background: var(--line); border-radius: 2px;
+  }
+  .timeline > li { position: relative; margin: 0 0 16px; }
+  .timeline > li::before {
+    content: ""; position: absolute; left: -26px; top: 14px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--paper); border: 4px solid var(--court);
+  }
+  .timeline > li.ready::before { background: var(--c-be); border-color: var(--c-be); }
+  .timeline > li.now::before { background: var(--tape); border-color: var(--ink); }
+  .ready-box, .wave {
+    background: var(--paper-2); border: 1px solid var(--line);
+    border-left: 6px solid var(--court); padding: 12px 16px;
+  }
+  .ready-box { border-left-color: var(--c-be); font-weight: 700; font-size: .92rem; }
+  .ready-box small { display: block; font-weight: 500; color: var(--muted); }
+  .wave.now { border-left-color: var(--ink); outline: 3px solid var(--tape); outline-offset: 2px; }
+  .wave-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .wave-name { font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: .95rem; color: var(--court); }
+  .nowtag { background: var(--tape); color: #1f2a44; font-size: .74rem; font-weight: 700; padding: 1px 10px; border-radius: 999px; }
+  .wave-purpose { margin: 0; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; font-size: 1.15rem; line-height: 1.5; }
+  .wave-sub { margin: 0 0 8px; font-size: .82rem; color: var(--muted); }
+  details > summary { cursor: pointer; font-weight: 700; font-size: .88rem; color: var(--link); padding: 4px 0; }
+  details > summary:focus-visible { outline: 3px solid var(--court); outline-offset: 3px; }
+  .tbl-wrap { margin-top: 8px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+  th { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+  .c-id { font-weight: 700; white-space: nowrap; }
+  .c-own, .c-due { white-space: nowrap; }
+  .hint { display: block; margin-top: 3px; font-size: .76rem; color: var(--muted); }
+
+  /* (5) 導線 */
+  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 10px; }
+  a.link-card {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--paper-2); border-top: 5px solid var(--court);
+    padding: 12px 16px 14px; box-shadow: var(--shadow);
+  }
+  a.link-card:hover { transform: translateY(-2px); }
+  a.link-card:focus-visible { outline: 3px solid var(--court); outline-offset: 3px; }
+  a.link-card b { display: block; font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 900; }
+  a.link-card span { font-size: .82rem; color: var(--muted); }
+  footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 32px; }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 30px 14px 52px; }
+    header { padding: 27px 22px 20px; }
+    section.card-sec { padding: 22px 16px 18px; }
+    .flow { flex-direction: column; align-items: stretch; gap: 4px; }
+    .flow li { flex-direction: column; align-items: stretch; gap: 2px; }
+    .flow li:not(:last-child)::after { content: "↓"; text-align: center; }
+    .step { border-radius: 12px; }
+    .stack-wrap { grid-template-columns: 1fr; }
+    .timeline { padding-left: 22px; }
+    .timeline > li::before { left: -22px; }
+    table, thead, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+    td { border: 0; padding: 2px 0; white-space: normal !important; }
+    td::before { content: attr(data-l) "："; color: var(--muted); font-size: .72rem; }
+    .c-id::before { content: ""; }
+  }
+  @media (prefers-reduced-motion: reduce) { a.link-card { transition: none; } a.link-card:hover { transform: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🗺️ 開発ロードマップ｜部活コンシェルジュ</h1>
+    <div class="sub">何を作っていて、いま全体のどこにいるかを一枚で見る地図（静的ページ）</div>
+    <nav class="crumbs" aria-label="関連ページ">
+      <a href="./hub.html">← 開発ハブへ戻る</a>
+      <a href="./index.html">進捗ダッシュボード</a>
+    </nav>
+  </header>
+
+  <section class="card-sec" aria-labelledby="s-all">
+    <h2 id="s-all">① 全体像</h2>
+    <p class="lead">社内の部活動を「探す → 申し込む → やり取り → 運営」できる、Webアプリの最小版（MVP）＝<b>部活コンシェルジュ</b>を作っています。</p>
+
+    <h3>ユーザーの流れ</h3>
+    <ol class="flow">
+      <li><span class="step">ログイン</span></li>
+      <li><span class="step">部活を探す<small>検索</small></span></li>
+      <li><span class="step">申込</span></li>
+      <li><span class="step">通知／メッセージ</span></li>
+      <li><span class="step admin">運営・管理<small>（幹事）</small></span></li>
+    </ol>
+
+    <h3>技術の3層と、誰の仕事がどこに効くか</h3>
+    <div class="stack-wrap">
+      <div class="stack">
+        <div class="layer ui"><b>画面（Streamlit）</b><span>見て・押すところ。表示と入力の受け取りだけ</span></div>
+        <div class="call" aria-hidden="true">↓ 呼ぶ</div>
+        <div class="layer be"><b>サービス（業務ロジック）</b><span>申込のルールなど「中身の判断」をここに集める</span></div>
+        <div class="call" aria-hidden="true">↓ 呼ぶ</div>
+        <div class="layer be"><b>DB（Supabase）</b><span>データの置き場。サービスは専用の窓口を通してだけ読み書き</span></div>
+      </div>
+      <div class="common"><b>共通部品・レビュー</b>全体を横断して支える（部品の共有、要件の確認、コードの見張り）</div>
+    </div>
+    <div class="roles">
+      <div class="role ui"><b>あかぷ ― 画面＝体験</b><span class="part">App/UI ・ 工数の目安 40%</span><br>ユーザーが触る画面をつくる。使いやすさはここで決まる</div>
+      <div class="role be"><b>だーあさ ― DB・API＝土台</b><span class="part">Data/BE ・ 工数の目安 40%</span><br>データとサービスをつくる。ここが崩れると全部が止まる</div>
+      <div class="role pm"><b>はなえ ― PdM・共通＝要と品質</b><span class="part">PdM・共通 ・ 工数の目安 20%</span><br>要件の確認・共通部品・レビューで、つくるものの質を守る</div>
+    </div>
+  </section>
+
+  <section class="card-sec" aria-labelledby="s-map">
+    <h2 id="s-map">② 実装フェーズの地図（Wave 0 → 4）</h2>
+    <p class="now-line">現在地：準備は完了。<b>実装はこれから（Wave 0 から）</b>です。各Waveの「詳細を開く」で、37タスクすべてが見られます。</p>
+    <ol class="timeline">
+      <li class="ready"><div class="ready-box">✓ 準備完了<small>要求・要件・仕様・設計・テスト設計と、実装計画・タスクバックログがそろっている</small></div></li>
+
+      <li class="wave now">
+        <div class="wave-head"><span class="wave-name">Wave 0</span><span class="nowtag">now：これから</span></div>
+        <div class="wave-body">
+          <p class="wave-purpose">DB基盤</p>
+          <p class="wave-sub">データを置く場所と、つなぐ仕組みを最初に用意する ・ 5タスク</p>
+          <details>
+            <summary>詳細を開く（5タスクの早見表）</summary>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ID</th><th>タスク</th><th>何をするか</th><th>担当</th><th>期限</th></tr></thead>
+              <tbody>
+<tr><td class="c-id" data-l="ID">T-B0S</td><td class="c-title" data-l="タスク">共有Supabaseプロジェクトの作成と接続情報の共有（PM決定：チームで1プロジェクト共有、各自個別ではない）</td><td class="c-what" data-l="何をするか">チーム共有のSupabaseプロジェクトが1つ存在し、接続URL/anon keyがSecrets運用の手順で全員に共有されている（実キーはコミットしない）<span class="hint">💡実キーは絶対にコミットしない。共有はSecrets手順で行い、secrets.tomlがコミット対象に入っていないか最初に確認を。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B00</td><td class="c-title" data-l="タスク">Supabaseスキーマ作成（10テーブル、設計.md 3章の型・制約・インデックス方針）</td><td class="c-what" data-l="何をするか">10テーブルが作成され、外部キー・一意制約（club_members, employee_interests）が設計.md3章どおりに入っている<span class="hint">💡applicationsの一意制約は設計.md8章の保留。条件付き一意にするかは着手時にteraoと決め、決めた内容を記録に残そう。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B01</td><td class="c-title" data-l="タスク">db/client.py：Supabaseクライアント初期化（Secrets読み込み）</td><td class="c-what" data-l="何をするか">st.secretsから接続情報を読み、モジュールレベルで1クライアントを生成できる<span class="hint">💡Streamlitは毎回再実行される。クライアントはモジュールレベルで1つだけ作り、各repoはそれをimportして共有する。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B02</td><td class="c-title" data-l="タスク">Secrets雛形作成（.streamlit/secrets.toml.example等、実キーはコミットしない）</td><td class="c-what" data-l="何をするか">supabase_url・supabase_key・common_passwordのキー名がT-B01と一致している<span class="hint">💡雛形には値を入れずキー名だけ。supabase_url/supabase_key/common_passwordをclient.pyと一字違わず揃えよう。</span></td><td class="c-own" data-l="担当">はなえ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-D01</td><td class="c-title" data-l="タスク">scripts/reset_data.py：ダミーデータ生成・初期化スクリプト（社員500名・部活15件、seed固定、実在情報不使用）</td><td class="c-what" data-l="何をするか">実行すると全テーブルが空になり、仕様.md 7章のルール（拠点比率・入社年分布・部活15件の内訳等）でダミーデータが再投入される。同じseedで同じ結果になる<span class="hint">💡seedを固定し、全テーブルを空にする順は外部キーの子から先に。公開環境で実行すると申込も全消えなので事前にチームへ声かけを。</span></td><td class="c-own" data-l="担当">はなえ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+              </tbody>
+            </table></div>
+          </details>
+        </div>
+      </li>
+      <li class="wave">
+        <div class="wave-head"><span class="wave-name">Wave 1</span></div>
+        <div class="wave-body">
+          <p class="wave-purpose">データ取得の土台</p>
+          <p class="wave-sub">repositories（テーブルごとの読み書き）と、先行できる画面の部品 ・ 14タスク</p>
+          <details>
+            <summary>詳細を開く（14タスクの早見表）</summary>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ID</th><th>タスク</th><th>何をするか</th><th>担当</th><th>期限</th></tr></thead>
+              <tbody>
+<tr><td class="c-id" data-l="ID">T-B03</td><td class="c-title" data-l="タスク">services/errors.py：共通例外5種の定義</td><td class="c-what" data-l="何をするか">ValidationError/NotFoundError/ConflictError/AuthenticationError/PermissionDeniedErrorがすべて定義され、他モジュールからimportできる<span class="hint">💡ConflictErrorには理由コード（not_open/already_applied）を持てる形に。画面がSP-31の文言を出し分けるのに使う。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B04</td><td class="c-title" data-l="タスク">repositories/employees_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.1の全関数が実装され、get_by_idが大文字小文字を区別せず引ける<span class="hint">💡employee_interestsもここで扱う（I-F契約0.2）。ID照合は大文字小文字を無視し、存在しなければ例外でなくNoneを返す。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B05</td><td class="c-title" data-l="タスク">repositories/activities_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.2の全関数が実装される<span class="hint">💡マスタ参照だけの軽い層。get は存在しないIDでNoneを返し、例外にしない（repoの共通方針）。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B06</td><td class="c-title" data-l="タスク">repositories/clubs_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.3の全関数が実装され、searchがSP-20のAND/OR組み合わせに対応する<span class="hint">💡検索は項目間AND・項目内OR。未指定の項目は条件にしない、かつis_active=trueのみ。組み立てはこの層に閉じ込める。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B07</td><td class="c-title" data-l="タスク">repositories/club_members_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.4の全関数が実装される<span class="hint">💡(club_id, employee_id)は一意。add_memberが二重に呼ばれても壊れないかを確認。is_memberは初参加判定でも使われる。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B08</td><td class="c-title" data-l="タスク">repositories/events_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.5の全関数が実装され、list_upcoming_by_clubが過去の開催を除外する<span class="hint">💡「過去を除く」の境界は今日を含めるか（今日以降）を仕様どおりに。開催日と時刻を混ぜず日付だけで比較する。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B09</td><td class="c-title" data-l="タスク">repositories/applications_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.6の全関数が実装され、exists_activeが「申込済み」状態のみを見る<span class="hint">💡キャンセル後の再申込は別行になる。exists_activeはstatus=申込済みだけ見ないと再申込が弾かれる。二重insert対策は8章の保留。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B10</td><td class="c-title" data-l="タスク">repositories/messages_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.7の全関数が実装される<span class="hint">💡やり取りは古い順で返す（SP-37）。applicationに紐づくので、キャンセル済みでも閲覧はできる前提で取得する。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B11</td><td class="c-title" data-l="タスク">repositories/notifications_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.8の全関数が実装され、count_unreadがread_at IS NULLで数える<span class="hint">💡未読はread_at IS NULLで数える（=NULL比較は誤り）。mark_readは種類を絞り、通知一覧用のmark_read_allと使い分ける。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B12</td><td class="c-title" data-l="タスク">repositories/action_logs_repo.py</td><td class="c-what" data-l="何をするか">I-F契約.md 2.9の全関数が実装され、get_lastが指定actionの最新1件を返す<span class="hint">💡get_lastは(employee_id, action)の最新1件。二重記録防止の比較はこれでDBから取る（session_stateは使わない）。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-F01</td><td class="c-title" data-l="タスク">app.py：ログイン判定＋session_stateルーティング（設計.md D-01/D-02）</td><td class="c-what" data-l="何をするか">未ログイン時にログイン画面、ログイン済みはcurrent_pageに応じた画面が出る<span class="hint">💡Streamlitのmultipageは使わず、session_stateのcurrent_pageで切り替える。employee_idの有無だけで未ログインを判定する。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F02</td><td class="c-title" data-l="タスク">state.py：session_stateキー定義とヘルパー（設計.md 4章のキー一覧）</td><td class="c-what" data-l="何をするか">4章のキーがすべて初期化ヘルパーとして用意される<span class="hint">💡キーは初期化ヘルパーで一度だけ用意し、再実行で既存値を上書きしない（未設定のときだけ入れる）。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F03</td><td class="c-title" data-l="タスク">components/sidebar.py（SP-01）／components/club_card.py（SP-21/16/55）</td><td class="c-what" data-l="何をするか">サイドバーに未読件数・メニュー出し分けが表示され、部活カードが3.3の形で再利用できる<span class="hint">💡未読0件は件数を出さない。メニュー出し分けはget_roleの結果で行い、部活カードは1つの部品を全画面で使い回す。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F04</td><td class="c-title" data-l="タスク">components/rule_notice.py（SP-04）／components/error_banner.py（SP-06）</td><td class="c-what" data-l="何をするか">運営ルールの一文とDB接続エラー文言が固定表示として再利用できる<span class="hint">💡文言は仕様.mdどおり一字も変えない固定表示に。エラー文言はservice層でなく画面側の部品が持つ。</span></td><td class="c-own" data-l="担当">はなえ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+              </tbody>
+            </table></div>
+          </details>
+        </div>
+      </li>
+      <li class="wave">
+        <div class="wave-head"><span class="wave-name">Wave 2</span></div>
+        <div class="wave-body">
+          <p class="wave-purpose">業務ロジック</p>
+          <p class="wave-sub">services（申込・通知などのルール）と、続きの画面 ・ 9タスク</p>
+          <details>
+            <summary>詳細を開く（9タスクの早見表）</summary>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ID</th><th>タスク</th><th>何をするか</th><th>担当</th><th>期限</th></tr></thead>
+              <tbody>
+<tr><td class="c-id" data-l="ID">T-B13</td><td class="c-title" data-l="タスク">services/auth_service.py</td><td class="c-what" data-l="何をするか">I-F契約.md 1.1のlogin/get_roleが実装され、大文字小文字を無視した認証ができる<span class="hint">💡IDの大文字小文字はservice内で正規化。ID誤りとパスワード誤りは同じ例外にして、どちらが違うかを漏らさない。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B14</td><td class="c-title" data-l="タスク">services/search_service.py</td><td class="c-what" data-l="何をするか">I-F契約.md 1.2の3関数が実装され、search_employeesが非公開項目を除外する<span class="hint">💡社員検索は非公開項目を結果から外すが、本人の値は見える（SP-65）。おすすめの計算は本人分なら公開設定に関係なく使う。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B15</td><td class="c-title" data-l="タスク">services/action_log_service.py</td><td class="c-what" data-l="何をするか">I-F契約.md 1.5の3関数が実装され、view_clubの連続同一部活は記録しない<span class="hint">💡連続同一の判定はDBのget_lastと比べる（I-F契約1.5）。設計.md5.5のsession_state比較は上書き済みなので使わない。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B16</td><td class="c-title" data-l="タスク">services/notification_service.py</td><td class="c-what" data-l="何をするか">I-F契約.md 1.4の5関数が実装される<span class="hint">💡未読件数の別集計は作らない（SP-70の値を1本で使う）。幹事本人の申込は通知対象外。画面を開いた先頭で既読化する。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-B17</td><td class="c-title" data-l="タスク">services/application_service.py（申込・キャンセル・初参加判定・スタンプ）</td><td class="c-what" data-l="何をするか">I-F契約.md 1.3の5関数が実装され、設計.md 5.1〜5.4の手順どおりに動く（申込→初参加判定→通知→操作履歴の順）<span class="hint">💡順序は状態確認→重複確認→初参加判定→保存。Streamlitの再実行で二重insertし得るので、設計.md8章の保留を着手時に必ず詰める。</span></td><td class="c-own" data-l="担当">だーあさ</td><td class="c-due" data-l="期限">〜9/29</td></tr>
+<tr><td class="c-id" data-l="ID">T-F05</td><td class="c-title" data-l="タスク">screens/login.py</td><td class="c-what" data-l="何をするか">SP-09〜SP-12どおりの表示・エラー文言。Wave3でauth_service.login接続<span class="hint">💡失敗時はどちらが誤りか示さない文言（SP-11）。例外のtry/exceptで受け、文言はここで組み立てる。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F06</td><td class="c-title" data-l="タスク">screens/home.py</td><td class="c-what" data-l="何をするか">0件時の案内文含めSP-14〜18どおり。Wave3でsearch_service.search_clubs/get_recommendations接続<span class="hint">💡0件のときの案内文が3か所（今週・人気・おすすめ）で別々にある。空リストの分岐を忘れずに。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F09</td><td class="c-title" data-l="タスク">screens/application_complete.py</td><td class="c-what" data-l="何をするか">SP-33の6項目順表示。情報がない状態で開かれたらホームへ遷移<span class="hint">💡pending_application_contextが空ならホームへ。再読み込みで消える前提で、先頭でこの判定を入れる。</span></td><td class="c-own" data-l="担当">はなえ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F11</td><td class="c-title" data-l="タスク">screens/notifications.py</td><td class="c-what" data-l="何をするか">新しい順・未読太字、開いたら全既読<span class="hint">💡「開いたら全既読」だが、未読の太字表示は既読化の前に取得したデータで描く。先に既読化すると太字が消える。</span></td><td class="c-own" data-l="担当">はなえ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+              </tbody>
+            </table></div>
+          </details>
+        </div>
+      </li>
+      <li class="wave">
+        <div class="wave-head"><span class="wave-name">Wave 3</span></div>
+        <div class="wave-body">
+          <p class="wave-purpose">画面の実データ接続</p>
+          <p class="wave-sub">画面を本物のservicesにつなぎ込む ・ 6タスク</p>
+          <details>
+            <summary>詳細を開く（6タスクの早見表）</summary>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ID</th><th>タスク</th><th>何をするか</th><th>担当</th><th>期限</th></tr></thead>
+              <tbody>
+<tr><td class="c-id" data-l="ID">T-F07</td><td class="c-title" data-l="タスク">screens/club_search.py</td><td class="c-what" data-l="何をするか">検索条件変更で即座に結果が変わり、0件文言・操作履歴記録（画面からaction_log_service呼び出し）が動く<span class="hint">💡検索履歴は「前回と条件が変わったとき」だけ記録。再実行のたびに記録しないよう、判定は必ずservice経由で。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F08</td><td class="c-title" data-l="タスク">screens/club_detail.py</td><td class="c-what" data-l="何をするか">申込フォーム送信でapplication_service.applyが呼ばれ、S05へ遷移する<span class="hint">💡申込ボタンの連打は再実行で二重送信になり得る。ConflictErrorの理由コードで「申込済み」と「申込不可」の文言を出し分ける。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F10</td><td class="c-title" data-l="タスク">screens/messages.py</td><td class="c-what" data-l="何をするか">自分の申込／届いた申込タブ、キャンセル、スタンプ、既読化が動く<span class="hint">💡既読化は描画の先頭で。タブ名に件数を入れない（更新でタブが先頭に戻る）。キャンセルは開始時刻ちょうども不可。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F12</td><td class="c-title" data-l="タスク">screens/employee_search.py</td><td class="c-what" data-l="何をするか">20件ずつ表示＋もっと見る、非公開項目の扱いがSP-49どおり<span class="hint">💡「もっと見る」は表示件数をsession_stateで持つ。条件を変えたらoffsetを0に戻す。0件文言もSP-52どおり。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F13</td><td class="c-title" data-l="タスク">screens/employee_profile.py</td><td class="c-what" data-l="何をするか">公開設定の切り替え保存、所属部活カード表示が動く<span class="hint">💡公開設定は本人にだけ切り替えを出し、切り替えた時点で保存。他人には非公開項目を「非公開」と表示する。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+<tr><td class="c-id" data-l="ID">T-F14</td><td class="c-title" data-l="タスク">screens/club_admin.py</td><td class="c-what" data-l="何をするか">権限に応じた表示出し分け（auth_service.get_role）、必須チェック・日時エラーが動く<span class="hint">💡幹事の変更と公開中は運営者のみ編集可。mood_tags最大3件のチェック位置は設計.md8章の保留、着手時に決める。</span></td><td class="c-own" data-l="担当">あかぷ</td><td class="c-due" data-l="期限">〜10/2</td></tr>
+              </tbody>
+            </table></div>
+          </details>
+        </div>
+      </li>
+      <li class="wave">
+        <div class="wave-head"><span class="wave-name">Wave 4</span></div>
+        <div class="wave-body">
+          <p class="wave-purpose">結合・テスト</p>
+          <p class="wave-sub">3名で合流して通し確認、テストの実行と結果の記録 ・ 3タスク</p>
+          <details>
+            <summary>詳細を開く（3タスクの早見表）</summary>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ID</th><th>タスク</th><th>何をするか</th><th>担当</th><th>期限</th></tr></thead>
+              <tbody>
+<tr><td class="c-id" data-l="ID">T-I01</td><td class="c-title" data-l="タスク">画面×サービス×DBの通し確認、単体テスト添付（各実装者）</td><td class="c-what" data-l="何をするか">テスト設計.mdのU-xx（単体）が各担当のタスクに添付される<span class="hint">💡テスト設計.mdのU-xxとの対応を担当タスクごとに明記。境界値（開始時刻ちょうど、0件、大文字小文字）から先に確認を。</span></td><td class="c-own" data-l="担当">3名</td><td class="c-due" data-l="期限">10/7-12</td></tr>
+<tr><td class="c-id" data-l="ID">T-I02</td><td class="c-title" data-l="タスク">結合テスト実行（I-001〜I-120）</td><td class="c-what" data-l="何をするか">テスト結果.mdに合否と実行ログが記録される<span class="hint">💡実行前にreset_data.pyで同じseedに戻して、毎回同じ条件から始める。合否と実行ログはテスト結果.mdにそのまま残す。</span></td><td class="c-own" data-l="担当">kurosu</td><td class="c-due" data-l="期限">10/7-12</td></tr>
+<tr><td class="c-id" data-l="ID">T-I03</td><td class="c-title" data-l="タスク">システムテスト実行（S-01〜S-60）</td><td class="c-what" data-l="何をするか">同上<span class="hint">💡結合テストの失敗が残っていないか先に確認。データを初期化して実行するので、公開環境ならチームへの声かけが必要。</span></td><td class="c-own" data-l="担当">kurosu</td><td class="c-due" data-l="期限">10/7-12</td></tr>
+              </tbody>
+            </table></div>
+          </details>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="card-sec" aria-labelledby="s-links">
+    <h2 id="s-links">③ 見たいものへ</h2>
+    <div class="links">
+      <a class="link-card" href="./index.html"><b>📊 最新の進捗数字</b><span>進捗ダッシュボード（担当者別・Milestone別）</span></a>
+      <a class="link-card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/タスクバックログ.md" target="_blank" rel="noopener"><b>📋 詳細</b><span>タスクバックログ.md（受入基準・触るファイル）</span></a>
+      <a class="link-card" href="https://github.com/akapuu14-bit/DAHanae/issues" target="_blank" rel="noopener"><b>🐛 個票</b><span>GitHub Issues（担当・進捗の一件ずつ）</span></a>
+    </div>
+  </section>
+
+  <footer>部活コンシェルジュ 開発ロードマップ／実データ・秘匿値はここには載せません</footer>
+</div>
+</body>
+</html>
