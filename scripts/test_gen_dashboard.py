@@ -242,5 +242,64 @@ class TestAssigneeBreakdown(unittest.TestCase):
         self.assertIn("&lt;script&gt;", out)
 
 
+class TestMilestoneBreakdown(unittest.TestCase):
+    TODAY = date(2026, 9, 28)
+
+    def items(self):
+        ms = {"title": "〜9/29 アプリのカタチ", "due_on": "2026-09-25T14:59:59Z"}
+        return [
+            {"number": 1, "title": "遅れてる", "state": "open", "assignees": [{"login": "alice"}],
+             "labels": [{"name": "area:be"}], "html_url": "https://github.com/example/repo/issues/1", "milestone": ms},
+            {"number": 2, "title": "済んだ", "state": "closed", "assignees": [{"login": "bob"}],
+             "labels": [], "html_url": "https://github.com/example/repo/issues/2", "milestone": ms},
+            {"number": 3, "title": "<i>別MS</i>", "state": "open", "assignees": [],
+             "labels": [], "html_url": "https://github.com/example/repo/issues/3",
+             "milestone": {"title": "〜10/2 8割", "due_on": "2026-10-02T14:59:59Z"}},
+        ]
+
+    def milestones(self):
+        return [
+            {"title": "〜9/29 アプリのカタチ", "due_on": "2026-09-25T14:59:59Z", "state": "open"},
+            {"title": "〜10/2 8割", "due_on": "2026-10-02T14:59:59Z", "state": "open"},
+            {"title": "10/7-12 最終", "due_on": "2026-10-12T14:59:59Z", "state": "open"},
+        ]
+
+    def test_tasks_grouped_per_milestone(self):
+        res = {r["title"]: r for r in gd.aggregate_by_milestone(self.items(), self.milestones())}
+        self.assertEqual([t["number"] for t in res["〜9/29 アプリのカタチ"]["tasks"]], [1, 2])
+        self.assertEqual([t["number"] for t in res["〜10/2 8割"]["tasks"]], [3])
+        self.assertEqual(res["10/7-12 最終"]["tasks"], [])
+
+    def test_milestone_bar_has_details_with_task_rows(self):
+        ms = gd.aggregate_by_milestone(self.items(), self.milestones())
+        out = gd.render_milestone_bars(ms, self.TODAY)
+        self.assertEqual(out.count("<details"), 3)
+        self.assertIn("#1 遅れてる", out)
+        self.assertIn("担当: alice", out)
+        self.assertIn("遅延 3日", out)
+        self.assertIn("期限内(残4日)", out)
+        self.assertIn("完了 1 / 全体 2（50%）", out)
+        self.assertNotIn("<details open", out)
+
+    def test_milestone_column_omitted_in_milestone_view(self):
+        ms = gd.aggregate_by_milestone(self.items(), self.milestones())
+        out = gd.render_milestone_bars(ms, self.TODAY)
+        self.assertNotIn("状態: 未完了 ・ 〜9/29", out)
+        board = gd.aggregate_by_assignee(self.items())
+        self.assertIn("・ 〜9/29 アプリのカタチ ・ 期限", gd.render_assignee_cards(board, self.TODAY))
+
+    def test_empty_milestone_shows_empty_message(self):
+        ms = gd.aggregate_by_milestone(self.items(), self.milestones())
+        out = gd.render_milestone_bars(ms, self.TODAY)
+        self.assertIn("このMilestoneのタスクはまだありません", out)
+
+    def test_title_escaped_and_no_crash_without_tasks_key(self):
+        ms = gd.aggregate_by_milestone(self.items(), self.milestones())
+        out = gd.render_milestone_bars(ms, self.TODAY)
+        self.assertIn("&lt;i&gt;別MS&lt;/i&gt;", out)
+        legacy = [{"title": "x", "due_on": None, "open": 0, "closed": 0, "total": 0, "pct": 0}]
+        self.assertIn("タスクはまだありません", gd.render_milestone_bars(legacy, self.TODAY))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

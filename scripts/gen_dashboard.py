@@ -150,7 +150,8 @@ def aggregate_by_milestone(items: list[dict], milestones: list[dict]) -> list[di
         if not ms:
             continue
         title = ms.get("title", "")
-        entry = counts.setdefault(title, {"open": 0, "closed": 0})
+        entry = counts.setdefault(title, {"open": 0, "closed": 0, "tasks": []})
+        entry["tasks"].append(task_of(it, ", ".join(assignees_of(it))))
         if is_done(it):
             entry["closed"] += 1
         else:
@@ -159,7 +160,7 @@ def aggregate_by_milestone(items: list[dict], milestones: list[dict]) -> list[di
     result = []
     for ms in milestones:
         title = ms.get("title", "")
-        c = counts.get(title, {"open": 0, "closed": 0})
+        c = counts.get(title, {"open": 0, "closed": 0, "tasks": []})
         total = c["open"] + c["closed"]
         pct = round(c["closed"] / total * 100) if total else 0
         result.append(
@@ -171,6 +172,7 @@ def aggregate_by_milestone(items: list[dict], milestones: list[dict]) -> list[di
                 "total": total,
                 "pct": pct,
                 "state": ms.get("state"),
+                "tasks": c["tasks"],
             }
         )
     # 予定日順（未設定は末尾）
@@ -266,7 +268,7 @@ def deadline_badge(done: bool, due_on: str | None, today: date) -> tuple[str, st
     return f"期限内(残{diff}日)", "badge-ok"
 
 
-def render_task_rows(tasks: list[dict], today: date) -> str:
+def render_task_rows(tasks: list[dict], today: date, show_milestone: bool = True) -> str:
     def sort_key(t):
         due = due_date_of(t["due_on"])
         return (t["done"], due is None, due or date.max, t["number"] or 0)
@@ -282,6 +284,7 @@ def render_task_rows(tasks: list[dict], today: date) -> str:
             f'<span class="chip" style="--chip-color:{AREA_LABELS[a]["color"]}">{html.escape(AREA_LABELS[a]["name"])}</span>'
             for a in t["areas"]
         )
+        ms_part = f" ・ {html.escape(t['milestone_title'] or 'Milestone未設定')}" if show_milestone else ""
         rows.append(
             f"""
             <li class="task {'task-done' if t['done'] else 'task-open'}">
@@ -289,7 +292,7 @@ def render_task_rows(tasks: list[dict], today: date) -> str:
                 <a href="{html.escape(t['html_url'])}" target="_blank" rel="noopener">{kind}#{t['number']} {html.escape(t['title'])}</a>
                 <span class="badge {cls}">{html.escape(label)}</span>
               </div>
-              <div class="task-meta">担当: {html.escape(t['assignee'])} ・ 状態: {state} ・ {html.escape(t['milestone_title'] or 'Milestone未設定')} ・ 期限: {due_str} {areas}</div>
+              <div class="task-meta">担当: {html.escape(t['assignee'])} ・ 状態: {state}{ms_part} ・ 期限: {due_str} {areas}</div>
             </li>
             """
         )
@@ -330,7 +333,8 @@ def render_assignee_cards(board: dict, today: date | None = None) -> str:
     return "".join(cards)
 
 
-def render_milestone_bars(milestones: list[dict]) -> str:
+def render_milestone_bars(milestones: list[dict], today: date | None = None) -> str:
+    today = today or datetime.now(JST).date()
     rows = []
     for m in milestones:
         rows.append(
@@ -344,6 +348,11 @@ def render_milestone_bars(milestones: list[dict]) -> str:
                 <div class="progress-bar" style="width:{m['pct']}%"></div>
               </div>
               <div class="ms-counts">完了 {m['closed']} / 全体 {m['total']}（{m['pct']}%）</div>
+              <details class="breakdown">
+                <summary>内訳を開く</summary>
+                {render_task_rows(m.get('tasks', []), today, show_milestone=False)
+                 or '<p class="empty">このMilestoneのタスクはまだありません</p>'}
+              </details>
             </div>
             """
         )
@@ -520,7 +529,7 @@ def main() -> int:
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         repo=html.escape(repo_full),
         assignee_cards=render_assignee_cards(board, datetime.now(JST).date()),
-        milestone_bars=render_milestone_bars(ms_progress),
+        milestone_bars=render_milestone_bars(ms_progress, datetime.now(JST).date()),
         recent_prs=render_recent_prs(prs),
     )
 
