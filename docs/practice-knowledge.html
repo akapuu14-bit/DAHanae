@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Munder Difflinでチーム開発を回す実践知</title>
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <strong>実践知</strong>
+    <a href="#s0">0 前提</a><a href="#s1">1 ハイブ運用</a><a href="#s2">2 V字</a><a href="#s3">3 並行開発</a>
+    <a href="#s4">4 進捗基盤</a><a href="#s5">5 ハマりどころ</a><a href="#s6">6 チェックリスト</a><a href="#refs">出典・未確認</a>
+  </nav>
+  <main>
+    <section class="sheet" id="top">
+      <h1>Munder Difflinでチーム開発を回す実践知</h1>
+      <p class="meta"><strong>対象読者:</strong> 次に同じ進め方（AIエージェント・ハイブ＋V字）で案件を回すチーム</p>
+      <p class="meta"><strong>案件:</strong> 部活コンシェルジュ（bukatsu_concierge）MVP</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 記録日: 2026-09-28</p>
+      <p class="meta"><strong>状態:</strong> 公開版（記録日 2026-09-28）。各章の根拠は末尾「出典」に記載。未確認の事項は「未確認」と明記した。</p>
+    </section>
+
+    <section class="sheet" id="s0">
+      <div class="number">0</div>
+      <h2>これは何 / 前提（30秒サマリ）</h2>
+      <p><strong>やったこと</strong>: Munder Difflin（AIエージェント・ハイブ環境）上で、god（統括）とスタッフAI 5体が、V字の案件「部活コンシェルジュMVP」を<strong>5文書 → 実装計画 → 実装ガイド → 進捗基盤</strong>まで立ち上げた。2026-09-27〜28の2日間の記録。</p>
+
+      <h3>できあがったもの（2026-09-28時点でmain反映済み）</h3>
+      <ul>
+        <li>5文書: 要求（R-01〜R-48）／要件（F-01〜F-52, N-01〜N-14）／仕様（SP-01〜SP-78）／設計／テスト設計。対象版は commit <code>9a6a20f</code>。</li>
+        <li>実装計画、実装ガイド（I/F契約・タスクバックログ・環境セットアップ・issues_seed・create_issues.sh・task_hints.json）。</li>
+        <li>進捗基盤: GitHub Issue 37件（Wave0〜4 = 5/14/9/6/3件）、Milestone 3、Label、Actions→Pagesのダッシュボード、開発ハブ、overview（開発ロードマップ）。</li>
+      </ul>
+
+      <h3>前提</h3>
+      <ul>
+        <li>人間チームは3名: だーあさ（Data/Backend）、あかぷ（App/UI）、はなえ（PdM・レビュー）。工数配分は40/40/20。</li>
+        <li>実装は<strong>人間が各自で行う</strong>方針に途中で変更した。AIは文書・進捗基盤・実装ガイドを担当した（章5の「AIコード衝突」参照）。</li>
+        <li><strong>まだ終わっていないこと</strong>: 実装（W3）と、その後のテスト・W4評価は、この記録の時点では未着手（未確認）。この文書は「立ち上げ」までの知見である。</li>
+      </ul>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 立ち上げの速さは、実装を急いだ結果ではなく、文書を先に固めた結果だった。</div>
+    </section>
+
+    <section class="sheet" id="s1">
+      <div class="number">1</div>
+      <h2>ハイブの回し方（運用知）</h2>
+
+      <h3>1.1 役割分担</h3>
+      <div class="tablewrap stack"><table>
+        <thead><tr><th>役</th><th>担当</th><th>仕事</th></tr></thead>
+        <tbody>
+          <tr><td>god（りじちょー）</td><td>統括</td><td>人間の窓口。割り振り・レビュー・main反映。提案はするが決断は人間</td></tr>
+          <tr><td>takahiro</td><td>設計</td><td>5文書の要求〜設計、I/F契約、タスクバックログ、Issue草案</td></tr>
+          <tr><td>mirin</td><td>フロント</td><td>画面。今回は主にダッシュボード・ハブ・overviewのHTML</td></tr>
+          <tr><td>terao</td><td>BE/DB</td><td>環境セットアップ、GitHub進捗管理のスクリプトとworkflow</td></tr>
+          <tr><td>kurosu</td><td>テスト</td><td>テスト設計、横断レビュー</td></tr>
+          <tr><td>yamapi</td><td>書記</td><td>決定・学び・失敗をナレッジへ記録</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>1.2 基本ループ</h3>
+      <p><strong>提案 → 確認 → GO → 実装 → レビュー → 反映</strong></p>
+      <ul>
+        <li>人間が決める箇所（スコープ裁定、実装開始、公開範囲など）は、必ず「提案」として出し、本人の回答（「Aで」「OK」など）を記録してから進める。</li>
+        <li>実装後は godが成果物を再実行・差分確認してから main へ反映する（例: T-021〜T-023 は「変更ファイルが scripts のみ・app本体無傷・テスト再実行OK」を確認して合格にした）。</li>
+      </ul>
+
+      <h3>1.3 通信と台帳の使い分け</h3>
+      <div class="tablewrap stack"><table>
+        <thead><tr><th>手段</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><code>inbox/</code>（受信）</td><td>自分宛ての依頼。着手時に全件読み、処理後 <code>inbox/.done/</code> へ移す</td></tr>
+          <tr><td><code>outbox/</code>（送信）</td><td>他者への依頼・共有。自分のoutboxにだけ書く。他者のフォルダには書かない</td></tr>
+          <tr><td><code>memory.md</code></td><td>自分の決定・学び・失敗の追記ログ</td></tr>
+          <tr><td><code>board.md</code></td><td>共有の計画（自由記述）。godだけが書く</td></tr>
+          <tr><td><code>tasks.json</code></td><td>共有のタスク台帳（todo / doing / blocked / done）と、完了時の result</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>1.4 委任の4部構成</h3>
+      <p>依頼（outbox）の本文は、次の4つを必ず入れる。</p>
+      <ol>
+        <li><strong>OBJECTIVE（目的）</strong>: 何のためか、読み手は誰か</li>
+        <li><strong>OUTPUT（成果物）</strong>: 置き場所とファイル名、章立て</li>
+        <li><strong>道具・情報源</strong>: 事実を拾ってよい場所（創作させない）</li>
+        <li><strong>BOUNDARIES（境界）</strong>: 触ってよい範囲、やってはいけないこと（push禁止など）、DONE条件</li>
+      </ol>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 「何を作るか」だけでなく「どこまで触ってよいか」を依頼に書くと、越境が減る。</div>
+    </section>
+
+    <section class="sheet" id="s2">
+      <div class="number">2</div>
+      <h2>開発プロセスの型（V字）</h2>
+
+      <h3>2.1 流れ</h3>
+      <pre><code>5文書（要求 → 要件 → 仕様 → 設計 → テスト設計）
+  → 対象版をコミットIDで固定
+  → PMの承認を明示的に記録（実装計画のコミットかPR）
+  → 実装（W3）
+  → テスト・独立評価（W4）</code></pre>
+
+      <h3>2.2 今回の実績（順序と根拠）</h3>
+      <ol>
+        <li>要求（T-001）: 資料3種から R-01〜R-48 を抽出。<strong>資料間でMVPスコープが食い違う</strong>ことを検出し、人間へ上申した。</li>
+        <li>要件（T-002）: F-01〜F-52 / N-01〜N-14。保留24項目を表にして人間が裁定（暫定案があるものは採用、#1検索の入口は現状維持、#10ケース企業規模は500名で確定）。</li>
+        <li>仕様（T-003）: SP-01〜SP-78。</li>
+        <li>設計（T-004）とテスト設計（T-005）: 仕様が固定されたので<strong>並行</strong>で作成した。</li>
+        <li>テスト設計の作成中に、kurosuが<strong>仕様の穴を5件検出</strong>。4件を確定して仕様に反映（T-006）。1件はテスト対象外で修正不要。</li>
+        <li>5文書を「コミットのみ、実装は保留」として commit <code>9a6a20f</code> で固定。</li>
+      </ol>
+
+      <h3>2.3 原則</h3>
+      <ul>
+        <li><strong>証拠なき完了報告は禁止。</strong>完了には、コミットID・テスト件数・実行結果などを添える。</li>
+        <li><strong>未決に依存する作業は止める。</strong>独立した承認済み範囲だけ進める。今回も、保留の裁定が出るまで仕様（T-003）は blocked にした。</li>
+        <li><strong>実装開始は、対象版（コミットID）と実装計画に対する、PMの明示的な承認記録がある場合のみ。</strong></li>
+        <li>テスト設計から仕様の穴が見つかる。「テスト設計を並行で書く」ことは、仕様の品質確認にもなった。</li>
+      </ul>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 文書を先に固めると、「何が未決か」が表になって人間の判断が速くなる。</div>
+    </section>
+
+    <section class="sheet" id="s3">
+      <div class="number">3</div>
+      <h2>並行開発を衝突させない設計</h2>
+
+      <h3>3.1 きっかけ（失敗）</h3>
+      <div class="callout danger">teraoとmirinが、同じ <code>app/frontend/services/</code> を別のAPI（関数版とクラス版）で書いて衝突した。「実装計画だけでは自走困難」という実証になった。</div>
+
+      <h3>3.2 対策: 自走用ドキュメントの3点セット</h3>
+      <div class="tablewrap stack"><table>
+        <thead><tr><th>文書</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>I/F契約（I-F契約.md）</td><td>services 5本・repositories 9本の関数シグネチャを1つに確定。<strong>関数ベースに統一</strong>（クラスは作らない）</td></tr>
+          <tr><td>タスクバックログ</td><td>Wave0〜4、担当・依存・受入基準、<strong>所有境界（1ファイル1タスク）</strong></td></tr>
+          <tr><td>環境セットアップ</td><td>共有前提の手順（プレースホルダのみ、実キーは書かない）</td></tr>
+        </tbody>
+      </table></div>
+
+      <p><strong>型</strong>:</p>
+      <ul>
+        <li><strong>I/F契約</strong>: 呼び方（引数名・戻り値）を一つに決め、「契約にない呼び方は使わない」と明記する。</li>
+        <li><strong>1ファイル1所有者</strong>: 同じファイルを2つのタスクが触らないように、バックログの各タスクに所有ファイルを割り当てる。</li>
+      </ul>
+
+      <h3>3.3 「💡実装のコツ」を3か所に同じ内容で配る</h3>
+      <p>落とし穴を1行で書いた「💡実装のコツ」を、次の3か所に<strong>同じ内容</strong>で置いた（T-024, T-025）。</p>
+      <ol>
+        <li>タスクバックログ.md（各Wave表の直後）</li>
+        <li>GitHub Issue 本文の末尾（open 37件すべて）</li>
+        <li><code>task_hints.json</code>（37件）</li>
+      </ol>
+      <ul>
+        <li>整合の確認: バックログ内の💡は37個で、task_hints.json と過不足なく一致。Issueへの追記は 追記37 / skip0 / notfound0。冪等（💡マーカーで判定）で実行した。</li>
+        <li>内容の例: <code>read_at IS NULL</code> で未読を判定する、申込済みの判定は exists_active のみ、Streamlitの再実行による二重送信、太字は既読化前のデータで描画する、など。</li>
+      </ul>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 配布先が複数あるときは、元データ（json）を1つ決め、そこから各所を機械的に揃える。</div>
+    </section>
+
+    <section class="sheet" id="s4">
+      <div class="number">4</div>
+      <h2>進捗の見える化（作った仕組みと再現手順）</h2>
+
+      <h3>4.1 仕組み</h3>
+      <ul>
+        <li><strong>GitHub Issue / Label / Milestone</strong>: タスク＝Issue。Labelは area / type / prio / wave、Milestoneは3つ。</li>
+        <li><strong>PR「Closes #」による自動クローズ</strong>: PR本文に <code>Closes #12</code> と書いてマージすると、Issueが自動でクローズされる。進捗報告の作業を別に発生させない。</li>
+        <li><strong>Actions → Pages ダッシュボード</strong>: <code>.github/workflows/dashboard.yml</code> が <code>scripts/gen_dashboard.py</code> を実行し、HTMLを公開。担当者軸（担当者ごとの内訳）と締切軸（Milestoneごとの内訳）の2ビュー。期限・遅延バッジ（完了／遅延N日／本日締切／期限内／期限未設定、JST判定）付き。</li>
+        <li><strong>overview.html（開発ロードマップ）</strong>: Wave0〜4のタイムラインと全37タスクの早見表。</li>
+        <li><strong>開発ハブ（hub.html）</strong>: 日々の入口。ダッシュボード・overview・ガイドへ導線を張る。</li>
+      </ul>
+
+      <h3>4.2 三者の役割分担（混ぜない）</h3>
+      <div class="tablewrap stack"><table>
+        <thead><tr><th>場所</th><th>役割</th><th>性質</th></tr></thead>
+        <tbody>
+          <tr><td>ダッシュボード</td><td><strong>数字</strong>（誰が・どれだけ・遅れているか）</td><td>動的（自動更新）</td></tr>
+          <tr><td>overview</td><td><strong>地図</strong>（全体像・現在地）</td><td>静的</td></tr>
+          <tr><td>タスクバックログ</td><td><strong>正本</strong>（受入基準・依存・所有境界）</td><td>手で保守</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>4.3 再現手順（次のチームがコピーして使う）</h3>
+      <p>正本は <code>docs/github-管理セットアップ.md</code>。要約:</p>
+      <pre><code># 1. gh を入れて認証（repoスコープ。remoteがSSHならプロトコルはSSH）
+brew install gh
+gh auth login
+
+# 2. Label・Milestone を作る（Issueは作らない）
+bash scripts/setup_github.sh
+
+# 3. タスクIssueを作る（冪等・正式版はこちら）
+bash 02_プロジェクト/bukatsu_concierge/実装ガイド/create_issues.sh
+
+# 4. ダッシュボードを手動で起動して確認
+gh workflow run dashboard.yml</code></pre>
+      <ul>
+        <li>Pages有効化: リポジトリ Settings → Pages → Source: GitHub Actions（この操作にはオーナー権限が必要だった）。</li>
+        <li>ワークフローの自動起動（push / schedule / issue）は、<strong>ファイルがデフォルトブランチ（main）に載ってから有効</strong>。featureブランチのままでは動かない。</li>
+        <li>公開範囲: リポジトリがpublicなら Pages も公開。今回は人間が「公開PagesでOK」と判断し、掲載は進捗情報のみとした。Issue/PRに秘匿情報・実在個人情報を書かない約束を進捗管理ガイド6章に明記した。</li>
+      </ul>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 進捗は「報告する」のではなく、Issue と PR から「勝手に集計される」形にする。</div>
+    </section>
+
+    <section class="sheet pitfall" id="s5">
+      <div class="number">5 ★</div>
+      <h2>ハマりどころ集（失敗と対処）</h2>
+
+      <h3>5.1 サンドボックス内で gh と git push（SSH）が失敗</h3>
+      <dl>
+        <dt>原因</dt><dd>サンドボックスがTLS傍受・keyring不可・SSHを遮断している</dd>
+        <dt>対処</dt><dd>ghとpushはサンドボックス外で実行する。外向きの操作なので、人間の承認を得て行った</dd>
+      </dl>
+
+      <h3>5.2 Pages有効化とadmin付与ができない</h3>
+      <dl>
+        <dt>原因</dt><dd>個人リポジトリでは、コラボレーターにadminを付けられない。Pages有効化はオーナー権限が必要</dd>
+        <dt>対処</dt><dd>Pages有効化はオーナー（あかぷ）に依頼した。Issue作成とassignはwrite権限で足りるため、docsの「admin」表記を「write」に訂正した</dd>
+      </dl>
+
+      <h3>5.3 依頼メッセージが配送されず bad- で戻った</h3>
+      <dl>
+        <dt>原因</dt><dd>outboxのJSONが独自書式だった（bodyがオブジェクトなど）</dd>
+        <dt>対処</dt><dd>正しい書式に統一した。必須キーは次の10個。id（拡張子抜きのファイル名と一致）／conversation／from／to／act／subject／body（文字列）／hops／requires_reply／needs_human／created_at</dd>
+      </dl>
+
+      <h3>5.4 「待機」の指示より先に、mirinが旧版UIを実装した（T-026、旧版は commit <code>9a05220</code>）</h3>
+      <dl>
+        <dt>原因</dt><dd>仕様がUI/UX込みで二転三転していた。確定GO前に発注した</dd>
+        <dt>対処</dt><dd>正直に報告させ、旧版は破棄して新版で作り直した。以後は確定GOが出るまで発注しない（hold運用）</dd>
+      </dl>
+
+      <h3>5.5 AIが書いたコードが衝突し、破棄した</h3>
+      <dl>
+        <dt>原因</dt><dd>teraoとmirinが同じ層を別のAPIで実装した</dd>
+        <dt>対処</dt><dd>方針を「実装は人間が各自」に転換し、I/F契約と1ファイル1所有者で再設計した（第3章）。破棄したコードは退避コピー0件で復元不可だが、方針が破棄だったので実害はなし</dd>
+      </dl>
+
+      <h3>5.6 ダッシュボードが「足した」結果、見づらくなった</h3>
+      <dl>
+        <dt>原因</dt><dd>機能追加を重ね、内訳が常時開き、0件セクションも並んだ</dd>
+        <dt>対処</dt><dd>T-023とT-027で整理した。内訳は既定で閉じる、0件セクションは見出しごと非表示、未アサインは別ブロックに分離。数値・集計は不変</dd>
+      </dl>
+
+      <h3>5.7 大きめのUI依頼が二転三転した</h3>
+      <dl>
+        <dt>原因</dt><dd>最初の指示に案がなく、作ってから確認した</dd>
+        <dt>対処</dt><dd>提案→確認を先に回し、確定してから発注する</dd>
+      </dl>
+
+      <div class="card">
+        <p><strong>補足（Issue二重化）</strong>: 横断レビュー（T-013）で、タスクIssueが <code>setup_github.sh</code> と <code>create_issues.sh</code> の両方で作られる二重化（重大）と、テスト設計が確定した仕様に追随していない矛盾（重大）を検出した。前者は <code>create_issues.sh</code> に一本化、後者はテスト設計を更新して解消（T-014〜T-016）。<strong>作った文書を、別の担当（kurosu）が横断で見る</strong>工程が効いた。</p>
+      </div>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 失敗の多くは「確認前に動いた」か「境界が書かれていなかった」か「書式の不一致」。この3つを先に潰す。</div>
+    </section>
+
+    <section class="sheet" id="s6">
+      <div class="number">6</div>
+      <h2>次にやる人へのチェックリスト</h2>
+      <p>立ち上げ順の要約。左から順に、前の項目が済んでから次へ進む。</p>
+      <ol style="list-style:none;padding-left:0">
+        <li>□ <strong>始め方を選ぶ</strong>: 会話から始めるか、<code>inputs/</code>の資料から始めるか。個人かチームか、決定者は誰か。</li>
+        <li>□ <strong>人間の最初の回答を保存</strong>（修正した場合は理由も）。</li>
+        <li>□ <strong>5文書を作る</strong>（要求 → 要件 → 仕様 → 設計 ＋ テスト設計）。資料間の食い違いは人間へ上申する。保留は表にして裁定をもらう。</li>
+        <li>□ <strong>対象版をコミットIDで固定</strong>し、実装計画を書く。</li>
+        <li>□ <strong>PMの明示承認を記録</strong>（実装計画のコミットかPR）。承認前に実装を発注しない。</li>
+        <li>□ <strong>進捗基盤を立てる</strong>: gh認証 → <code>setup_github.sh</code> → <code>create_issues.sh</code> → Pages有効化 → ダッシュボード確認（章4）。</li>
+        <li>□ <strong>アサイン</strong>: Issueのassigneeを設定し、Milestoneを割り当てる。</li>
+        <li>□ <strong>実装ガイドを配る</strong>: I/F契約・所有境界・💡実装のコツ・環境セットアップ（章3）。</li>
+        <li>□ <strong>実装 → PR（<code>Closes #</code>）→ レビュー → マージ</strong>。ダッシュボードで進捗を確認する。</li>
+        <li>□ <strong>完了報告には証拠</strong>を付ける。作った文書は別担当が横断レビューする。</li>
+      </ol>
+
+      <h3>運用の心得（チェックリストとは別）</h3>
+      <ul>
+        <li>確定GOの前に発注しない（hold）。</li>
+        <li>「足す」より先に「整理」を考える。</li>
+        <li>大きめのUIは、提案 → 確認 → 発注の順。</li>
+        <li>ghとpushはサンドボックス外・人間承認つきで実行する。</li>
+        <li>未確認のことは「未確認」と書く。</li>
+      </ul>
+    </section>
+
+    <section class="sheet" id="refs">
+      <h2>出典（裏取りに使ったファイル）</h2>
+      <ul>
+        <li><code>hive/agents/god/memory.md</code>（決定・学び・失敗のログ。日付・commit ID・件数の主な出典）</li>
+        <li><code>hive/tasks.json</code>（T-001〜T-027 の result。件数・テスト数・commit）</li>
+        <li><code>hive/board.md</code>（GitHub状態・決定ログ・人間チーム）</li>
+        <li><code>docs/進捗管理ガイド.md</code>、<code>docs/github-管理セットアップ.md</code></li>
+        <li><code>02_プロジェクト/bukatsu_concierge/</code> の各文書と <code>実装ガイド/I-F契約.md</code></li>
+      </ul>
+
+      <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
+      <div class="callout">
+        <ul style="margin:0">
+          <li>実装（W3）以降の進捗・テスト結果・W4評価: 未着手または未確認。</li>
+          <li><code>9a6a20f</code> 以降に5文書へ加えた変更の有無: コミットIDでは再確認していない。</li>
+          <li>ダッシュボード公開URLの現在の表示状態: 今回は再確認していない（memory/tasks の記録どおり）。</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
