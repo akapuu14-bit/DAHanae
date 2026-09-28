@@ -10,6 +10,7 @@ aggregate_by_assignee / aggregate_by_milestone / recent_merged_prs を検証す�
 
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -158,6 +159,87 @@ class TestRenderDoesNotCrash(unittest.TestCase):
         for fragment in (html_assignees, html_milestones, html_prs):
             self.assertIsInstance(fragment, str)
             self.assertGreater(len(fragment), 0)
+
+
+class TestDeadlineBadge(unittest.TestCase):
+    TODAY = date(2026, 9, 28)
+
+    def test_overdue_open_is_late_with_days(self):
+        label, cls = gd.deadline_badge(False, "2026-09-25T14:59:59Z", self.TODAY)
+        self.assertEqual(label, "遅延 3日")
+        self.assertEqual(cls, "badge-late")
+
+    def test_future_open_is_within_deadline(self):
+        label, cls = gd.deadline_badge(False, "2026-10-02T14:59:59Z", self.TODAY)
+        self.assertEqual(label, "期限内(残4日)")
+        self.assertEqual(cls, "badge-ok")
+
+    def test_closed_is_done_even_if_overdue(self):
+        label, cls = gd.deadline_badge(True, "2026-09-01T14:59:59Z", self.TODAY)
+        self.assertEqual(label, "完了")
+        self.assertEqual(cls, "badge-done")
+
+    def test_due_today(self):
+        label, cls = gd.deadline_badge(False, "2026-09-28T14:59:59Z", self.TODAY)
+        self.assertEqual(label, "本日締切")
+        self.assertEqual(cls, "badge-today")
+
+    def test_no_milestone_does_not_crash(self):
+        self.assertEqual(gd.deadline_badge(False, None, self.TODAY), ("期限未設定", "badge-none"))
+        self.assertEqual(gd.deadline_badge(False, "broken", self.TODAY), ("期限未設定", "badge-none"))
+
+
+class TestAssigneeBreakdown(unittest.TestCase):
+    TODAY = date(2026, 9, 28)
+
+    def items(self):
+        return [
+            {"number": 1, "title": "遅れてるタスク", "state": "open",
+             "assignees": [{"login": "alice"}], "labels": [{"name": "area:be"}],
+             "html_url": "https://github.com/example/repo/issues/1",
+             "milestone": {"title": "〜9/29 アプリのカタチ", "due_on": "2026-09-25T14:59:59Z"}},
+            {"number": 2, "title": "終わったタスク", "state": "closed",
+             "assignees": [{"login": "alice"}], "labels": [],
+             "html_url": "https://github.com/example/repo/issues/2",
+             "milestone": {"title": "〜9/29 アプリのカタチ", "due_on": "2026-09-25T14:59:59Z"}},
+            {"number": 3, "title": "<script>alert(1)</script>", "state": "open",
+             "assignees": [], "labels": [],
+             "html_url": "https://github.com/example/repo/issues/3", "milestone": None},
+        ]
+
+    def test_tasks_attached_to_board_entries(self):
+        board = gd.aggregate_by_assignee(self.items())
+        self.assertEqual([t["number"] for t in board["alice"]["tasks"]], [1, 2])
+        t1 = board["alice"]["tasks"][0]
+        self.assertEqual(t1["assignee"], "alice")
+        self.assertFalse(t1["done"])
+        self.assertEqual(t1["milestone_title"], "〜9/29 アプリのカタチ")
+        self.assertEqual(t1["areas"], ["area:be"])
+
+    def test_card_has_details_with_task_rows_and_badges(self):
+        board = gd.aggregate_by_assignee(self.items())
+        out = gd.render_assignee_cards(board, self.TODAY)
+        self.assertIn("<details", out)
+        self.assertIn("内訳を開く", out)
+        self.assertIn("#1 遅れてるタスク", out)
+        self.assertIn("遅延 3日", out)
+        self.assertIn("完了", out)
+        self.assertIn("担当: alice", out)
+        self.assertIn("期限: 2026-09-25", out)
+        self.assertIn('target="_blank" rel="noopener"', out)
+
+    def test_unassigned_and_no_milestone_visible_without_crash(self):
+        board = gd.aggregate_by_assignee(self.items())
+        out = gd.render_assignee_cards(board, self.TODAY)
+        self.assertIn(f"担当: {gd.UNASSIGNED}", out)
+        self.assertIn("期限未設定", out)
+        self.assertIn("Milestone未設定", out)
+
+    def test_title_is_html_escaped(self):
+        board = gd.aggregate_by_assignee(self.items())
+        out = gd.render_assignee_cards(board, self.TODAY)
+        self.assertNotIn("<script>alert(1)</script>", out)
+        self.assertIn("&lt;script&gt;", out)
 
 
 if __name__ == "__main__":
