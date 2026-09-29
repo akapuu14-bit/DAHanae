@@ -11,3 +11,4 @@
 # 案件資料（社外秘・大容量のため手元のみ）
 02_プロジェクト/bukatsu_concierge/inputs/*.pdf
 02_プロジェクト/bukatsu_concierge/inputs/*.docx
+.streamlit/secrets.toml
