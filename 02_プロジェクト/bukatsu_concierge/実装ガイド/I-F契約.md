@@ -238,6 +238,11 @@ insert(employee_id: str, action: str, *, club_id=None, conditions=None) -> int
 get_last(employee_id: str, action: str) -> dict | None
 ```
 
+- `insert`の引数は`action`ごとに次のとおり必須とする（DBの`action_logs_shape_check`と同じ条件）。
+  - `search_club`：`conditions`が必須
+  - `view_club` / `apply`：`club_id`が必須（`club_id=None`のままでは記録できない）
+- 条件を満たさない`insert`は、DBのCHECK制約が拒否する（最後の防御）。事前検証をどの層で行うか、例外の型は実装時に確定する。
+
 ## 3. 保留
 
-本書の範囲で新たに判断が必要となった項目のうち、すでに確定した0.2節・action_log_serviceの比較方式以外に未確定のものはない。設計.md 8章の保留3件（申込の二重送信対策、applicationsの一意制約設計、mood_tagsバリデーション位置）は本書の対象外（実装着手時にだーあさ・teraoが確定する、実装計画.md 3章のとおり）。
+本書の範囲で新たに判断が必要となった項目のうち、すでに確定した0.2節・action_log_serviceの比較方式以外に未確定のものはない。設計.md 8章の保留のうち、applicationsの一意制約設計は2026-09-28に`status='申込済み'`条件付き部分一意インデックスとサービス層の事前存在確認を併用すると確定した。申込の二重送信対策とmood_tagsバリデーション位置は本書の対象外（実装着手時にだーあさ・teraoが確定する、実装計画.md 3章のとおり）。外部公開・実データ利用前のSupabase Auth＋RLSはIssue #45で扱う。
