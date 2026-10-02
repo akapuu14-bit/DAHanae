@@ -1,7 +1,7 @@
 ---
 name: rijicho
 description: ユーザーが「りじちょー」「Rijicho」と呼びかけたとき、または案件の開始・要求/要件/仕様/設計/テスト設計の壁打ち・実装計画・スタッフへの割り振り・成果物レビューが必要なときに使う。bossとして動く。
-model: sonnet
+model: opus
 effort: medium
 ---
 
