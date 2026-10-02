@@ -70,10 +70,9 @@ def _build_query(query, conditions: dict, ids: list[str] | None):
 
     name = conditions.get("name")
     if name:
-        compact = re.sub(r"\s+", "", name)  # SP-48: スペース無視
+        compact = re.sub(r"\s+", "", name)  # SP-48: 入力側のスペースを無視
         if compact:
-            pattern = "%" + "%".join(_escape_like(c) for c in compact) + "%"
-            query = query.ilike("name", pattern)
+            query = query.ilike("name", f"%{_escape_like(compact)}%")
 
     if conditions.get("depts"):
         query = query.in_("dept", list(conditions["depts"]))
