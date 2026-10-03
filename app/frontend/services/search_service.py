@@ -78,14 +78,13 @@ def search_clubs(conditions: dict) -> list[dict]:
 
 
 def get_this_week_clubs() -> list[dict]:
-    """今週（月〜日）に「予定」の開催がある部活を開催日が近い順に返す（SP-16, SP-75, SP-08）。
+    """今日から今週の日曜まで（両端を含む）に「予定」の開催がある部活を開催日が近い順に返す（SP-16, SP-75, SP-08）。
 
-    "next_event_date" は今週の予定の開催のうち最も近い日。件数の絞り込みはしない。
-    events_repo は今日以降の開催だけを返すため、今週のうち今日より前の開催は含まれない。
+    週は月曜〜日曜（SP-08）。範囲は PM 裁定で [今日, 今週の日曜]。"next_event_date" はその範囲の
+    予定の開催のうち最も近い日。件数の絞り込みはしない。
     """
     today = _today()
-    monday = today - timedelta(days=today.weekday())
-    sunday = monday + timedelta(days=6)
+    sunday = today + timedelta(days=6 - today.weekday())
     first_dates: dict[int, date] = {}
     clubs: dict[int, dict] = {}
     for event in events_repo.list_upcoming_all_with_club():
@@ -93,7 +92,7 @@ def get_this_week_clubs() -> list[dict]:
         if event["status"] != _EVENT_OPEN or not club or not club.get("is_active"):
             continue
         d = _as_date(event["event_date"])
-        if not (monday <= d <= sunday):
+        if not (today <= d <= sunday):
             continue
         club_id = club["id"]
         clubs[club_id] = club
@@ -108,6 +107,7 @@ def get_popular_clubs() -> list[dict]:
 
     今月の開催への申込のうち is_first_time かつキャンセル以外を部活ごとに数え、多い順に
     "rank"（1始まりの通し番号）つきで返す。集計が0件の部活は含めない。
+    中止になった開催（events.status が「中止」）への申込は集計しない（PM 裁定）。
     同数のときは club_id の昇順（I-F契約 1.2）。件数の絞り込みはしない。
     """
     today = _today()
@@ -116,7 +116,10 @@ def get_popular_clubs() -> list[dict]:
     for club in clubs_repo.search({}):
         count = 0
         for application in applications_repo.list_by_organizer_club(club["id"]):
-            event_date = _as_date(application["events"]["event_date"])
+            event = application["events"]
+            if event["status"] != _EVENT_OPEN:
+                continue
+            event_date = _as_date(event["event_date"])
             in_this_month = (event_date.year, event_date.month) == (today.year, today.month)
             if (
                 in_this_month
