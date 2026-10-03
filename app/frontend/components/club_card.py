@@ -11,6 +11,8 @@
 表示だけを担当する。部活の情報は dict で渡してもらう。
 """
 
+from datetime import date, datetime
+
 import streamlit as st
 
 import state
@@ -18,11 +20,27 @@ import state
 _WEEKDAYS = "月火水木金土日"
 
 
-def format_date(value):
-    """日付を「9/26（土）」の形にする（SP-07）。日付が無ければ None。"""
-    if value is None:
+def _to_date(value):
+    """date でも「2026-10-05」のような文字列でも、date にそろえる。無ければ None。
+
+    DB から返る日付は文字列で、モックなどは date で渡ってくる。
+    渡す側が何通りもあるので、変換はこのカード 1 か所にだけ置く。
+    """
+    if value is None or value == "":
         return None
-    return f"{value.month}/{value.day}（{_WEEKDAYS[value.weekday()]}）"
+    if isinstance(value, datetime):  # datetime は date の一種なので先に判定する
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(value)  # 形式が違えば ValueError（不正なデータは隠さない）
+
+
+def format_date(value):
+    """日付を「9/26（土）」の形にする（SP-07）。date / ISO 文字列 / None を受け付ける。"""
+    day = _to_date(value)
+    if day is None:
+        return None
+    return f"{day.month}/{day.day}（{_WEEKDAYS[day.weekday()]}）"
 
 
 def render(club, *, key_prefix="club"):
@@ -30,7 +48,7 @@ def render(club, *, key_prefix="club"):
 
     club : 次のキーをもつ dict
         club_id, icon, name, location, slot, mood_tags(list),
-        fee, after_activity, next_event_date(date または None)
+        fee, after_activity, next_event_date(date / 'YYYY-MM-DD' 文字列 / None)
     key_prefix : ボタンの識別名の頭につける文字。
         同じ部活が1画面に2回出ることがある（ホームの「今週」と「人気」など）。
         ボタンの名前が重なると Streamlit がエラーにするので、場所ごとに変える。
