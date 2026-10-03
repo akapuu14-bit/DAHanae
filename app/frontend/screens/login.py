@@ -40,7 +40,7 @@ def render():
                 st.error(ERROR_MESSAGE)  # SP-11
             else:
                 # 入力どおり（e001）ではなく、サービスが返した正式なID（E001）を記録する
-                state.login(employee["id"])
+                state.login(employee["id"], employee)
                 st.rerun()
 
         st.caption(DEMO_NOTE)  # SP-12
