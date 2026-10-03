@@ -13,6 +13,23 @@ def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _strip_or_filter_reserved_chars(value: str) -> str:
+    """or() フィルタのDSL区切り文字（, ( ) "）を除去する。
+
+    _escape_like とは別レイヤの対策。_escape_like はLIKE/ILIKEのワイルドカード
+    （% _ \\）を「文字として扱う」ためのエスケープで、PostgRESTのフィルタ構文
+    （or=(...) のカンマ区切り・括弧のネスト）には関与しない。
+    PostgRESTは値にカンマ/括弧があるとダブルクォートで囲む回避策を案内しているが、
+    クォート内のダブルクォート自体やバックスラッシュのエスケープ方法が公式ドキュメント
+    に明記されておらず確証が持てない（2026-10-03 docs.postgrest.org 確認時点）。
+    そのため、構文を壊しうる区切り文字そのものをここで除去する、より確実な方針にする
+    （検索結果が多少広がる/狭まることより、構文破壊で例外になることの方が重大）。
+    """
+    for ch in (",", "(", ")", '"'):
+        value = value.replace(ch, "")
+    return value
+
+
 def get(club_id: int) -> dict | None:
     """club_id で1件取得する。存在しなければ None（例外にしない）。"""
     res = (
@@ -63,8 +80,12 @@ def search(conditions: dict) -> list[dict]:
     keyword = conditions.get("keyword")
     if keyword:
         compact = keyword.strip()
-        if compact:
-            pattern = _escape_like(compact)
+        # 2段階の無害化: ①LIKEワイルドカード対策（_escape_like）
+        # ②or()フィルタのDSL区切り文字対策（_strip_or_filter_reserved_chars）。
+        # カンマ・括弧・ダブルクォートを含まない入力はそのまま変化しない。
+        safe_compact = _strip_or_filter_reserved_chars(compact)
+        if safe_compact:
+            pattern = _escape_like(safe_compact)
             keyword_activity_rows = (
                 supabase.table("activities")
                 .select("id")
