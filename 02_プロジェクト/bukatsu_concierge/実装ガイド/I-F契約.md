@@ -60,13 +60,17 @@ get_role(employee_id: str, club_id: int | None = None) -> str
     例外: club_id を指定したが該当する部活が存在しない場合は NotFoundError。
 ```
 
-### 1.2 `services/search_service.py`（対応SP: SP-64, SP-65, SP-75）
+### 1.2 `services/search_service.py`（対応SP: SP-16, SP-17, SP-64, SP-65, SP-75）
 
 ```
 search_clubs(conditions: dict) -> list[dict]
     conditions のキー: "categories"（list[str], 活動カテゴリ）, "locations"（list[str]）, "slots"（list[str], 曜日/時間帯）, "levels"（list[str]）, "keyword"（str）。
     指定しないキーは省略可（未指定＝条件にしない、仕様.md SP-20）。
     戻り値: is_active=trueの部活を、次回開催日が近い順（予定の開催がない部活は最後）に並べたdictのリスト。各dictはカード表示（SP-21）に必要な項目（部活名・拠点・活動時間・次回開催日・雰囲気タグ・費用・活動後の過ごし方・club_id等）を含む。
+    各dictのキー（「部活カードdict」。下記の他の関数でも共通）:
+      "club_id"(int, = clubs.id), "name"(str), "icon"(str), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "next_event_date"(date | None)。
+      キー名は clubs テーブルの列名（仕様.md 3.1）に一致させる。ただし主キーのみ、「id」だと events.id・activities.id と取り違えやすいため "club_id" とする（値は clubs.id）。
+      "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。
     例外: なし（条件に合わない場合は空リストを返す。0件時の文言はSP-22どおり画面側で出す）。
 
 search_employees(conditions: dict, requester_id: str, limit: int = 20, offset: int = 0) -> tuple[list[dict], int]
@@ -78,6 +82,25 @@ search_employees(conditions: dict, requester_id: str, limit: int = 20, offset: i
 get_recommendations(employee_id: str) -> list[dict]
     自分の興味・拠点・参加可能時間（非公開設定に関わらず本人分は使う。SP-75裁定#19）と、各部活の活動・拠点・時間帯の一致数をスコアとして算出し、スコア降順で部活のdictリスト（一致理由の説明文つき）を返す。
     戻り値が空の場合は空リスト（0件時の文言はSP-18どおり画面側で出す）。
+    各dictのキー: 部活カードdict（上記search_clubsと同じキー）に加えて
+      "score"(int, 一致度スコア。自分の興味・拠点・参加可能時間と部活の活動・拠点・時間帯が一致した項目の数。SP-18, SP-75),
+      "reason"(str, 一致した項目を並べた説明文。画面はそのまま表示する。SP-75「一致項目をおすすめ理由として表示」)。
+    並びは "score" の降順。
+
+get_this_week_clubs() -> list[dict]
+    ホーム（S02）の「今週開催の部活」用（SP-16, SP-75, SP-08）。
+    今週＝月曜〜日曜（SP-08）に status が「予定」の開催がある部活を、開催日が近い順に返す。is_active=trueの部活のみ（SP-20と同じ扱い）。
+    戻り値: 部活カードdict（search_clubsと同じキー）のリスト。このリストでは "next_event_date" は「今週の予定の開催のうち最も近い開催日」とする。
+    件数の絞り込み（SP-16の「最大4件」）は行わない。該当する部活をすべて返し、先頭4件の切り出し（[:4]）と0件時の案内文は画面側が持つ（表示件数は画面の仕様であり、サービスは並びだけを保証するため）。
+    例外: なし（0件のときは空リスト）。
+
+get_popular_clubs() -> list[dict]
+    ホーム（S02）の「今月の人気部活」用（SP-17, SP-75）。
+    今月の開催への申込のうち、is_first_time が true かつ status がキャンセル以外のものを部活ごとに数え、件数の多い順に返す。
+    戻り値: 部活カードdict（search_clubsと同じキー）に加えて "rank"(int, 1始まりの順位＝並び順の通し番号) を持つdictのリスト。集計対象が0件の部活は含めない。
+    件数の絞り込み（SP-17の「上位3件」）は行わない。集計できた部活を順位つきですべて返し、先頭3件の切り出し（[:3]）と0件時の案内文は画面側が持つ。
+    同数のときの並び：仕様に定めがないため、club_id の昇順で決める（テスト・表示を毎回同じにするためだけの決め。順位は通し番号とし同順位は作らない）。
+    例外: なし（0件のときは空リスト）。
 ```
 
 ### 1.3 `services/application_service.py`（対応SP: SP-66〜SP-68, SP-72）
