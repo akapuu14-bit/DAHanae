@@ -11,6 +11,8 @@ import importlib
 import streamlit as st
 
 import state
+from components import sidebar
+from services import auth_service, notification_service
 
 st.set_page_config(page_title="部活コンシェルジュ", page_icon="📌", layout="wide")
 
@@ -32,10 +34,32 @@ def _load_screen(page):
         raise
 
 
+def _render_sidebar():
+    """ログイン中の人の情報を集めて、サイドバー（部品）に渡す。
+
+    サイドバー本体は「表示だけ」の部品なので、名前・未読件数・権限は
+    ここ（受付係）で services に聞いてから渡す。
+    """
+    employee_id = st.session_state["employee_id"]
+    employee = state.current_employee()
+    sidebar.render(
+        name=employee.get("name", employee_id),
+        dept=employee.get("dept", ""),
+        employee_id=employee_id,
+        unread_count=notification_service.count_unread(employee_id),
+        # 仕様 SP-01 は「幹事・運営者」。いまの get_role(社員ID) だけでは
+        # 幹事を判定できないため、運営者(admin)のみ。幹事の判定は契約の確定待ち。
+        can_manage=auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN,
+    )
+
+
 def main():
     state.init()
 
     page = state.LOGIN if not state.is_logged_in() else st.session_state["current_page"]
+
+    if state.is_logged_in():
+        _render_sidebar()
 
     screen = _load_screen(page)
     if screen is None:

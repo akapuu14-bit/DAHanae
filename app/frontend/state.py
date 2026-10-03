@@ -39,6 +39,7 @@ PAGES = (
 # list や dict をそのまま初期値にすると、全員が同じ 1 個を共有してしまうため。
 _DEFAULTS = {
     "employee_id": lambda: None,  # ログイン中の社員ID。None なら未ログイン
+    "employee": lambda: None,  # ログイン中の社員の情報（名前・部署など）。login() で入れる
     "current_page": lambda: HOME,  # いま表示する画面
     "page_history": list,  # 「← 戻る」用の、前に見ていた画面の積み重ね
     "club_search_conditions": dict,  # 部活検索の条件（詳細から戻っても残す）
@@ -66,11 +67,20 @@ def is_logged_in():
     return st.session_state.get("employee_id") is not None
 
 
-def login(employee_id):
-    """ログイン成功後に呼ぶ。社員IDを記録し、ホームから始める（SP-10）。"""
+def login(employee_id, employee=None):
+    """ログイン成功後に呼ぶ。社員IDと社員の情報を記録し、ホームから始める（SP-10）。
+
+    employee は名前・部署など（認証サービスが返した dict）。あいさつやサイドバーで使う。
+    """
     st.session_state["employee_id"] = employee_id
+    st.session_state["employee"] = employee
     st.session_state["current_page"] = HOME
     st.session_state["page_history"] = []
+
+
+def current_employee():
+    """ログイン中の社員の情報（dict）。まだ無い、または未ログインなら空の dict。"""
+    return st.session_state.get("employee") or {}
 
 
 def logout():
