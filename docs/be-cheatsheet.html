@@ -175,47 +175,88 @@
   <nav aria-label="資料内ナビゲーション">
     <a class="hub-link" href="hub.html">← 開発ハブ</a>
     <strong>BE実装チートシート</strong>
-    <a href="#issue-map">Issue対応マップ</a><a href="#s0">0 この記事の読み方</a><a href="#s1">1 層構成</a><a href="#s2">2 Wave0 基盤</a><a href="#s3">3 Wave1 repository</a><a href="#s4">4 service前提</a><a href="#s5">5 Wave2 service</a><a href="#s6">6 総まとめ</a><a href="#refs">出典・未確認</a>
+    <a href="#overview">開発の全体像</a><a href="#issue-map">Issue対応マップ</a><a href="#s0">0 この記事の読み方</a><a href="#s1">1 層構成</a><a href="#s2">2 Wave0 基盤</a><a href="#s3">3 Wave1 repository</a><a href="#s4">4 service前提</a><a href="#s5">5 Wave2 service</a><a href="#s6">6 総まとめ</a><a href="#refs">出典・未確認</a>
   </nav>
   <main>
     <section class="sheet" id="top">
       <h1>だーあさのBE実装チートシート（Wave0 / 1 / 2）</h1>
       <p class="meta"><strong>対象読者:</strong> 後続チームのBE初心者（Python は読めるが、Supabase・Streamlit・層構成は初めて）</p>
       <p class="meta"><strong>案件:</strong> 部活コンシェルジュ（bukatsu_concierge）MVP</p>
-      <p class="meta"><strong>範囲:</strong> だーあさ担当 17 issue（Wave0 = #8〜#10、Wave1 = #13〜#22、Wave2 = #23〜#27）</p>
+      <p class="meta"><strong>範囲:</strong> だーあさ担当 18 issue（Wave0 = #8〜#10、Wave1 = #13〜#22、Wave2 = #23〜#27）</p>
       <p class="meta"><strong>記録:</strong> yamapi（書記）／ 記録日: 2026-10-04</p>
       <p class="meta"><strong>状態:</strong> 初版。コード抜粋は <code>origin/main</code>（7834ef0）の実ファイルから引用した。根拠は各節の「出典」と末尾に記載。性能の実測値は取っていないため載せていない。</p>
     </section>
 
-    <section class="sheet" id="issue-map">
-      <h2>Issue 対応マップ</h2>
-      <p>だーあさ担当の 17 issue が、この記事のどの章に当たるかの一覧です。Issue 番号は GitHub の issue へ、章番号はこの記事の該当箇所へ飛べます。各章の見出しにも、扱う Issue へのリンクを付けています。</p>
+    <section class="sheet" id="overview">
+      <h2>開発の全体像</h2>
+      <p>このアプリは、仕事を 4 つの層に分けて作っています。ユーザーの操作は上から下へ流れ、結果は下から上へ戻ります。</p>
+      <p><strong>画面 → service（判断）→ repository（データベースの出し入れ）→ データベース（Supabase）</strong></p>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Issue</th><th>対象ファイル</th><th>この記事での該当章</th></tr></thead>
+          <thead><tr><th>層</th><th>やること</th><th>この記事の Issue</th></tr></thead>
           <tbody>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/8" target="_blank" rel="noopener">#8</a></td><td>（Supabase 共有プロジェクト。ファイルなし）</td><td><a href="#s2-1">2.1</a>・<a href="#s2-2">2.2</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/9" target="_blank" rel="noopener">#9</a></td><td><code>supabase/migrations/202609280001_create_initial_schema.sql</code></td><td><a href="#s2-3">2.3</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/10" target="_blank" rel="noopener">#10</a></td><td><code>app/frontend/db/client.py</code></td><td><a href="#s2-4">2.4</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/13" target="_blank" rel="noopener">#13</a></td><td><code>app/frontend/services/errors.py</code></td><td><a href="#s3-1">3.1</a>・<a href="#s5-2">5.2</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/14" target="_blank" rel="noopener">#14</a></td><td><code>app/frontend/repositories/employees_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-4">3.4</a>・<a href="#s3-7">3.7</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/15" target="_blank" rel="noopener">#15</a></td><td><code>app/frontend/repositories/activities_repo.py</code></td><td><a href="#s3-2">3.2</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/16" target="_blank" rel="noopener">#16</a></td><td><code>app/frontend/repositories/clubs_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-4">3.4</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/17" target="_blank" rel="noopener">#17</a></td><td><code>app/frontend/repositories/club_members_repo.py</code></td><td><a href="#s3-2">3.2</a>・<a href="#s3-7">3.7</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/18" target="_blank" rel="noopener">#18</a></td><td><code>app/frontend/repositories/events_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-5">3.5</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/19" target="_blank" rel="noopener">#19</a></td><td><code>app/frontend/repositories/applications_repo.py</code></td><td><a href="#s3-5">3.5</a>・<a href="#s3-6">3.6</a>・<a href="#s3-7">3.7</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/20" target="_blank" rel="noopener">#20</a></td><td><code>app/frontend/repositories/messages_repo.py</code></td><td><a href="#s5-3">5.3</a>（個別の解説なし。申込処理の中で呼ばれる）</td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/21" target="_blank" rel="noopener">#21</a></td><td><code>app/frontend/repositories/notifications_repo.py</code></td><td><a href="#s3-2">3.2</a>・<a href="#s3-3">3.3</a>・<a href="#s3-7">3.7</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/22" target="_blank" rel="noopener">#22</a></td><td><code>app/frontend/repositories/action_logs_repo.py</code></td><td><a href="#s3-7">3.7</a>・<a href="#s5-5">5.5</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a></td><td><code>app/frontend/services/auth_service.py</code></td><td><a href="#s5-1">5.1</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/24" target="_blank" rel="noopener">#24</a></td><td><code>app/frontend/services/search_service.py</code></td><td><a href="#s5-7">5.7</a>・<a href="#s5-10">5.10</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/25" target="_blank" rel="noopener">#25</a></td><td><code>app/frontend/services/action_log_service.py</code></td><td><a href="#s5-5">5.5</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/26" target="_blank" rel="noopener">#26</a></td><td><code>app/frontend/services/notification_service.py</code></td><td><a href="#s5-8">5.8</a>・<a href="#s5-9">5.9</a></td></tr>
-          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/27" target="_blank" rel="noopener">#27</a></td><td><code>app/frontend/services/application_service.py</code></td><td><a href="#s5-2">5.2</a>・<a href="#s5-3">5.3</a>・<a href="#s5-4">5.4</a>・<a href="#s5-6">5.6</a></td></tr>
+            <tr><td>画面（screens）</td><td>表示とユーザー入力の受け取り。エラーの文言を出す。</td><td>この記事の対象外</td></tr>
+            <tr><td>service（判断）</td><td>仕様書のルールに沿って、できるか・どの順で行うかを決める。</td><td>Wave2: <a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/27" target="_blank" rel="noopener">#27</a>（共通の例外は <a href="https://github.com/akapuu14-bit/DAHanae/issues/13" target="_blank" rel="noopener">#13</a>）</td></tr>
+            <tr><td>repository（出し入れ）</td><td>テーブル 1 つにつき 1 ファイルで、データベースの読み書きだけをする。</td><td>Wave1: <a href="https://github.com/akapuu14-bit/DAHanae/issues/14" target="_blank" rel="noopener">#14</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/22" target="_blank" rel="noopener">#22</a></td></tr>
+            <tr><td>データベース（Supabase）</td><td>データを保存する。型や制約で、不正な値を最後に止める。</td><td>Wave0: <a href="https://github.com/akapuu14-bit/DAHanae/issues/8" target="_blank" rel="noopener">#8</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/10" target="_blank" rel="noopener">#10</a></td></tr>
           </tbody>
         </table>
       </div>
-      <p class="meta">Wave0 = <a href="https://github.com/akapuu14-bit/DAHanae/issues/8" target="_blank" rel="noopener">#8</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/10" target="_blank" rel="noopener">#10</a> ／ Wave1 = <a href="https://github.com/akapuu14-bit/DAHanae/issues/13" target="_blank" rel="noopener">#13</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/22" target="_blank" rel="noopener">#22</a> ／ Wave2 = <a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/27" target="_blank" rel="noopener">#27</a>。章 1・4・6 は個別の Issue ではなく全体・前提・まとめです。各 repository は 3 章で共通の書き方ごとにまとめて解説しており、repository ごとの節はありません。</p>
+      <h3>例: ログインの流れ</h3>
+      <p>画面が社員 ID とパスワードを受け取る → service の <code>auth_service</code>（<a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a>）が「本人か」を判断する → repository の <code>employees_repo</code>（<a href="https://github.com/akapuu14-bit/DAHanae/issues/14" target="_blank" rel="noopener">#14</a>）が社員をデータベースから取り出す → データベース。結果は逆向きに画面へ戻り、失敗なら画面が例外の種類を見て文言を出します（5.1 参照）。</p>
+
+      <h3>前提用語ミニ辞典</h3>
+      <p class="meta">より詳しい説明は <code>実装ガイド/用語集.md</code> にあります（この辞典はそれと矛盾しないよう、この記事で使う範囲に絞っています）。</p>
+      <dl class="pitfall">
+        <dt>repository（リポジトリ）</dt>
+        <dd>テーブル 1 つにつき 1 ファイルで、データベースの読み書きだけを担当する部品。業務のルールは持たない。画面は直接呼ばず、service を経由する。</dd>
+        <dt>service（サービス）</dt>
+        <dd>「申込できるか判定する」「未読件数を数える」のように、仕様書の業務ルールを実行する部品。repository を呼んでデータベースとやりとりし、結果を画面に返す。エラーメッセージの文章は作らず、画面側が出す。</dd>
+        <dt>dict（辞書）</dt>
+        <dd>Python の「キーと値の組」。1 件のデータ（たとえば 1 つの部活）を <code>{"id": 1, "name": "…"}</code> のように持つ。repository の戻り値は、dict か dict のリスト。</dd>
+        <dt>例外（Exception）</dt>
+        <dd>「うまくいかなかった」を知らせる Python の仕組み。<code>raise</code> で投げ、<code>try/except</code> で受ける。このアプリでは <code>errors.py</code> の例外だけを service が投げ、画面が種類を見て文言を出す（3.1、5.2）。</dd>
+        <dt>マイグレーション</dt>
+        <dd>データベースの構造（テーブルや制約）の変更を、SQL ファイルとして順番に残す方法。<code>supabase/migrations/</code> にある。変更するときは既存ファイルを書き換えず、追加のファイルにする（2.3）。</dd>
+        <dt>PostgREST（supabase-py）</dt>
+        <dd>Supabase のデータベースを HTTP で操作する窓口が PostgREST。Python からは supabase-py で <code>supabase.table("clubs").select("*").eq("id", 1)</code> のようにメソッドをつなげて書き、SQL は直接書かない（3.3）。</dd>
+        <dt>N+1 クエリ</dt>
+        <dd>一覧の N 件それぞれについて、データベースへ 1 回ずつ問い合わせてしまい、合計 N+1 回になる書き方（5.10）。</dd>
+      </dl>
+    </section>
+
+    <section class="sheet" id="issue-map">
+      <h2>Issue 対応マップ</h2>
+      <p>だーあさ担当の 18 issue について、「何をする部品か」と「この記事のどの章で解説しているか」を一覧にしました。Wave（作る順番）と層（役割）でグループに分けています。Issue 番号は GitHub の issue へ、章番号はこの記事の該当箇所へ飛べます。各章の見出しにも、扱う Issue へのリンクを付けています。</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Issue</th><th>何をするもの？（ひとこと）</th><th>対象ファイル</th><th>この記事での該当章</th></tr></thead>
+          <tbody>
+          <tr><th colspan="4" style="white-space:normal">Wave0 ― 土台づくり<br><span style="font-weight:400">全員が使う共有のデータベースと、そこへつなぐ入口を用意する（<a href="https://github.com/akapuu14-bit/DAHanae/issues/8" target="_blank" rel="noopener">#8</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/10" target="_blank" rel="noopener">#10</a>）。</span></th></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/8" target="_blank" rel="noopener">#8</a></td><td>チーム全員が同じデータベース（Supabase）につながるよう、共有プロジェクトを 1 つ用意する</td><td>（Supabase 共有プロジェクト。ファイルなし）</td><td><a href="#s2-1">2.1</a>・<a href="#s2-2">2.2</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/9" target="_blank" rel="noopener">#9</a></td><td>部活・社員・開催・申込などを保存する「入れ物」（10 テーブル）を作る</td><td><code>supabase/migrations/202609280001_create_initial_schema.sql</code></td><td><a href="#s2-3">2.3</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/10" target="_blank" rel="noopener">#10</a></td><td>画面とデータベースをつなぐ「入口」を 1 つだけ作る（全員がここを通して読み書きする）</td><td><code>app/frontend/db/client.py</code></td><td><a href="#s2-4">2.4</a></td></tr>
+          <tr><th colspan="4" style="white-space:normal">Wave1 ― データ取得部品（repository）と共通の例外<br><span style="font-weight:400">repository は、テーブル 1 つにつき 1 ファイルで、データベースの出し入れだけをする部品（<a href="https://github.com/akapuu14-bit/DAHanae/issues/14" target="_blank" rel="noopener">#14</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/22" target="_blank" rel="noopener">#22</a>）。<a href="https://github.com/akapuu14-bit/DAHanae/issues/13" target="_blank" rel="noopener">#13</a> は、うまくいかなかった理由を伝える共通の例外。</span></th></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/13" target="_blank" rel="noopener">#13</a></td><td>「パスワードが違う」「もう申込済み」など、うまくいかなかった理由を、どの機能でも同じ形で伝える共通の例外</td><td><code>app/frontend/services/errors.py</code></td><td><a href="#s3-1">3.1</a>・<a href="#s5-2">5.2</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/14" target="_blank" rel="noopener">#14</a></td><td>社員の基本情報と、興味・経験を読み書きする</td><td><code>app/frontend/repositories/employees_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-4">3.4</a>・<a href="#s3-7">3.7</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/15" target="_blank" rel="noopener">#15</a></td><td>活動の種類（部活の分野）の一覧を取り出す</td><td><code>app/frontend/repositories/activities_repo.py</code></td><td><a href="#s3-2">3.2</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/16" target="_blank" rel="noopener">#16</a></td><td>部活の基本情報を読み書きし、条件で検索して一覧を取る</td><td><code>app/frontend/repositories/clubs_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-4">3.4</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/17" target="_blank" rel="noopener">#17</a></td><td>部活に所属しているメンバーを管理する（「メンバーか」「初参加か」の判断にも使う）</td><td><code>app/frontend/repositories/club_members_repo.py</code></td><td><a href="#s3-2">3.2</a>・<a href="#s3-7">3.7</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/18" target="_blank" rel="noopener">#18</a></td><td>部活の開催予定をデータベースから取り出し、登録・変更する</td><td><code>app/frontend/repositories/events_repo.py</code></td><td><a href="#s3-3">3.3</a>・<a href="#s3-5">3.5</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/19" target="_blank" rel="noopener">#19</a></td><td>申込の情報（誰が・どの開催に・どんな状態か）を保存・更新する</td><td><code>app/frontend/repositories/applications_repo.py</code></td><td><a href="#s3-5">3.5</a>・<a href="#s3-6">3.6</a>・<a href="#s3-7">3.7</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/20" target="_blank" rel="noopener">#20</a></td><td>申込した人と幹事のやり取り（メッセージ）を保存・表示する</td><td><code>app/frontend/repositories/messages_repo.py</code></td><td><a href="#s5-3">5.3</a>（個別の解説なし。申込処理の中で呼ばれる）</td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/21" target="_blank" rel="noopener">#21</a></td><td>「申し込まれた」「キャンセルされた」などのお知らせを保存し、既読にする</td><td><code>app/frontend/repositories/notifications_repo.py</code></td><td><a href="#s3-2">3.2</a>・<a href="#s3-3">3.3</a>・<a href="#s3-7">3.7</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/22" target="_blank" rel="noopener">#22</a></td><td>検索・部活の閲覧・申込などの「操作の記録」を保存する</td><td><code>app/frontend/repositories/action_logs_repo.py</code></td><td><a href="#s3-7">3.7</a>・<a href="#s5-5">5.5</a></td></tr>
+          <tr><th colspan="4" style="white-space:normal">Wave2 ― 判断ロジック（service）<br><span style="font-weight:400">service は、仕様書の業務ルール（できるか・どの順で行うか）を実行する部品。repository を呼んで結果を画面へ返す（<a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a>〜<a href="https://github.com/akapuu14-bit/DAHanae/issues/27" target="_blank" rel="noopener">#27</a>）。</span></th></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/23" target="_blank" rel="noopener">#23</a></td><td>社員 ID と共通パスワードで本人を確認し、幹事・運営者かどうかを判定する</td><td><code>app/frontend/services/auth_service.py</code></td><td><a href="#s5-1">5.1</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/24" target="_blank" rel="noopener">#24</a></td><td>部活と社員を検索し、おすすめを出す</td><td><code>app/frontend/services/search_service.py</code></td><td><a href="#s5-7">5.7</a>・<a href="#s5-10">5.10</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/25" target="_blank" rel="noopener">#25</a></td><td>検索・閲覧・申込の操作を、記録してよいタイミングに絞って残す（同じ画面を連続で開いただけでは増やさない）</td><td><code>app/frontend/services/action_log_service.py</code></td><td><a href="#s5-5">5.5</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/26" target="_blank" rel="noopener">#26</a></td><td>お知らせの件数・一覧・既読を、画面の動きに合わせて扱う</td><td><code>app/frontend/services/notification_service.py</code></td><td><a href="#s5-8">5.8</a>・<a href="#s5-9">5.9</a></td></tr>
+          <tr><td><a href="https://github.com/akapuu14-bit/DAHanae/issues/27" target="_blank" rel="noopener">#27</a></td><td>申込の中心になる処理。開催への申込、キャンセル、初参加の判定、「確認したよ」スタンプをまとめて行う</td><td><code>app/frontend/services/application_service.py</code></td><td><a href="#s5-2">5.2</a>・<a href="#s5-3">5.3</a>・<a href="#s5-4">5.4</a>・<a href="#s5-6">5.6</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">「何をするもの？」は、<code>実装ガイド/タスクバックログ.md</code> の各タスクの「これは何？（ひとことで）」を 1 行に要約したものです。章 1・4・6 は個別の Issue ではなく、全体・前提・まとめです。各 repository は 3 章で共通の書き方ごとにまとめて解説しており、repository ごとの節はありません。</p>
     </section>
 
     <section class="sheet" id="s0">
