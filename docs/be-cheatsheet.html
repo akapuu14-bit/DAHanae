@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>だーあさのBE実装チートシート（Wave0 / 1 / 2）</title>
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    nav a.hub-link {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <a class="hub-link" href="hub.html">← 開発ハブ</a>
+    <strong>BE実装チートシート</strong>
+    <a href="#s0">0 この記事の読み方</a><a href="#s1">1 層構成</a><a href="#s2">2 Wave0 基盤</a><a href="#s3">3 Wave1 repository</a><a href="#s4">4 service前提</a><a href="#s5">5 Wave2 service</a><a href="#s6">6 総まとめ</a><a href="#refs">出典・未確認</a>
+  </nav>
+  <main>
+    <section class="sheet" id="top">
+      <h1>だーあさのBE実装チートシート（Wave0 / 1 / 2）</h1>
+      <p class="meta"><strong>対象読者:</strong> 後続チームのBE初心者（Python は読めるが、Supabase・Streamlit・層構成は初めて）</p>
+      <p class="meta"><strong>案件:</strong> 部活コンシェルジュ（bukatsu_concierge）MVP</p>
+      <p class="meta"><strong>範囲:</strong> だーあさ担当 17 issue（Wave0 = #8〜#10、Wave1 = #13〜#22、Wave2 = #23〜#27）</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 記録日: 2026-10-04</p>
+      <p class="meta"><strong>状態:</strong> 初版。コード抜粋は <code>origin/main</code>（7834ef0）の実ファイルから引用した。根拠は各節の「出典」と末尾に記載。性能の実測値は取っていないため載せていない。</p>
+    </section>
+
+    <section class="sheet" id="s0">
+      <div class="number">0</div>
+      <h2>この記事の読み方</h2>
+<ul>
+<li>各節は <strong>コード → 解説 → 学ぶポイント → ハマりどころ</strong> の順に並べた。</li>
+<li>「ハマりどころ」は、コードの docstring やコメントに書かれた設計根拠から読み取れるものに限る。実際に誰が何で詰まったかの記録ではない（未確認）。</li>
+<li>仕様ID（SP-xx）・要件ID（N-xx）・I-F契約の章番号は、そのまま <code>仕様.md</code> / <code>要件.md</code> / <code>実装ガイド/I-F契約.md</code> で引ける。</li>
+</ul>
+    </section>
+
+    <section class="sheet" id="s1">
+      <div class="number">1</div>
+      <h2>導入: 層構成と「層の責務」</h2>
+<pre><code>画面（screens）→ service → repository → DB（Supabase / PostgreSQL）
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>層</th>
+<th>場所</th>
+<th>責務</th>
+<th>やらないこと</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>画面</td>
+<td><code>app/frontend/screens/</code></td>
+<td>表示、<code>try/except</code> で例外を受けて<strong>文言</strong>を出す</td>
+<td>DBに直接さわらない</td>
+</tr>
+<tr>
+<td>service</td>
+<td><code>app/frontend/services/</code></td>
+<td>業務ルール（検証・順序・並び替え・他serviceとの連携）</td>
+<td>画面の文言を組み立てない。SQLを書かない</td>
+</tr>
+<tr>
+<td>repository</td>
+<td><code>app/frontend/repositories/</code></td>
+<td>1テーブルごとの読み書き（PostgREST の呼び出し）</td>
+<td>業務ルールを持たない</td>
+</tr>
+<tr>
+<td>DB</td>
+<td><code>supabase/migrations/</code></td>
+<td>型・CHECK制約・一意制約（最後の砦）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>この構成を守る理由（コードから読み取れるもの）</strong></p>
+<ul>
+<li>例外の文言は service に持たせない。画面ごとの文言差異（SP-31 の「すでに申し込み済みです」と「この開催には申し込みできません」）に対応しやすくするため（I-F契約 0.4）。</li>
+<li>検索条件の組み立て（AND/OR）は repository に閉じる。<code>clubs_repo.py</code> の docstring に「上位層に漏らさない」とある。</li>
+<li>DB の CHECK 制約は最後の砦。<code>action_logs_repo.py</code> の docstring に「事前検証は service 層、ここは薄く保つ」とある。</li>
+</ul>
+<p><strong>学ぶポイント</strong>: 「どの層に何を書くか」を決めてから書く。迷ったら、その処理が <em>画面の見た目に依存するか</em>（画面）／<em>業務ルールか</em>（service）／<em>テーブル1枚の読み書きか</em>（repository）で振り分ける。</p>
+    </section>
+
+    <section class="sheet" id="s2">
+      <div class="number">2</div>
+      <h2>Wave0 基盤（#8 #9 #10）</h2>
+<h3>2.1 #8 Supabase を「チームで1つ」共有する</h3>
+<p><code>環境セットアップ.md</code> 2章の PM 決定:「Supabase プロジェクトは個人ごとに作らない。チームで 1 つの共有プロジェクトを使う」。新規作成は Data/BE 担当（だーあさ）が 1 回だけ行い、他のメンバーは共有された URL と anon key を設定するだけ。</p>
+<p><strong>学ぶポイント</strong></p>
+<ul>
+<li>全員が同じ DB につながるため、<strong>ダミーデータの再投入やテーブル変更は、実行前にチームへ声をかける</strong>（他メンバーの作業中データも消える・変わる。<code>環境セットアップ.md</code> 2章の注記）。</li>
+<li>現在の MVP は<strong>架空データ限定</strong>で RLS を無効にしている。外部公開・実データ投入の前に Issue #45（Supabase Auth＋RLS 設計）を完了する決まり（<code>環境セットアップ.md</code> 2章）。</li>
+</ul>
+<h3>2.2 Secrets は「コードに書かない・コミットしない」</h3>
+<p>接続先・キー・共通パスワードは <code>.streamlit/secrets.toml</code> に置く（N-04）。形式（値はプレースホルダ）:</p>
+<pre><code class="language-toml">supabase_url = &quot;https://&lt;チーム共有プロジェクト&gt;.supabase.co&quot;
+supabase_key = &quot;&lt;チーム共有のanon key&gt;&quot;
+common_password = &quot;&lt;チームで共有する共通ログインパスワード&gt;&quot;
+</code></pre>
+<p>コードからは <code>st.secrets["supabase_url"]</code> のように読む。<strong>キーの値をコードや issue・PR に貼らない</strong>。<code>.gitignore</code> で除外されているかは次で確認する。</p>
+<pre><code class="language-bash">git check-ignore -v .streamlit/secrets.toml
+</code></pre>
+<p><strong>ハマりどころ</strong></p>
+<ul>
+<li>Slack 等の非公開チャンネルでの共有は可、GitHub は不可（<code>環境セットアップ.md</code> 3章）。</li>
+<li><code>common_password</code> は Supabase Auth ではない。DB 側の利用者識別には使えない（同 2章のセキュリティ境界）。</li>
+</ul>
+<h3>2.3 #9 スキーマ 10 テーブル</h3>
+<p><code>supabase/migrations/202609280001_create_initial_schema.sql</code> に employees / employee_interests / activities / clubs / club_members / events / applications / messages / notifications / action_logs の 10 テーブルを定義した。<strong>入力の検証は DB の CHECK 制約にも持たせている</strong>。例:</p>
+<pre><code class="language-sql">constraint events_status_check
+    check (status in ('予定', '中止')),
+constraint events_time_order_check
+    check (end_time &gt; start_time)
+</code></pre>
+<pre><code class="language-sql">create unique index applications_one_active_per_employee_idx
+    on public.applications (event_id, applicant_id)
+    where status = '申込済み';
+</code></pre>
+<p>2 つ目は<strong>部分一意インデックス</strong>。「同じ開催に同じ人が <em>申込済み</em> の行を 2 つ持てない」を DB が保証する。キャンセル行は対象外なので、キャンセル後の再申込はできる。</p>
+<p>後から変更する場合はファイルを書き換えず、<strong>追加のマイグレーション</strong>にする。例: <code>202609300001_action_logs_apply_requires_club.sql</code> は既存の <code>action_logs_shape_check</code> を drop して付け直している（冒頭コメントに「適用済み DB には本ファイルを追加適用する」とある）。</p>
+<p><strong>学ぶポイント</strong>: アプリ側の検証は「親切なエラーを出すため」、DB の制約は「何があっても壊れないため」。両方ある意味を区別する。</p>
+<h3>2.4 #10 <code>db/client.py</code>: 共有クライアント</h3>
+<pre><code class="language-python">import streamlit as st
+from supabase import Client, create_client
+
+
+supabase: Client = create_client(
+    st.secrets[&quot;supabase_url&quot;],
+    st.secrets[&quot;supabase_key&quot;],
+)
+</code></pre>
+<p>使い方は全 repository で同じ 1 行。</p>
+<pre><code class="language-python">from db.client import supabase
+</code></pre>
+<p>import の根は <code>app/frontend/</code>。docstring によれば、9 本の repository を複数人で実装するため、呼び名を <code>supabase</code> に統一してずれを防ぐ（I-F契約 0.1）。Streamlit は毎回スクリプトを再実行するが、この変数はモジュールレベルで一度だけ生成されるので、全 repository で同一インスタンスを共有する。</p>
+<p><strong>ハマりどころ</strong>: 各 repository で <code>create_client</code> し直さない。<code>from db.client import supabase</code> 以外の名前（<code>client</code>、<code>sb</code> など）を使わない。</p>
+    </section>
+
+    <section class="sheet" id="s3">
+      <div class="number">3</div>
+      <h2>Wave1 repository（#13〜#22）</h2>
+<h3>3.1 #13 <code>errors.py</code>: 例外は 6 種類だけ</h3>
+<pre><code class="language-python">class AppError(Exception):
+    &quot;&quot;&quot;共通例外の親クラス。画面側で一括して受けたいときに使う。&quot;&quot;&quot;
+
+class ValidationError(AppError): ...
+class NotFoundError(AppError): ...
+class ConflictError(AppError):
+    def __init__(self, reason=None):
+        super().__init__(reason)
+        self.reason = reason
+class AuthenticationError(AppError): ...
+class PermissionDeniedError(AppError): ...
+</code></pre>
+<p>（<code>...</code> は抜粋のための省略。実ファイルには各クラスの docstring がある）</p>
+<p>service は<strong>これらだけ</strong>を送出する。メッセージの文言は持たない。</p>
+<h3>3.2 I-F契約 0.4: 「存在しない」は例外にしない</h3>
+<p>repository の docstring に共通で書かれている方針。</p>
+<blockquote>
+<p>「存在しない」は例外にせず None / 空リスト / False で返す（I-F契約 0.4）。DBエラーはそのまま伝播させる。</p>
+</blockquote>
+<p>実例（<code>activities_repo.py</code>）:</p>
+<pre><code class="language-python">def get(activity_id: int) -&gt; dict | None:
+    &quot;&quot;&quot;activity_id で1件取得する。存在しなければ None（例外にしない）。&quot;&quot;&quot;
+    res = (
+        supabase.table(&quot;activities&quot;)
+        .select(&quot;*&quot;)
+        .eq(&quot;id&quot;, activity_id)
+        .limit(1)
+        .execute()
+    )
+    return res.data[0] if res.data else None
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>返すもの</th>
+<th>型</th>
+<th>例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1件取得で無し</td>
+<td><code>None</code></td>
+<td><code>activities_repo.get</code></td>
+</tr>
+<tr>
+<td>一覧で無し</td>
+<td><code>[]</code>（<code>res.data or []</code>）</td>
+<td><code>list_all</code></td>
+</tr>
+<tr>
+<td>判定</td>
+<td><code>False</code></td>
+<td><code>club_members_repo.is_member</code></td>
+</tr>
+<tr>
+<td>件数</td>
+<td><code>0</code></td>
+<td><code>notifications_repo.count_unread</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>学ぶポイント</strong></p>
+<ul>
+<li>「存在しない」を NotFoundError にするかどうかを決めるのは <strong>service</strong>（例: <code>auth_service.get_role</code> は部活が無ければ <code>NotFoundError</code>、<code>application_service.apply</code> は開催が無ければ <code>NotFoundError</code>）。repository は事実を返すだけ。</li>
+<li><code>res.data[0] if res.data else None</code> は 9 本すべてで使う定型句。<code>res.data</code> が空リストのとき <code>[0]</code> で落ちるのを避ける。</li>
+</ul>
+<h3>3.3 PostgREST idiom（supabase-py の書き方）</h3>
+<p><code>.select(...)</code> → 条件 → <code>.order(...)</code> → <code>.execute()</code> の<strong>メソッド連結</strong>。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>やりたいこと</th>
+<th>書き方</th>
+<th>実例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>完全一致</td>
+<td><code>.eq("col", v)</code></td>
+<td><code>clubs_repo.get</code></td>
+</tr>
+<tr>
+<td>複数値のどれか（OR）</td>
+<td><code>.in_("col", [..])</code></td>
+<td><code>clubs_repo.search</code> の <code>locations</code></td>
+</tr>
+<tr>
+<td>部分一致（大文字小文字無視）</td>
+<td><code>.ilike("col", "%x%")</code></td>
+<td><code>employees_repo.search</code> の name</td>
+</tr>
+<tr>
+<td>異なる列の OR</td>
+<td><code>.or_("a.ilike.%x%,b.ilike.%x%")</code></td>
+<td><code>clubs_repo.search</code> の keyword</td>
+</tr>
+<tr>
+<td>範囲</td>
+<td><code>.gte</code> / <code>.lt</code></td>
+<td><code>events_repo.list_upcoming_by_club</code></td>
+</tr>
+<tr>
+<td>並び</td>
+<td><code>.order("col", desc=True)</code> を連ねる</td>
+<td><code>events_repo.get_last_meeting_place</code></td>
+</tr>
+<tr>
+<td>NULL 判定</td>
+<td><code>.is_("col", "null")</code></td>
+<td><code>notifications_repo.count_unread</code></td>
+</tr>
+<tr>
+<td>件数</td>
+<td><code>.select("id", count="exact")</code> → <code>res.count</code></td>
+<td><code>employees_repo.count</code></td>
+</tr>
+<tr>
+<td>join</td>
+<td><code>.select("*, clubs(*)")</code></td>
+<td><code>events_repo.list_upcoming_all_with_club</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>AND と OR の作り方（<code>clubs_repo.search</code> の docstring）</strong></p>
+<ul>
+<li>項目をまたぐ条件は <strong>AND</strong> → メソッドを連結する（<code>.in_(...)</code> の後にさらに <code>.in_(...)</code>）。</li>
+<li>同一項目内は <strong>OR</strong> → <code>in_</code>（1 列に複数値）。列をまたぐ OR だけ <code>or_</code>。</li>
+</ul>
+<pre><code class="language-python">if conditions.get(&quot;locations&quot;):
+    query = query.in_(&quot;location&quot;, list(conditions[&quot;locations&quot;]))
+if conditions.get(&quot;slots&quot;):
+    query = query.in_(&quot;slot&quot;, list(conditions[&quot;slots&quot;]))
+</code></pre>
+<p>「未指定（None・空）のキーは条件にしない」ので、<code>if</code> で包んで足していく。</p>
+<p><strong>ハマりどころ</strong></p>
+<ul>
+<li><code>.order("a").order("b")</code> は「a で並べ、同値なら b」。同日の開催を安定した順にするため、<code>events_repo</code> は <code>order("event_date")</code> のあとに <code>order("id")</code> を足している。</li>
+<li><code>.is_("read_at", "null")</code> — NULL は <code>= null</code> では比較できない。<code>notifications_repo</code> の docstring に「NULL との比較ではなく IS NULL」とある。</li>
+</ul>
+<h3>3.4 2 層エスケープ: <code>_escape_like</code> と <code>_strip_or_filter_reserved_chars</code></h3>
+<p>キーワード検索には <strong>別の問題が 2 つ</strong>ある。</p>
+<pre><code class="language-python">def _escape_like(value: str) -&gt; str:
+    &quot;&quot;&quot;LIKE/ILIKE のワイルドカードを文字として扱うためのエスケープ。&quot;&quot;&quot;
+    return value.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;%&quot;, &quot;\\%&quot;).replace(&quot;_&quot;, &quot;\\_&quot;)
+
+
+def _strip_or_filter_reserved_chars(value: str) -&gt; str:
+    for ch in (&quot;,&quot;, &quot;(&quot;, &quot;)&quot;, '&quot;'):
+        value = value.replace(ch, &quot;&quot;)
+    return value
+</code></pre>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>対策</th>
+<th>守るもの</th>
+<th>無いと起きること</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_escape_like</code></td>
+<td>LIKE/ILIKE のワイルドカード（<code>%</code> <code>_</code> <code>\</code>）</td>
+<td><code>100%</code> と入力したのに「100 で始まる全部」にマッチする</td>
+</tr>
+<tr>
+<td><code>_strip_or_filter_reserved_chars</code></td>
+<td><code>or_()</code> の DSL 区切り（<code>,</code> <code>(</code> <code>)</code> <code>"</code>）</td>
+<td>フィルタ構文が壊れて例外になる</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>clubs_repo.search</code> での使い方（順序が大事）:</p>
+<pre><code class="language-python">safe_compact = _strip_or_filter_reserved_chars(compact)   # ② 先に区切り文字を除く
+if safe_compact:
+    pattern = _escape_like(safe_compact)                   # ① ワイルドカードを文字扱いに
+    ...
+    or_parts = [f&quot;name.ilike.%{pattern}%&quot;, f&quot;message.ilike.%{pattern}%&quot;]
+    query = query.or_(&quot;,&quot;.join(or_parts))
+</code></pre>
+<p>docstring の判断: PostgREST はカンマ/括弧を含む値をダブルクォートで囲む回避策を案内しているが、クォート内の <code>"</code> やバックスラッシュのエスケープ方法が公式ドキュメントに明記されておらず確証が持てない（2026-10-03 docs.postgrest.org 確認時点）。そのため<strong>構文を壊しうる文字そのものを除去する</strong>方針にした。「検索結果が多少広がる/狭まることより、構文破壊で例外になることの方が重大」。</p>
+<p><strong>学ぶポイント</strong>: ユーザー入力を「検索の部品」に埋め込むときは、(1) その部品の言語（LIKE）と (2) それを運ぶ言語（PostgREST フィルタ）の<strong>2 つ</strong>の特殊文字を考える。<code>employees_repo</code> の name 検索は <code>or_</code> を使わないので <code>_escape_like</code> だけ（同じ 1 層でも足りる理由が違う）。</p>
+<p><strong>ハマりどころ</strong>: <code>_escape_like</code> は <code>\</code> を最初に置換する。<code>%</code> を先に処理すると、追加したバックスラッシュがさらにエスケープされてしまう。</p>
+<h3>3.5 日付境界: <code>events</code> は「今日を含む」、<code>applications</code> は「今日を含まない」</h3>
+<pre><code class="language-python"># events_repo.list_upcoming_by_club（今日以降 = 今日を含める）
+today = date.today().isoformat()
+... .gte(&quot;event_date&quot;, today) ...
+
+# applications_repo.has_past_non_canceled（過去 = 今日より前）
+today = date.today().isoformat()
+... .lt(&quot;event_date&quot;, today) ...
+</code></pre>
+<p>SP-26「今日以降の開催を表示（過去は出さない）」の<strong>補集合</strong>として、「過去」は <code>event_date &lt; 今日</code>。2 つの関数で境界が食い違うことはない（今日の開催は「今後」側）。<code>events_repo</code> の docstring に「開催日と時刻は混ぜず、event_date（date型）だけで比較する」とある。</p>
+<p><strong>ハマりどころ</strong>: 日付は <code>date.isoformat()</code> の文字列で PostgREST に渡す。Wave2 の service は日本時間（<code>Asia/Tokyo</code>）で今日を出している（5.6 参照）が、repository の <code>date.today()</code> は実行環境のローカル日付。この差が実際に問題になるかは未確認。</p>
+<h3>3.6 <code>exists_active</code> と <code>has_past_non_canceled</code>: 名前どおりの条件</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>関数</th>
+<th>数える status</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exists_active(event_id, applicant_id)</code></td>
+<td><strong>「申込済み」だけ</strong></td>
+<td>二重申込の検出。キャンセル行は対象外 → キャンセル後の再申込を弾かない</td>
+</tr>
+<tr>
+<td><code>has_past_non_canceled(club_id, employee_id)</code></td>
+<td><strong>「キャンセル」以外</strong></td>
+<td>初参加判定（SP-68 ②）。過去に申し込んでキャンセルしただけの人は初参加扱い</td>
+</tr>
+</tbody>
+</table></div>
+<pre><code class="language-python">.eq(&quot;status&quot;, &quot;申込済み&quot;)      # exists_active
+.neq(&quot;status&quot;, &quot;キャンセル&quot;)   # has_past_non_canceled
+</code></pre>
+<p>DB 側の部分一意インデックス（2.3）と <code>exists_active</code> は同じ考え方（申込済みだけが対象）。repository は独自の重複防止を足さない（<code>applications_repo.py</code> の docstring: 仕様.md 8 章の保留による）。</p>
+<p><strong>ハマりどころ</strong>: status が今後増えたとき、<code>eq("申込済み")</code> と <code>neq("キャンセル")</code> は結果が変わる。どちらの意味が欲しいかを関数名で決めている。</p>
+<h3>3.7 その他のパターン</h3>
+<p><strong>(a) 冪等な追加: <code>add_member</code></strong>（<code>club_members_repo.py</code>）</p>
+<pre><code class="language-python">(
+    supabase.table(&quot;club_members&quot;)
+    .upsert(row, on_conflict=&quot;club_id,employee_id&quot;, ignore_duplicates=True)
+    .execute()
+)
+</code></pre>
+<p>一意制約 <code>(club_id, employee_id)</code> に衝突したら<strong>無視</strong>する。2 回呼んでも既存の <code>joined_at</code> を上書きしない。<code>joined_at</code> が <code>None</code> のときは列を送らず、DB の既定値に委ねる。</p>
+<p><strong>(b) 置き換え保存: <code>set_interests</code></strong>（<code>employees_repo.py</code>）— 「先に upsert、あとで残りを削除」の順。</p>
+<pre><code class="language-python">supabase.table(&quot;employee_interests&quot;).upsert(
+    rows, on_conflict=&quot;employee_id,activity_id&quot;
+).execute()
+supabase.table(&quot;employee_interests&quot;).delete().eq(
+    &quot;employee_id&quot;, employee_id
+).not_.in_(&quot;activity_id&quot;, list(by_activity)).execute()
+</code></pre>
+<p>docstring: 「二重登録にならず、途中失敗で全消えにもならない」。「全削除→再挿入」の順だと、途中で失敗したときに 0 件になる。</p>
+<p><strong>(c) None の列は送らない</strong>（<code>update_status</code> / <code>action_logs_repo.insert</code>）— <code>None</code> を送ると「NULL に更新する」になってしまうので、値があるときだけ <code>row[...]</code> に入れる。</p>
+<p><strong>(d) 参照ごとに join する</strong>: <code>applications_repo.list_by_applicant</code> は <code>select("*, events(*, clubs(*))")</code> でネストして取る。並び順は service の責務（docstring「並び順（SP-37）は service 層で行う」）。</p>
+<p><strong>(e) 列の検証は DB に委ねる</strong>: <code>clubs_repo.create</code> / <code>events_repo.update</code> などの docstring に「列の検証は DB の CHECK 制約に委ねる」。</p>
+<p><strong>(f) 時刻は UTC aware</strong>: <code>notifications_repo._now_iso()</code> は <code>datetime.now(timezone.utc).isoformat()</code>（N-05）。</p>
+    </section>
+
+    <section class="sheet" id="s4">
+      <div class="number">4</div>
+      <h2>Wave2 の前提: service は「順序」と「ルール」を持つ</h2>
+<p>repository は事実を返す。service は <strong>何をどの順で、誰に許すか</strong> を決める。以降の節は <code>app/frontend/services/</code> の 5 本（auth / search / action_log / notification / application）。</p>
+    </section>
+
+    <section class="sheet" id="s5">
+      <div class="number">5</div>
+      <h2>Wave2 service（#23〜#27）</h2>
+<h3>5.1 #23 <code>auth_service</code>: 認証</h3>
+<pre><code class="language-python">def login(employee_id: str, password: str) -&gt; dict:
+    employee = employees_repo.get_by_id(_normalize_id(employee_id))
+    expected = str(st.secrets[&quot;common_password&quot;])
+    password_ok = hmac.compare_digest(
+        (password or &quot;&quot;).encode(&quot;utf-8&quot;), expected.encode(&quot;utf-8&quot;)
+    )
+    if employee is None or not password_ok:
+        raise AuthenticationError()
+    return employee
+</code></pre>
+<p>学ぶポイント 3 つ。</p>
+<ol>
+<li><strong><code>hmac.compare_digest</code></strong>: 文字列を <code>==</code> で比べると、先頭から違う位置までの時間差でパスワードを推測される（タイミング攻撃）。<code>compare_digest</code> は一致/不一致に関わらず比較時間が一定になるよう作られている。bytes にそろえて渡す。</li>
+<li><strong>認証エラーは単一で曖昧に（SP-11）</strong>: ID が無い場合もパスワードが違う場合も <code>AuthenticationError()</code> 1 種。どちらが誤りかを返さない（アカウントの存在を教えない）。</li>
+<li>実装上の細かい点: <code>employee is None</code> でも <code>compare_digest</code> を先に実行している。ID 不在のときだけ処理が早く終わらないようにするためかは docstring に書かれておらず、<strong>意図は未確認</strong>。</li>
+<li><strong>シークレットはコードに書かない</strong>: <code>st.secrets["common_password"]</code>（2.2）。</li>
+</ol>
+<p><code>_normalize_id</code> で <code>strip().upper()</code> するのは service の責務（docstring「大文字小文字の正規化はこの層で行う」）。<code>get_role</code> は <code>club_id</code> を渡したときだけ幹事判定をし、部活が無ければ <code>NotFoundError</code>。</p>
+<h3>5.2 #27 <code>ConflictError.reason</code>: ロジックと文言の分離</h3>
+<pre><code class="language-python">if event[&quot;status&quot;] != _EVENT_OPEN or _event_datetime(event, &quot;start_time&quot;) &lt;= _now():
+    raise ConflictError(&quot;not_open&quot;)
+if applications_repo.exists_active(event_id, applicant_id):
+    raise ConflictError(&quot;already_applied&quot;)
+</code></pre>
+<p>画面側は例外の <code>reason</code> を見て SP-31 の文言を出し分ける（<code>errors.py</code> docstring）。service は日本語の文言を一切持たない。</p>
+<p><strong>ハマりどころ</strong>: <code>cancel</code> の <code>ConflictError()</code> は reason なし（キャンセル済み・開始時刻超過）。reason の有無で画面の分岐が変わるので、画面側と合意してから増やす。</p>
+<h3>5.3 #27 オーケストレーション順序: 検証 → 保存 → 副作用</h3>
+<p><code>apply</code>（SP-66）の流れ。docstring: 「開催確認→重複確認→初参加判定→申込保存→メッセージ→幹事通知→操作履歴」。</p>
+<pre><code class="language-python">event = events_repo.get(event_id)                     # 1 検証: 開催が存在するか
+...
+if applications_repo.exists_active(...):              # 2 検証: 重複
+    raise ConflictError(&quot;already_applied&quot;)
+is_first_time = _is_first_time(club_id, applicant_id) # 3 判定
+application_id = applications_repo.insert(...)        # 4 保存
+if message_text and message_text.strip():             # 5 副作用: メッセージ
+    messages_repo.insert(application_id, applicant_id, message_text)
+...
+notification_service.notify(club[&quot;organizer_id&quot;], &quot;申込&quot;, ...)  # 6 副作用: 幹事通知
+action_log_service.record_apply(applicant_id, club_id)          # 7 副作用: 操作履歴
+</code></pre>
+<ul>
+<li><strong>検証を先にすべて済ませる</strong>: 失敗するなら何も保存しない。</li>
+<li><strong>保存してから副作用</strong>: 通知・履歴は「申込が保存された」事実を前提にするため。<code>application_id</code> も保存の結果として得る。</li>
+<li>幹事自身が申し込んだときは通知しない（<code>club["organizer_id"] != applicant_id</code>）。</li>
+</ul>
+<p><strong>ハマりどころ</strong>: 6〜7 が失敗しても 4 は保存済み。この流れに<strong>トランザクションは無い</strong>（コードに無いので、途中失敗時の巻き戻しは未実装・未確認として扱う）。</p>
+<h3>5.4 #27 service が service を呼ぶ</h3>
+<pre><code class="language-python">from services import action_log_service, notification_service
+</code></pre>
+<p><code>application_service</code> は通知の作成を <code>notification_service.notify</code> に、操作履歴の記録を <code>action_log_service.record_apply</code> に任せる。<code>notification_service</code> の docstring:「notify は application_service などから呼ばれる共通関数」。</p>
+<p><strong>学ぶポイント</strong>: 通知の検証（種別 5 種・空白のみ不可）は <code>notify</code> の 1 箇所に置き、呼び出し側は書かない。逆向き（notification → application）の import を作ると循環 import になるので、依存の向きは一方向にそろえる。</p>
+<h3>5.5 #25 <code>action_log_service</code>: JSON 往復で jsonb 比較を正規化する</h3>
+<pre><code class="language-python">def _as_stored(conditions: dict) -&gt; dict:
+    &quot;&quot;&quot;DB（jsonb）に保存した形に揃える。get_last の戻り値との比較を型の差で外さないため。&quot;&quot;&quot;
+    return json.loads(json.dumps(conditions, ensure_ascii=False))
+
+def record_search(employee_id: str, conditions: dict) -&gt; None:
+    ...
+    stored = _as_stored(conditions)
+    last = action_logs_repo.get_last(employee_id, _SEARCH_CLUB)
+    if last is not None and last.get(&quot;conditions&quot;) == stored:
+        return
+    action_logs_repo.insert(employee_id, _SEARCH_CLUB, conditions=stored)
+</code></pre>
+<ul>
+<li>直前の記録と<strong>同じなら記録しない</strong>（連続の二重記録防止）。比較対象は <code>session_state</code> ではなく <strong>DB の最新記録</strong>（docstring）。Streamlit は再実行のたびに状態が変わりうるため、DB を正とする。</li>
+<li>Python の dict を DB（jsonb）に入れて戻すと、タプルがリストになるなど型が変わる。<strong>比較する側も一度 JSON を往復</strong>させて同じ形にしてから <code>==</code> する。</li>
+<li><code>record_apply</code> は二重記録の判定をしない（「申込は 1 件ごとに別の出来事」）。同じ関数群でも <strong>action ごとにルールが違う</strong>。</li>
+<li>事前検証（必須項目が <code>None</code>）はこの層で <code>ValidationError</code>。DB の <code>action_logs_shape_check</code> は最後の砦（2.3 の追加マイグレーションで apply にも <code>club_id</code> を必須にした）。</li>
+</ul>
+<h3>5.6 TZ を明示する（Asia/Tokyo）</h3>
+<pre><code class="language-python">_JST = ZoneInfo(&quot;Asia/Tokyo&quot;)
+
+def _now() -&gt; datetime:
+    return datetime.now(_JST)
+
+def _event_datetime(event: dict, time_key: str) -&gt; datetime:
+    &quot;&quot;&quot;events 行の event_date と時刻列（start_time / end_time）から日本時間の datetime を作る。&quot;&quot;&quot;
+    d = event[&quot;event_date&quot;]
+    t = event[time_key]
+    if not isinstance(d, date):
+        d = date.fromisoformat(str(d))
+    if not isinstance(t, time):
+        t = time.fromisoformat(str(t))
+    return datetime.combine(d, t.replace(tzinfo=None), tzinfo=_JST)
+</code></pre>
+<ul>
+<li>N-05: DB はタイムゾーン付きで保存、画面は日本時間。service は <code>ZoneInfo("Asia/Tokyo")</code> を<strong>明示</strong>して「いま」と「開催日時」を同じ時間軸にそろえる。</li>
+<li>開催の <code>event_date</code>（date）と <code>start_time</code>（time）は<strong>日本時間の壁時計</strong>として扱い、結合して aware な datetime にする（<code>application_service</code> の docstring）。</li>
+<li>DB から文字列で返る場合に備え、<code>isinstance</code> で型を見て <code>fromisoformat</code> で復元する。</li>
+<li><code>t.replace(tzinfo=None)</code> — 時刻列が tz 付きで返っても、いったん外してから JST を付け直す。</li>
+</ul>
+<p><strong>ハマりどころ</strong>: aware（tz 付き）と naive（tz なし）の datetime は <code>&lt;=</code> で比較すると <code>TypeError</code>。<code>_now()</code> も <code>_event_datetime()</code> も必ず aware にそろえる。</p>
+<h3>5.7 #24 <code>search_service</code>: 並び替えの技</h3>
+<p><strong>(a) タプル key の多段ソート</strong>（<code>_sorted_by_next_event</code>）</p>
+<pre><code class="language-python">sorted(
+    cards,
+    key=lambda c: (c[&quot;next_event_date&quot;] is None, c[&quot;next_event_date&quot;] or date.max, c[&quot;club_id&quot;]),
+)
+</code></pre>
+<ul>
+<li>Python のタプルは<strong>左から順に</strong>比べる。第 1 要素で決まらなければ第 2 要素…。</li>
+<li><strong>bool で None を最後に</strong>: <code>c["next_event_date"] is None</code> は <code>False &lt; True</code> なので、予定ありが先、予定なし（None）が最後。<code>or date.max</code> は None 同士を比較で落とさないための代替値。</li>
+<li>最後に <code>club_id</code> を置くので、同順位でも結果が<strong>安定</strong>する（毎回同じ並び）。</li>
+</ul>
+<p><strong>(b) <code>-値</code> で降順</strong>（<code>get_popular_clubs</code>）</p>
+<pre><code class="language-python">counted.sort(key=lambda t: (-t[0], t[1][&quot;id&quot;]))
+</code></pre>
+<p>件数は降順、同数は club_id 昇順（I-F契約 1.2）。数値は <code>-</code> を付ければ降順にできる。</p>
+<p><strong>(c) おすすめ</strong>（<code>get_recommendations</code>）</p>
+<pre><code class="language-python">key=lambda c: (-c[&quot;score&quot;], c[&quot;next_event_date&quot;] is None, c[&quot;next_event_date&quot;] or date.max, c[&quot;club_id&quot;])
+</code></pre>
+<p>(a)(b) の合わせ技。score 降順 → 次回開催が近い順（予定なしは最後）→ club_id。</p>
+<p><strong>(d) 2 段ソートで「未読を先頭」</strong>（<code>application_service.list_received_applications</code>）</p>
+<pre><code class="language-python">rows.sort(key=lambda a: (a[&quot;applied_at&quot;], a[&quot;id&quot;]), reverse=True)  # 新しい順
+rows.sort(key=lambda a: 0 if a[&quot;id&quot;] in unread_application_ids else 1)  # 未読を先頭
+</code></pre>
+<p>Python の <code>sort</code> は<strong>安定ソート</strong>。後から掛けた「未読か」が第一キー、同じ区分の中では先に掛けた「新しい順」が保たれる（SP-40）。</p>
+<p><strong>(e) 「今週」は月曜〜日曜</strong>（<code>get_this_week_clubs</code>）</p>
+<pre><code class="language-python">sunday = today + timedelta(days=6 - today.weekday())
+</code></pre>
+<p><code>weekday()</code> は月曜 = 0。範囲は PM 裁定で [今日, 今週の日曜]（docstring）。</p>
+<h3>5.8 #26 未読件数は 1 本に集約（single source of truth）</h3>
+<pre><code class="language-python">def count_unread(employee_id: str) -&gt; int:
+    &quot;&quot;&quot;自分あての未読通知件数（SP-70）。&quot;&quot;&quot;
+    return notifications_repo.count_unread(employee_id)
+</code></pre>
+<p>docstring: 「未読件数は SP-70 の算出値を 1 本だけ持つ。サイドバー（SP-01）もこの関数を使い、別集計は作らない。」画面ごとに数え直すと、画面間で数字がずれる。</p>
+<p>同じ考え方が <code>application_service._is_first_time</code>（初参加の判定、設計.md 5.4）と <code>_event_datetime</code>（日時の組み立て）にもある。「判定・変換を 1 か所に集めて、全員がそれを呼ぶ」。</p>
+<pre><code class="language-python">def _is_first_time(club_id: int, employee_id: str) -&gt; bool:
+    if club_members_repo.is_member(club_id, employee_id):
+        return False
+    if applications_repo.has_past_non_canceled(club_id, employee_id):
+        return False
+    return True
+</code></pre>
+<h3>5.9 #26 通知の検証</h3>
+<pre><code class="language-python">NOTIFICATION_TYPES = (&quot;申込&quot;, &quot;キャンセル&quot;, &quot;メッセージ&quot;, &quot;スタンプ&quot;, &quot;中止&quot;)
+...
+if type_ not in NOTIFICATION_TYPES:
+    raise ValidationError(f&quot;unknown notification type: {type_!r}&quot;)
+if not body or not body.strip():
+    raise ValidationError(&quot;body is required&quot;)
+</code></pre>
+<p>DB の <code>notifications_type_check</code> / <code>notifications_body_not_blank_check</code> と同じ内容を service 側にも置く。service は<strong>親切なエラー</strong>、DB は<strong>最後の砦</strong>（2.3）。</p>
+<h3>5.10 #24 N+1 クエリの気配: <code>get_popular_clubs</code></h3>
+<pre><code class="language-python">for club in clubs_repo.search({}):
+    count = 0
+    for application in applications_repo.list_by_organizer_club(club[&quot;id&quot;]):
+        ...
+</code></pre>
+<p>部活 N 件につき、<code>list_by_organizer_club</code> が内部で events と applications の 2 回、計 <strong>2N 回 + 最初の 1 回</strong>の問い合わせを発行する。これを <strong>N+1 クエリ</strong>と呼ぶ。<code>search_employees</code> も、所属部活の取得で部活ごとに <code>list_members</code> を呼ぶ同型の形になっている。</p>
+<ul>
+<li>MVP のデータ量では許容した可能性があるが、<strong>docstring に判断の記載はなく、性能の実測もない（未確認）</strong>。</li>
+<li>改善の方向（実装はしていない）: 1 回の問い合わせで全部活分をまとめて取り、Python 側で数える。</li>
+<li>後続チームへ: データが増える画面では、<strong>ループの中で repository を呼んでいないか</strong>をレビューの観点にする。</li>
+</ul>
+<p><strong>もう一つの注意</strong>: <code>get_popular_clubs</code> は <code>clubs_repo.search({})</code> を使う。この関数は <code>is_active</code> の部活のみ返す（clubs_repo の docstring）ので、非公開の部活は人気集計に入らない。</p>
+    </section>
+
+    <section class="sheet" id="s6">
+      <div class="number">6</div>
+      <h2>総まとめ: 全体を貫く 6 本の背骨</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>背骨</th>
+<th>実例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>層の責務</strong></td>
+<td>文言は画面、ルールは service、読み書きは repository（1 章）</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>DRY: 1 か所に集約</strong></td>
+<td><code>from db.client import supabase</code>、<code>count_unread</code>、<code>_is_first_time</code>、<code>_event_datetime</code>、<code>NOTIFICATION_TYPES</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>多層防御</strong></td>
+<td>入力 → service の検証 → DB の CHECK / 一意制約（<code>notify</code>、<code>record_*</code>、<code>applications_one_active_per_employee_idx</code>）</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>ロジックと文言の分離</strong></td>
+<td><code>ConflictError.reason</code>、<code>AuthenticationError()</code>（5.2、5.1）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>セキュリティ基本</strong></td>
+<td>Secrets をコードに書かない、<code>hmac.compare_digest</code>、認証エラーを曖昧に、2 層エスケープ（2.2、5.1、3.4）</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>TZ と正規化</strong></td>
+<td><code>ZoneInfo("Asia/Tokyo")</code>、aware にそろえる、JSON 往復で比較（5.5、5.6）</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>新しい repository / service を書くときのチェックリスト</strong></p>
+<ul class="checklist">
+<li><code>from db.client import supabase</code> を使っている（独自の <code>create_client</code> なし）</li>
+<li>「存在しない」を <code>None</code> / <code>[]</code> / <code>False</code> / <code>0</code> で返している</li>
+<li>ユーザー入力を LIKE / <code>or_</code> に埋めるなら、2 層のエスケープを通している</li>
+<li>「今日」の境界（含む・含まない）を、既存の関数と食い違わせていない</li>
+<li>日時は aware で比較している（naive と混ぜない）</li>
+<li>画面の文言を service に書いていない（例外の種類と <code>reason</code> で伝える）</li>
+<li>同じ判定・集計を別の場所に書き足していない</li>
+<li>Secrets・キーの値をコード、issue、PR に貼っていない</li>
+</ul>
+    </section>
+
+    <section class="sheet" id="refs">
+      <h2>出典</h2>
+<ul>
+<li>実コード（<code>origin/main</code> 7834ef0）: <code>app/frontend/db/client.py</code>、<code>app/frontend/services/{errors,auth_service,search_service,action_log_service,notification_service,application_service}.py</code>、<code>app/frontend/repositories/{employees,activities,clubs,club_members,events,applications,messages,notifications,action_logs}_repo.py</code></li>
+<li>スキーマ: <code>supabase/migrations/202609280001_create_initial_schema.sql</code>、<code>202609300001_action_logs_apply_requires_club.sql</code></li>
+<li>背景文書: <code>実装ガイド/I-F契約.md</code>（0.1、0.4、1.2）、<code>実装ガイド/環境セットアップ.md</code>（2〜3章）、<code>仕様.md</code>（SP-07、SP-11 ほか）、<code>要件.md</code>（N-05）、<code>ナレッジ/実践ナレッジ.md</code></li>
+</ul>
+      <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
+      <div class="callout">
+<ul>
+<li>Wave0 の #8 の作成作業そのもの（プロジェクトの作成手順の実施記録）は、手順書（<code>環境セットアップ.md</code>）から読み取った内容であり、実施結果は確認していない。</li>
+<li>各 repository / service のテスト結果・合格状況は確認していない。この記事は挙動の解説であり、品質保証ではない。</li>
+<li><code>auth_service.login</code> で ID 不在時にも <code>compare_digest</code> を実行する意図、repository の <code>date.today()</code> と service の JST 日付のずれが実害になるか、N+1 の性能影響は、いずれも未確認。</li>
+<li>画面層（<code>screens/</code>）の実装との結合は、この記事の範囲外。</li>
+<li>技術監修（だーあさ本人・terao による内容確認）は未実施。</li>
+</ul>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>
