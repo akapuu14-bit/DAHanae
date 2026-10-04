@@ -47,6 +47,7 @@ _DEFAULTS = {
     "target_club_id": lambda: None,  # 画面間で受け渡す対象ID
     "target_event_id": lambda: None,
     "target_application_id": lambda: None,
+    "target_employee_id": lambda: None,  # 社員プロフィール(S09)で開く社員
     "unread_count": lambda: 0,  # サイドバーに出す未読件数
     "pending_application_context": lambda: None,  # 申込完了画面(S05)に渡す直前の申込内容
 }
@@ -93,7 +94,7 @@ def logout():
     init()
 
 
-def go(page, *, club_id=None, event_id=None, application_id=None):
+def go(page, *, club_id=None, event_id=None, application_id=None, employee_id=None):
     """別の画面へ移る（設計 D-02, D-03, D-05）。
 
     いまの画面を page_history に積んでから current_page を書き換え、再描画する。
@@ -112,6 +113,8 @@ def go(page, *, club_id=None, event_id=None, application_id=None):
         st.session_state["target_event_id"] = event_id
     if application_id is not None:
         st.session_state["target_application_id"] = application_id
+    if employee_id is not None:
+        st.session_state["target_employee_id"] = employee_id
     st.rerun()
 
 

@@ -14,3 +14,14 @@ def record_search(employee_id, conditions):
         return
     _last[employee_id] = dict(conditions)
     records.append((employee_id, dict(conditions)))
+
+
+_last_view = {}  # 社員ID -> 直前に記録した部活ID
+
+
+def record_view_club(employee_id, club_id):
+    """部活詳細の閲覧履歴（SP-32）。同じ部活を連続で開き直したときは記録しない。"""
+    if _last_view.get(employee_id) == club_id:
+        return
+    _last_view[employee_id] = club_id
+    records.append((employee_id, {"view_club": club_id}))

@@ -12,6 +12,9 @@ get_this_week_clubs / get_popular_clubs は、ホーム（SP-16, SP-17）に必�
 
 from datetime import date, timedelta
 
+from mocks import application_service
+from services.errors import NotFoundError
+
 
 def _club(club_id, icon, name, location, slot, mood_tags, fee, after_activity, level, days):
     return {
@@ -116,3 +119,110 @@ def search_clubs(conditions):
     hits = [club for club in _search_pool() if _matches(club, conditions)]
     hits.sort(key=lambda c: (c["next_event_date"] is None, c["next_event_date"] or date.max, c["club_id"]))
     return [{key: club[key] for key in _CARD_KEYS} for club in hits]
+
+
+# ---------------------------------------------------------------------------
+# 部活詳細（SP-24〜SP-28, T-F08）用の仮データ
+# 本物の関数は I-F契約 にまだ無い。画面が必要とする形をこちらから提案して仮に置いている
+#   get_club_detail(club_id, viewer_id) -> dict   （だーあさに契約への追加を依頼中）
+# ---------------------------------------------------------------------------
+
+# club_id -> (頻度, 社会人から始めた人, 費用の補足, 道具の貸し出し, 持ち物の補足, 途中参加, 幹事ID, 幹事名, 幹事の部署, 入社年, 入社区分)
+_DETAIL_INFO = {
+    1: ("毎週", "多い", "体育館代の割り勘", "あり", "動きやすい服装・室内シューズ", "OK", "E201", "高橋 美咲", "営業部", 2019, "新卒"),
+    2: ("月2回", "少しいる", None, "あり", "なし", "OK", "E202", "中村 健", "開発部", 2017, "中途"),
+    3: ("毎週", "多い", "マット代込み", "あり", "飲み物・タオル", "できれば最初から", "E203", "小林 彩", "人事部", 2020, "新卒"),
+    4: ("毎週", "少しいる", "コート代込み", "なし", "バスケットシューズ", "要相談", "E204", "加藤 直人", "営業部", 2015, "中途"),
+    5: ("月2回", "いない", None, "あり", "なし", "OK", "E205", "吉田 恒一", "経理部", 2012, "新卒"),
+    6: ("月1回", "多い", None, "なし", "カメラ（スマホでもOK）", "OK", "E206", "山口 優", "企画部", 2018, "異動"),
+    7: ("毎週", "多い", "コート代の割り勘", "あり", "運動靴・飲み物", "OK", "E207", "松本 翔", "開発部", 2021, "新卒"),
+    8: ("不定期", "少しいる", None, "なし", "読みたい本1冊", "要相談", "E208", "井上 里奈", "総務部", 2016, "中途"),
+}
+
+# 参加者・メンバーの顔ぶれ（ダミー）
+_PEOPLE = [
+    ("E101", "佐藤 太郎", "営業部"), ("E102", "鈴木 花子", "開発部"), ("E103", "田中 一郎", "人事部"),
+    ("E104", "伊藤 美穂", "経理部"), ("E105", "渡辺 大輔", "企画部"), ("E106", "山本 由美", "総務部"),
+]
+
+# 活動時間（slot）ごとの開始・終了
+_TIMES = {"平日夜": ("19:00", "20:30"), "土曜午前": ("10:00", "11:30"), "土曜午後": ("14:00", "15:30"), "日曜": ("10:00", "12:00")}
+_PLACES = {"東京": "東京オフィス 1F ロビー", "大阪": "大阪オフィス 受付前"}
+_CANCELED_EVENT_IDS = {32}  # ヨガ部の2回目は中止（確認用）
+_NO_MEETING_TIME_IDS = {82}  # 集合時刻なし（確認用）
+
+
+def _events_of(club):
+    """その部活の今日以降の開催3回分（日付順）。開催IDは 部活ID×10+1〜3。"""
+    start, end = _TIMES[club["slot"]]
+    events = []
+    for n, offset in enumerate((1, 8, 15), start=1):
+        event_id = club["club_id"] * 10 + n
+        events.append({
+            "event_id": event_id,
+            "club_id": club["club_id"],
+            "event_date": date.today() + timedelta(days=club["club_id"] + offset),
+            "start_time": start,
+            "end_time": end,
+            "meeting_place": _PLACES[club["location"]],
+            "meeting_time": None if event_id in _NO_MEETING_TIME_IDS else start,
+            "status": "中止" if event_id in _CANCELED_EVENT_IDS else "予定",
+        })
+    return events
+
+
+def find_event(event_id):
+    """開催IDから開催を探す（仮の申込サービスが使う）。無ければ None。"""
+    for club in _search_pool():
+        for event in _events_of(club):
+            if event["event_id"] == event_id:
+                return event
+    return None
+
+
+def _participants_of(event, viewer_id):
+    """参加者のリスト。中止の開催は空。デモの申込（applied）も含める。"""
+    if event["status"] != "予定":
+        return []
+    people = [{"id": pid, "name": name, "is_first_time": index == 0}
+              for index, (pid, name, _dept) in enumerate(_PEOPLE[: 2 + event["event_id"] % 3])]
+    for event_id, employee_id in sorted(application_service.applied):
+        if event_id == event["event_id"] and employee_id not in {p["id"] for p in people}:
+            people.append({"id": employee_id, "name": f"デモ社員 {employee_id}", "is_first_time": True})
+    return [dict(p, is_self=(p["id"] == viewer_id)) for p in people]
+
+
+def get_club_detail(club_id, viewer_id):
+    """部活詳細に必要な情報をまとめて返す（SP-24〜SP-28）。部活が無ければ NotFoundError。"""
+    club = next((c for c in _search_pool() if c["club_id"] == club_id), None)
+    if club is None:
+        raise NotFoundError(f"club {club_id}")
+    (frequency, starters, fee_note, rental, belongings, join_leave,
+     organizer_id, organizer_name, organizer_dept, joined_year, entry_type) = _DETAIL_INFO[club_id]
+    _category, _activity, message = _SEARCH_INFO[club_id]
+
+    events = []
+    for event in _events_of(club):
+        participants = _participants_of(event, viewer_id)
+        events.append(dict(
+            event,
+            participant_count=len(participants),
+            first_timer_count=sum(1 for p in participants if p["is_first_time"]),
+            participants=participants,
+            my_application="申込済み" if (event["event_id"], viewer_id) in application_service.applied else None,
+        ))
+    members = [{"id": pid, "name": name, "dept": dept} for pid, name, dept in _PEOPLE]
+    return {
+        "club": {
+            "club_id": club_id, "name": club["name"], "icon": club["icon"], "location": club["location"],
+            "slot": club["slot"], "schedule_note": None, "frequency": frequency, "level": club["level"],
+            "fact_adult_starters": starters, "mood_tags": club["mood_tags"], "message": message,
+            "fee": club["fee"], "fee_note": fee_note, "rental": rental, "belongings_note": belongings,
+            "join_leave": join_leave, "after_activity": club["after_activity"],
+        },
+        "member_count": len(members) + 1,
+        "organizer": {"id": organizer_id, "name": organizer_name, "dept": organizer_dept,
+                      "joined_year": joined_year, "entry_type": entry_type},
+        "members": members,
+        "events": events,
+    }
