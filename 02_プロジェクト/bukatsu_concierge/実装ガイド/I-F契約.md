@@ -45,7 +45,7 @@
 
 ## 1. services（5本）
 
-### 1.1 `services/auth_service.py`（対応SP: SP-63, SP-11）
+### 1.1 `services/auth_service.py`（対応SP: SP-01, SP-63, SP-11）
 
 ```
 login(employee_id: str, password: str) -> dict
@@ -58,6 +58,15 @@ get_role(employee_id: str, club_id: int | None = None) -> str
     戻り値: "admin"（employees.is_admin=True） / "organizer"（club_idが指定され、その部活のclubs.organizer_idと一致） / "member"（それ以外）。
     club_id を省略した場合、is_admin のみで "admin" / "member" を返す（幹事判定はclub_id必須）。
     例外: club_id を指定したが該当する部活が存在しない場合は NotFoundError。
+
+is_organizer(employee_id: str) -> bool
+    「部活を指定せず、その社員がどこかの部活の幹事か」を判定する（SP-01：サイドバーの「部活の管理」は幹事・運営者にのみ表示）。
+    戻り値: どこかの部活で clubs.organizer_id が employee_id と一致すれば True、1件も一致しなければ False。
+    運営者（employees.is_admin）かどうかは見ない（運営者の判定は get_role の "admin"）。サイドバーの表示可否は get_role(employee_id) == "admin" または is_organizer(employee_id) で決める。
+    例外: なし（該当する社員・部活がなくても False を返す）。
+    実装方針: clubs_repo.list_by_organizer(employee_id)（2.3に既存）が1件以上返せば True とする。新規のrepository関数は不要。
+    根拠: SP-01、SP-77（幹事は clubs.organizer_id で持つ）、設計.md 5.6（get_role は is_admin と clubs.organizer_id を見る。幹事は担当部活のみ）。
+    get_role の club_id=None の挙動（is_admin のみで "admin" / "member"）は変えない。
 ```
 
 ### 1.2 `services/search_service.py`（対応SP: SP-16, SP-17, SP-64, SP-65, SP-75）
