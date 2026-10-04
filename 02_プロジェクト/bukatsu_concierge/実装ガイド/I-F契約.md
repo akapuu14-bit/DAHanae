@@ -60,7 +60,7 @@ get_role(employee_id: str, club_id: int | None = None) -> str
     例外: club_id を指定したが該当する部活が存在しない場合は NotFoundError。
 ```
 
-### 1.2 `services/search_service.py`（対応SP: SP-16, SP-17, SP-64, SP-65, SP-75）
+### 1.2 `services/search_service.py`（対応SP: SP-16, SP-17, SP-26, SP-27, SP-28, SP-64, SP-65, SP-75）
 
 ```
 search_clubs(conditions: dict) -> list[dict]
@@ -101,6 +101,25 @@ get_popular_clubs() -> list[dict]
     件数の絞り込み（SP-17の「上位3件」）は行わない。集計できた部活を順位つきですべて返し、先頭3件の切り出し（[:3]）と0件時の案内文は画面側が持つ。
     同数のときの並び：仕様に定めがないため、club_id の昇順で決める（テスト・表示を毎回同じにするためだけの決め。順位は通し番号とし同順位は作らない）。
     例外: なし（0件のときは空リスト）。
+
+get_club_detail(club_id: int, viewer_id: str) -> dict
+    部活詳細（S04）の表示に必要な情報をまとめて返す読み取り専用の関数（SP-26, SP-27, SP-28）。書き込みや操作履歴の記録は行わない（view_club の記録は下記「記録の分離」のとおり画面側が別に呼ぶ）。
+    引数: viewer_id は閲覧している本人の社員ID。参加者の「あなた」印（is_self）と申込済み表示（is_applied）の判定にだけ使う。
+    戻り値のキー:
+      "club"(dict): clubs_repo.get(club_id) の全列（仕様.md 3.1）。主キーのみ "id" ではなく "club_id" に読み替える（部活カードdictと同じ。"id" キーは含めない）。
+      "organizer"(dict): 幹事。キーは "id", "name", "dept", "joined_year", "entry_type"（employees の列名。SP-28）。employees_repo.get_by_id(clubs.organizer_id) から必要な列だけを取り出す。
+      "members"(list[dict]): 所属メンバー。各dictは "id", "name", "dept"（SP-28）。club_members_repo.list_members(club_id) の employee_id ごとに employees_repo.get_by_id で名前・部署を解決する。幹事も club_members に登録される（SP-77）ため、幹事本人も含まれる。
+      "member_count"(int): len(members)。
+      "events"(list[dict]): 今日以降の開催を日付順（同日はid順）。events_repo.list_upcoming_by_club(club_id) の順序のまま。各dictのキー:
+        "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time), "status"("予定" | "中止"),
+        "participant_count"(int), "first_timer_count"(int), "participants"(list[dict]), "is_applied"(bool)。
+        "participants" の各dictは "id"(申込者の社員ID), "name", "is_first_time"(bool), "is_self"(bool, id == viewer_id)。applications.id 順。
+        "is_applied": viewer_id 本人が、その開催に状態「申込済み」の申込を持つか（= participants のどれかが is_self）。SP-27 のボタン出し分け（予定・未申込→「申し込む」／予定・申込済み→「申込済み」／中止→「中止」でボタンなし）は、この値と "status" で画面側が決める。
+    集計: "participant_count" は participants の件数、"first_timer_count" はそのうち is_first_time が true の件数（SP-26「参加人数（うち初参加人数）」）。applications_repo.list_participants は状態「申込済み」の申込だけを返すため、キャンセルは自然に除かれる。集計はservice内で行い、repositoryに集計関数は足さない。
+    所要時間（SP-26）は start_time と end_time から画面側が計算する（キーは設けない）。
+    公開範囲: employees の行には is_admin・available_slots・各公開設定などが含まれるが、上に列挙したキー以外は返さない（画面に渡す項目を契約で固定するため）。
+    例外: NotFoundError（club_id に該当する部活が存在しない）。
+    記録の分離（SP-32, SP-76）: 部活詳細を開いたときの view_club は、画面（screens）が action_log_service.record_view_club(employee_id, club_id) を別に呼ぶ。get_club_detail の中では呼ばない（読み取り関数に副作用を混ぜない。再描画のたびに関数が呼ばれても記録が増えないようにするため）。連続して同じ部活を開いた場合の二重記録防止は SP-76 どおり record_view_club 側が持つ。
 ```
 
 ### 1.3 `services/application_service.py`（対応SP: SP-66〜SP-68, SP-72）
@@ -207,7 +226,7 @@ update(club_id: int, data: dict) -> None
 
 ```
 is_member(club_id: int, employee_id: str) -> bool
-list_members(club_id: int) -> list[dict]
+list_members(club_id: int) -> list[dict]                # club_members の行のみ（employee_id, joined_at）。名前・部署は含まない
 add_member(club_id: int, employee_id: str, joined_at=None) -> None
 remove_member(club_id: int, employee_id: str) -> None
 ```
@@ -234,7 +253,7 @@ update_status(application_id: int, status: str, *, canceled_at=None, confirmed_a
 has_past_non_canceled(club_id: int, employee_id: str) -> bool
 list_by_applicant(applicant_id: str) -> list[dict]
 list_by_organizer_club(club_id: int) -> list[dict]
-list_participants(event_id: int) -> list[dict]            # 開催の参加者一覧（初参加印つき）
+list_participants(event_id: int) -> list[dict]            # 状態「申込済み」の申込を id 順で。各dictは applications の行（applicant_id, is_first_time 等）＋ "employees"（申込者の社員行）
 ```
 
 ### 2.7 `repositories/messages_repo.py`（messages）
