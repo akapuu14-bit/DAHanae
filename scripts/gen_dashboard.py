@@ -205,7 +205,7 @@ def fmt_dt(iso: str | None) -> str:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return iso
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return dt.astimezone(JST).strftime("%Y-%m-%d %H:%M JST")
 
 
 def area_chips(entry_areas: dict) -> str:
@@ -598,7 +598,7 @@ def main() -> int:
     prs = recent_merged_prs(items)
 
     html_out = PAGE_TEMPLATE.format(
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=datetime.now(JST).strftime("%Y-%m-%d %H:%M JST"),
         repo=html.escape(repo_full),
         assignee_cards=render_section(
             "担当者別 進捗",

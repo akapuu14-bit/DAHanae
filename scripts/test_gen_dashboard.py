@@ -388,5 +388,17 @@ class TestTidyDefaults(unittest.TestCase):
         self.assertNotIn("まだありません", out)
 
 
+
+class TestFmtDtJst(unittest.TestCase):
+    def test_utc_iso_is_shown_in_jst(self):
+        self.assertEqual(gd.fmt_dt("2026-10-04T17:40:00Z"), "2026-10-05 02:40 JST")
+
+    def test_offset_iso_is_converted_to_jst(self):
+        self.assertEqual(gd.fmt_dt("2026-10-04T08:00:00+00:00"), "2026-10-04 17:00 JST")
+
+    def test_empty_and_invalid(self):
+        self.assertEqual(gd.fmt_dt(None), "-")
+        self.assertEqual(gd.fmt_dt("not-a-date"), "not-a-date")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
