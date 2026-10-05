@@ -32,3 +32,12 @@ def login(employee_id, password):
         raise AuthenticationError()
 
     return {"id": normalized, "name": f"デモ社員 {normalized}", "dept": "デモ部"}
+
+
+def is_organizer(employee_id):
+    """幹事か（SP-35 の「届いた申込」タブ、SP-01 の「部活の管理」の出し分け用）。
+
+    部活を指定せずに「幹事かどうか」を返す関数は、I-F契約にまだ無い。こちらから提案する形で仮に置く。
+    デモでは E001 だけが幹事（バスケ部）。
+    """
+    return (employee_id or "").strip().upper() == "E001"
