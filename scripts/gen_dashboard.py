@@ -426,6 +426,23 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>部活コンシェルジュ 開発ダッシュボード</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a44">
+<meta name="description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="部活コンシェルジュ 開発ダッシュボード">
+<meta property="og:description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta property="og:url" content="https://akapuu14-bit.github.io/DAHanae/index.html">
+<meta property="og:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="部活コンシェルジュ 開発ダッシュボード">
+<meta name="twitter:description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta name="twitter:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
   :root {{
