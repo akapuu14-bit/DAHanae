@@ -226,3 +226,98 @@ def get_club_detail(club_id, viewer_id):
         "members": members,
         "events": events,
     }
+
+
+# ---------------------------------------------------------------------------
+# 社員検索（SP-47〜SP-52, T-F12）用の仮の検索
+# 本物の search_employees（I-F契約 1.2）と同じ引数・同じ戻り値の形にそろえてある。
+#   search_employees(conditions, requester_id, limit=20, offset=0) -> (list[dict], 全該当件数)
+# 契約に無いので、こちらから提案して仮に置いているもの（検索画面の選択肢を出すために必要）：
+#   list_departments()  … 部署の選択肢
+#   list_activities()   … 活動（興味）の選択肢 [{"id", "name"}]
+# ---------------------------------------------------------------------------
+
+def list_departments():
+    """【提案】部署の選択肢。"""
+    from mocks import profile_service
+
+    return profile_service.departments()
+
+
+def list_activities():
+    """【提案】活動（興味）の選択肢。"""
+    from mocks import profile_service
+
+    return [{"id": activity_id, "name": name} for activity_id, name in profile_service.ACTIVITIES]
+
+
+def _visibility(is_public, is_self):
+    """本物と同じ：公開なら "public"、非公開でも本人なら "self_private"、他人には "hidden"。"""
+    if is_public:
+        return "public"
+    return "self_private" if is_self else "hidden"
+
+
+def _employee_matches(row, conditions):
+    """項目間は AND、同じ項目の複数選択は OR（SP-48）。非公開の項目は条件にしたとき除外（SP-49）。"""
+    name = "".join((conditions.get("name") or "").split())
+    if name and name not in "".join(row["name"].split()):
+        return False
+    if conditions.get("depts") and row["dept"] not in conditions["depts"]:
+        return False
+    if conditions.get("locations") and row["location"] not in conditions["locations"]:
+        return False
+    if conditions.get("interests"):
+        if not row["interests_public"]:
+            return False
+        if not {i["activity_id"] for i in row["interests"]} & set(conditions["interests"]):
+            return False
+    if conditions.get("slots"):
+        if not row["slots_public"]:
+            return False
+        if not set(row["available_slots"]) & set(conditions["slots"]):
+            return False
+    club_id = conditions.get("club_id")
+    if club_id is not None and club_id not in row["_club_ids"]:
+        return False
+    return True
+
+
+def search_employees(conditions, requester_id, limit=20, offset=0):
+    """社員検索（SP-65）。(ページ分の社員dictリスト, 全該当件数) を返す。社員ID順。"""
+    from mocks import profile_service
+
+    conditions = conditions or {}
+    requester = (requester_id or "").strip().upper()
+    names = {c["club_id"]: c["name"] for c in _search_pool()}
+    activity_names = dict(profile_service.ACTIVITIES)
+
+    rows = []
+    for employee_id in profile_service.employee_ids():
+        name, dept, location, joined_year, entry_type = profile_service._basic(employee_id)
+        own = profile_service.employee_state(employee_id)
+        rows.append({
+            "id": employee_id, "name": name, "dept": dept, "location": location,
+            "joined_year": joined_year, "entry_type": entry_type,
+            "available_slots": list(own["slots"]),
+            "interests_public": own["interests_public"], "slots_public": own["slots_public"],
+            "interests": [dict(i, activity_name=activity_names[i["activity_id"]]) for i in own["interests"]],
+            "_club_ids": profile_service.memberships(employee_id),
+        })
+
+    hits = [row for row in rows if _employee_matches(row, conditions)]
+    results = []
+    for row in hits[offset: offset + limit]:
+        is_self = row["id"] == requester
+        interests_vis = _visibility(row["interests_public"], is_self)
+        slots_vis = _visibility(row["slots_public"], is_self)
+        result = {k: v for k, v in row.items() if k != "_club_ids"}
+        result.update({
+            "interests": None if interests_vis == "hidden" else row["interests"],
+            "interests_visibility": interests_vis,
+            "available_slots": None if slots_vis == "hidden" else row["available_slots"],
+            "slots_visibility": slots_vis,
+            "clubs": [{"club_id": c, "name": names[c]} for c in row["_club_ids"] if c in names],
+        })
+        results.append(result)
+    return results, len(hits)
