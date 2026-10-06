@@ -15,6 +15,7 @@ from repositories import (
     employees_repo,
     events_repo,
 )
+from services.errors import NotFoundError
 
 _JST = ZoneInfo("Asia/Tokyo")
 _EVENT_OPEN = "予定"
@@ -230,3 +231,71 @@ def search_employees(
             }
         )
     return results, total
+
+
+_ORGANIZER_KEYS = ("id", "name", "dept", "joined_year", "entry_type")
+_EVENT_KEYS = (
+    "event_date",
+    "start_time",
+    "end_time",
+    "meeting_place",
+    "meeting_time",
+    "status",
+)
+
+
+def get_club_detail(club_id: int, viewer_id: str) -> dict:
+    """部活詳細（S04）の表示に必要な情報をまとめて返す読み取り専用の関数（SP-26, SP-27, SP-28, I-F契約 1.2）。
+
+    書き込みや操作履歴の記録はしない（view_club は画面が record_view_club を別に呼ぶ）。
+    is_active=false の部活も返す（PM 裁定）。参加者・人数は状態「申込済み」のみ、中止開催も
+    participants に含める。viewer_id は "is_self" と "is_applied" の判定だけに使う。
+    employees の行は I-F契約に列挙した列だけを返す。
+    例外: NotFoundError（club_id の部活が存在しない）。
+    """
+    club = clubs_repo.get(club_id)
+    if club is None:
+        raise NotFoundError(f"club_id={club_id}")
+    viewer = (viewer_id or "").strip().upper()
+
+    organizer_row = employees_repo.get_by_id(club["organizer_id"])
+    organizer = (
+        {key: organizer_row.get(key) for key in _ORGANIZER_KEYS} if organizer_row else None
+    )
+
+    members = []
+    for member in club_members_repo.list_members(club_id):
+        row = employees_repo.get_by_id(member["employee_id"])
+        if row is not None:
+            members.append({"id": row["id"], "name": row["name"], "dept": row["dept"]})
+
+    events = []
+    for event in events_repo.list_upcoming_by_club(club_id):
+        participants = [
+            {
+                "id": a["applicant_id"],
+                "name": a["employees"]["name"],
+                "is_first_time": bool(a["is_first_time"]),
+                "is_self": a["applicant_id"].upper() == viewer,
+            }
+            for a in applications_repo.list_participants(event["id"])
+        ]
+        events.append(
+            {
+                "event_id": event["id"],
+                **{key: event[key] for key in _EVENT_KEYS},
+                "participant_count": len(participants),
+                "first_timer_count": sum(1 for p in participants if p["is_first_time"]),
+                "participants": participants,
+                "is_applied": any(p["is_self"] for p in participants),
+            }
+        )
+
+    club_dict = {("club_id" if key == "id" else key): value for key, value in club.items()}
+    return {
+        "club": club_dict,
+        "organizer": organizer,
+        "members": members,
+        "member_count": len(members),
+        "events": events,
+    }
