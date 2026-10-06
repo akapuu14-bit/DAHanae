@@ -133,9 +133,11 @@ def _render_event(event, detail, employee_id):
         if event.get("meeting_time"):
             meeting += f"　集合 {_hhmm(event['meeting_time'])}"
         st.write(f"集合：{meeting}")
-        st.write(f"参加：{event['participant_count']}名（うち初参加 {event['first_timer_count']}名）")
-        if event["participants"]:
-            st.caption("参加者：" + "、".join(_participant_label(p) for p in event["participants"]))
+        # 中止の開催では参加人数・参加者を出さない（本物は中止でも返すので、画面で出し分ける。#91 の決定）
+        if event["status"] == "予定":
+            st.write(f"参加：{event['participant_count']}名（うち初参加 {event['first_timer_count']}名）")
+            if event["participants"]:
+                st.caption("参加者：" + "、".join(_participant_label(p) for p in event["participants"]))
 
         _render_action(event, detail, employee_id)
 
@@ -145,7 +147,7 @@ def _render_action(event, detail, employee_id):
     if event["status"] != "予定":
         st.write("中止")  # ボタンなし
         return
-    if event["my_application"] == "申込済み":
+    if event["is_applied"]:  # 契約（#91）：自分がその開催に申込済みか（True / False）
         st.write("✅ 申込済み")  # キャンセルはメッセージ画面から
         return
     if st.button("申し込む", key=f"club_detail_apply_{event['event_id']}"):
@@ -215,8 +217,10 @@ def _render_people(detail):
     if st.button("プロフィールを見る", key="club_detail_organizer"):
         state.go(state.EMPLOYEE_PROFILE, employee_id=organizer["id"])
 
+    # 本物の members には幹事本人も含まれる。幹事は上の「幹事」欄に出すので、ここでは除く（人数は幹事を含む。#91 の決定）
+    members = [m for m in detail["members"] if m["id"] != organizer["id"]]
     with st.expander(f"メンバー（{detail['member_count']}名）"):
-        for member in detail["members"]:
+        for member in members:
             if st.button(f"{member['name']}（{member['dept']}）", key=f"club_detail_member_{member['id']}"):
                 state.go(state.EMPLOYEE_PROFILE, employee_id=member["id"])
 

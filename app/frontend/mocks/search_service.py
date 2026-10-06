@@ -181,9 +181,7 @@ def find_event(event_id):
 
 
 def _participants_of(event, viewer_id):
-    """参加者のリスト。中止の開催は空。デモの申込（applied）も含める。"""
-    if event["status"] != "予定":
-        return []
+    """参加者のリスト。本物と同じく、中止の開催でも返す（画面で出し分ける）。デモの申込（applied）も含める。"""
     people = [{"id": pid, "name": name, "is_first_time": index == 0}
               for index, (pid, name, _dept) in enumerate(_PEOPLE[: 2 + event["event_id"] % 3])]
     for event_id, employee_id in sorted(application_service.applied):
@@ -209,9 +207,11 @@ def get_club_detail(club_id, viewer_id):
             participant_count=len(participants),
             first_timer_count=sum(1 for p in participants if p["is_first_time"]),
             participants=participants,
-            my_application="申込済み" if (event["event_id"], viewer_id) in application_service.applied else None,
+            is_applied=any(p["is_self"] for p in participants),  # 契約（#91）：True / False
         ))
-    members = [{"id": pid, "name": name, "dept": dept} for pid, name, dept in _PEOPLE]
+    # 本物と同じく、members には幹事本人も含める（契約 #91）
+    members = [{"id": organizer_id, "name": organizer_name, "dept": organizer_dept}]
+    members += [{"id": pid, "name": name, "dept": dept} for pid, name, dept in _PEOPLE if pid != organizer_id]
     return {
         "club": {
             "club_id": club_id, "name": club["name"], "icon": club["icon"], "location": club["location"],
@@ -220,7 +220,7 @@ def get_club_detail(club_id, viewer_id):
             "fee": club["fee"], "fee_note": fee_note, "rental": rental, "belongings_note": belongings,
             "join_leave": join_leave, "after_activity": club["after_activity"],
         },
-        "member_count": len(members) + 1,
+        "member_count": len(members),
         "organizer": {"id": organizer_id, "name": organizer_name, "dept": organizer_dept,
                       "joined_year": joined_year, "entry_type": entry_type},
         "members": members,
