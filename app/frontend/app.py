@@ -47,9 +47,12 @@ def _render_sidebar():
         dept=employee.get("dept", ""),
         employee_id=employee_id,
         unread_count=notification_service.count_unread(employee_id),
-        # 仕様 SP-01 は「幹事・運営者」。いまの get_role(社員ID) だけでは
-        # 幹事を判定できないため、運営者(admin)のみ。幹事の判定は契約の確定待ち。
-        can_manage=auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN,
+        # 仕様 SP-01：「部活の管理」は幹事・運営者に出す。
+        # 運営者は get_role、幹事（どこかの部活の担当）は is_organizer で判定する。
+        can_manage=(
+            auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN
+            or auth_service.is_organizer(employee_id)
+        ),
     )
 
 
