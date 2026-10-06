@@ -167,7 +167,7 @@ send_message(application_id: int, sender_id: str, body: str) -> None
     送信できる人: その申込の申込者本人（applications.applicant_id）と、その申込の部活の幹事（clubs.organizer_id）のみ。運営者（is_admin）でも、どちらでもない社員は送れない。
     処理: messages_repo.insert(application_id, sender_id, body) で保存し、相手に種別「メッセージ」の通知を1件送る。
       - 申込者が送ったとき → 通知の宛先は部活の幹事。幹事が送ったとき → 宛先は申込者。
-      - notification_service.notify(recipient_id, "メッセージ", application_id=application_id, body=...) を呼ぶ（通知の本文 body の文言はservice内で組み立ててよい。仕様.md 4.9）。
+      - notification_service.notify(recipient_id, "メッセージ", application_id=application_id, body=...) を呼ぶ。通知の body は「新しいメッセージがあります」に固定する（宛先が幹事でも申込者でも同じ。他の種別の文言「新しい申込があります」「申込がキャンセルされました」「幹事が確認しました」と同じく、service内で文言を組み立てず固定文を渡す）。
       - 申込者が幹事本人（幹事が自分の部活の開催に申し込んでいる）の場合、相手がいないため通知は送らない（apply と同じ扱い。メッセージの保存だけ行う）。
     body: 前後の空白を除いた文字列を保存する。空文字・空白のみは ValidationError。長さの上限は仕様に無いため、この契約では設けない。
     戻り値: なし（保存した messages の id は返さない。画面は list_my_applications / list_received_applications を取り直して表示する）。
