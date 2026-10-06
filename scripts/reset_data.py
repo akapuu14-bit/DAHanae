@@ -22,7 +22,7 @@ import os
 import random
 import sys
 from collections import Counter
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # 乱数の種。固定する（N-08）。変えると、作られるデータが全部変わる。
@@ -279,6 +279,38 @@ DEMO_NEWCOMER = {
 }
 
 
+# ---- 開催の作り方（PM 決定 2026-10-07） ----
+# 開催の状態は「予定」「中止」の2種類だけ。過去の開催は、状態「予定」で日付が過去のもの。
+PAST_DAYS = 30  # 基準日の何日前までの、過去の開催を作るか
+FUTURE_DAYS = 56  # 基準日の何日先（8週）までの、未来の開催を作るか
+PAST_EVENTS_MAX = 2  # 1部活あたりの過去の開催数（0〜2件）
+FUTURE_EVENTS_MIN = 2  # 1部活あたりの未来の開催数（2〜4件）
+FUTURE_EVENTS_MAX = 4
+NO_EVENT_CLUB_COUNT = 2  # 未来の開催をゼロにする部活の数（「予定なし」の確認用）
+THIS_WEEK_CLUB_COUNT = 4  # 基準日〜今週の日曜に開催が1件ある部活の数（「今週」の確認用）
+CANCEL_RATE = 0.1  # 未来の開催のうち、中止にする割合
+MEETING_TIME_NONE_RATE = 0.5  # 集合時間を空にする割合（空でも画面が落ちないかの確認用）
+MEETING_BEFORE_MINUTES = 15  # 集合時間は、開始の何分前か
+
+# 部活の slot ごとの、開催できる曜日（月曜=0 … 日曜=6）と、開始・終了の時刻
+SLOT_WEEKDAYS = {
+    "平日夜": [0, 1, 2, 3, 4],
+    "土曜午前": [5],
+    "土曜午後": [5],
+    "日曜": [6],
+}
+SLOT_TIMES = {
+    "平日夜": ("19:00", "21:00"),
+    "土曜午前": ("10:00", "12:00"),
+    "土曜午後": ("14:00", "16:00"),
+    "日曜": ("10:00", "12:00"),
+}
+# 集合場所の候補（仮案。拠点ごと）
+MEETING_PLACES = {
+    "東京": ["本社ビル1階ロビー", "最寄り駅の改札前", "会場の入口前"],
+    "大阪": ["大阪支社1階ロビー", "最寄り駅の改札前", "会場の入口前"],
+}
+
 def apply_demo_overrides(employees: list[dict]) -> None:
     """デモ用の E001（新入社員）の参加可能時間と公開設定を固定する。"""
     e001 = employees[0]
@@ -366,6 +398,98 @@ def make_interests(
     return interests
 
 
+def dates_between(start: date, end: date, slot: str) -> list[date]:
+    """start から end まで（両端を含む）の日付のうち、部活の slot で開催できる曜日のものを返す。"""
+    days = (end - start).days + 1
+    candidates = [start + timedelta(days=i) for i in range(days)]
+    return [d for d in candidates if d.weekday() in SLOT_WEEKDAYS[slot]]
+
+
+def minus_minutes(hhmm: str, minutes: int) -> str:
+    """'19:00' のような時刻の文字列から、指定した分数を引いた時刻（'18:45'）を返す。"""
+    t = datetime.strptime(hhmm, "%H:%M") - timedelta(minutes=minutes)
+    return t.strftime("%H:%M")
+
+
+def make_events(rng: random.Random, clubs: list[dict], base_date: date) -> list[dict]:
+    """開催を作る。日付は 'YYYY-MM-DD'、時刻は 'HH:MM' の文字列で持つ。
+
+    過去の開催は、状態「予定」で日付が基準日より前のもの（状態に「終了」は無い）。
+    "club" は部活名。DB に入れるときに club_id に置き換える。
+    """
+    this_sunday = base_date + timedelta(days=6 - base_date.weekday())  # 今週の日曜
+
+    # 未来の開催をゼロにする部活（「予定なし」の確認用）。E002 のテニス部は除く
+    names = [c["name"] for c in clubs]
+    no_event = set(rng.sample([n for n in names if n != E002_CLUB], NO_EVENT_CLUB_COUNT))
+
+    # 基準日〜今週の日曜に、開催を1件入れる部活（「今週」の確認用）
+    week_candidates = [
+        c["name"]
+        for c in clubs
+        if c["name"] not in no_event and dates_between(base_date, this_sunday, c["slot"])
+    ]
+    this_week = set(
+        rng.sample(week_candidates, min(THIS_WEEK_CLUB_COUNT, len(week_candidates)))
+    )
+
+    events = []
+    protected = set()  # 中止にしない開催（今週の確認用）の番号
+    for c in clubs:
+        slot = c["slot"]
+        start, end = SLOT_TIMES[slot]
+
+        # 過去：基準日の PAST_DAYS 日前から前日まで
+        past_dates = dates_between(
+            base_date - timedelta(days=PAST_DAYS), base_date - timedelta(days=1), slot
+        )
+        past = rng.sample(past_dates, min(rng.randint(0, PAST_EVENTS_MAX), len(past_dates)))
+
+        # 未来：基準日から FUTURE_DAYS 日先まで
+        future = []
+        week_date = None
+        if c["name"] not in no_event:
+            count = rng.randint(FUTURE_EVENTS_MIN, FUTURE_EVENTS_MAX)
+            if c["name"] in this_week:
+                week_date = rng.choice(dates_between(base_date, this_sunday, slot))
+                future.append(week_date)
+            rest = [
+                d
+                for d in dates_between(base_date, base_date + timedelta(days=FUTURE_DAYS), slot)
+                if d != week_date
+            ]
+            future += rng.sample(rest, min(count - len(future), len(rest)))
+
+        for d in sorted(past) + sorted(future):
+            if d == week_date:
+                protected.add(len(events))
+            if rng.random() < MEETING_TIME_NONE_RATE:
+                meeting_time = None
+            else:
+                meeting_time = minus_minutes(start, MEETING_BEFORE_MINUTES)
+            events.append(
+                {
+                    "club": c["name"],
+                    "event_date": d.isoformat(),
+                    "start_time": start,
+                    "end_time": end,
+                    "meeting_place": rng.choice(MEETING_PLACES[c["location"]]),
+                    "meeting_time": meeting_time,
+                    "status": "予定",
+                }
+            )
+
+    # 未来の開催の一部を中止にする（今週の確認用の開催は除く）
+    cancelable = [
+        i
+        for i, e in enumerate(events)
+        if e["event_date"] >= base_date.isoformat() and i not in protected
+    ]
+    cancel_count = max(1, round(len(cancelable) * CANCEL_RATE))
+    for i in rng.sample(cancelable, cancel_count):
+        events[i]["status"] = "中止"
+    return events
+
 def validate_membership(
     employees: list[dict],
     clubs: list[dict],
@@ -427,6 +551,82 @@ def validate_membership(
     if problems:
         raise ValueError("データの検査で問題が見つかりました:\n" + "\n".join(problems))
 
+
+def validate_events(clubs: list[dict], events: list[dict], base_date: date) -> None:
+    """開催のデータが、DB の制約や PM 決定どおりかを確かめる。間違いはまとめて表示して止まる。"""
+    problems = []
+    club_of = {c["name"]: c for c in clubs}
+    base = base_date.isoformat()
+    past_limit = (base_date - timedelta(days=PAST_DAYS)).isoformat()
+    future_limit = (base_date + timedelta(days=FUTURE_DAYS)).isoformat()
+    this_sunday = (base_date + timedelta(days=6 - base_date.weekday())).isoformat()
+
+    for e in events:
+        label = f"{e['club']} {e['event_date']}"
+        c = club_of.get(e["club"])
+        if c is None:
+            problems.append(f"{label}: 部活が一覧にありません")
+            continue
+        d = date.fromisoformat(e["event_date"])
+        if d.weekday() not in SLOT_WEEKDAYS[c["slot"]]:
+            problems.append(f"{label}: 曜日が部活の slot（{c['slot']}）と合いません")
+        if (e["start_time"], e["end_time"]) != SLOT_TIMES[c["slot"]]:
+            problems.append(f"{label}: 開始・終了の時刻が slot と合いません")
+        if not e["end_time"] > e["start_time"]:
+            problems.append(f"{label}: 終了時刻が開始時刻より後ではありません")
+        if e["meeting_place"] not in MEETING_PLACES[c["location"]]:
+            problems.append(f"{label}: 集合場所 {e['meeting_place']!r} が候補にありません")
+        meeting_time = e["meeting_time"]
+        if meeting_time is not None and meeting_time != minus_minutes(
+            e["start_time"], MEETING_BEFORE_MINUTES
+        ):
+            problems.append(f"{label}: 集合時間が開始の {MEETING_BEFORE_MINUTES} 分前ではありません")
+        if e["status"] not in ("予定", "中止"):
+            problems.append(f"{label}: 状態 {e['status']!r} は選択肢にありません")
+        if e["event_date"] < base:
+            if e["status"] != "予定":
+                problems.append(f"{label}: 過去の開催の状態が「予定」ではありません")
+            if e["event_date"] < past_limit:
+                problems.append(f"{label}: {PAST_DAYS} 日より前の開催があります")
+        elif e["event_date"] > future_limit:
+            problems.append(f"{label}: {FUTURE_DAYS} 日より先の開催があります")
+
+    keys = [(e["club"], e["event_date"]) for e in events]
+    if len(keys) != len(set(keys)):
+        problems.append("同じ部活に同じ日の開催が2件あります")
+
+    past_count = Counter(e["club"] for e in events if e["event_date"] < base)
+    future_count = Counter(e["club"] for e in events if e["event_date"] >= base)
+    for name in club_of:
+        if past_count[name] > PAST_EVENTS_MAX:
+            problems.append(f"{name}: 過去の開催が {past_count[name]} 件あります")
+        n = future_count[name]
+        if n and not (FUTURE_EVENTS_MIN <= n <= FUTURE_EVENTS_MAX):
+            problems.append(f"{name}: 未来の開催の件数 {n} が範囲外です")
+    no_future = [name for name in club_of if future_count[name] == 0]
+    if len(no_future) != NO_EVENT_CLUB_COUNT:
+        problems.append(f"未来の開催がない部活は {NO_EVENT_CLUB_COUNT} 個のはずですが {len(no_future)} 個です")
+    if E002_CLUB in no_future:
+        problems.append(f"{E002_CLUB} に未来の開催がありません（E002 のデモ用）")
+
+    this_week_clubs = {
+        e["club"]
+        for e in events
+        if base <= e["event_date"] <= this_sunday and e["status"] == "予定"
+    }
+    if not this_week_clubs:
+        problems.append("今週（基準日〜日曜）に開催がある部活がありません")
+    canceled = [e for e in events if e["status"] == "中止"]
+    if not canceled:
+        problems.append("中止の開催がありません")
+    if any(e["event_date"] < base for e in canceled):
+        problems.append("過去の開催が中止になっています")
+    none_count = sum(e["meeting_time"] is None for e in events)
+    if none_count == 0 or none_count == len(events):
+        problems.append("集合時間が空の開催と、入っている開催の両方が必要です")
+
+    if problems:
+        raise ValueError("データの検査で問題が見つかりました:\n" + "\n".join(problems))
 
 def print_membership_summary(
     clubs: list[dict],
@@ -711,6 +911,45 @@ def print_club_summary(
     print(f"  指紋: {fingerprint(clubs)}")
 
 
+def print_event_summary(clubs: list[dict], events: list[dict], base_date: date) -> None:
+    """作った開催データの件数や内訳を表示する（目で確認するため）。"""
+    base = base_date.isoformat()
+    this_sunday = (base_date + timedelta(days=6 - base_date.weekday())).isoformat()
+    weekday = "月火水木金土日"
+
+    def label(e: dict) -> str:
+        d = date.fromisoformat(e["event_date"])
+        return (
+            f"{e['club']} {e['event_date']}（{weekday[d.weekday()]}）"
+            f"{e['start_time']}〜{e['end_time']} {e['status']}"
+        )
+
+    past = [e for e in events if e["event_date"] < base]
+    future = [e for e in events if e["event_date"] >= base]
+    this_week = [e for e in events if base <= e["event_date"] <= this_sunday]
+
+    print()
+    print(f"■ 開催（{len(events)}件）")
+    print(f"  過去: {len(past)}件 / 未来: {len(future)}件")
+    print("  状態:", dict(Counter(e["status"] for e in events)))
+    print(f"  集合時間が空: {sum(e['meeting_time'] is None for e in events)}件")
+    print("  集合場所:", dict(Counter(e["meeting_place"] for e in events)))
+    print(f"  今週（{base}〜{this_sunday}）の開催: {len(this_week)}件")
+    for e in this_week:
+        print(f"    {label(e)}")
+    print("  中止の開催:")
+    for e in events:
+        if e["status"] == "中止":
+            print(f"    {label(e)}")
+    print("  部活ごとの件数（過去 / 未来）:")
+    for c in clubs:
+        p = sum(1 for e in past if e["club"] == c["name"])
+        f = sum(1 for e in future if e["club"] == c["name"])
+        note = "  ← 未来の開催なし" if f == 0 else ""
+        print(f"    {c['name']}: {p} / {f}{note}")
+    print(f"  指紋: {fingerprint(events)}")
+
+
 def main() -> None:
     args = parse_args()
     rng = random.Random(SEED)  # 以降のデータ作りは、この乱数だけを使う
@@ -732,10 +971,13 @@ def main() -> None:
     members = make_club_members(rng, employees, clubs, organizers)
     interests = make_interests(rng, employees, clubs, members)
     validate_membership(employees, clubs, organizers, members, interests)
+    events = make_events(rng, clubs, args.base_date)
+    validate_events(clubs, events, args.base_date)
 
     print_employee_summary(employees)
     print_club_summary(activities, clubs, args.show_clubs)
     print_membership_summary(clubs, employees, organizers, members, interests)
+    print_event_summary(clubs, events, args.base_date)
 
 
 if __name__ == "__main__":
