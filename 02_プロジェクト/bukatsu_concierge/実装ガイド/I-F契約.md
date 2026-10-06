@@ -4,7 +4,7 @@
 
 ## 0. 本書の位置づけと決定事項
 
-`設計.md`（層分離・5フロー）・`仕様.md`（SP-01〜SP-78）を一次情報に、`services/` 5本・`repositories/` 9本の関数シグネチャを1つに確定する。フロント（あかぷ／mirin）・バックエンド（だーあさ／terao）ともに、この契約に従って実装する。契約にない呼び方（別の引数名・別の戻り値形式）は使わない。
+`設計.md`（層分離・5フロー）・`仕様.md`（SP-01〜SP-78）を一次情報に、`services/` 6本・`repositories/` 9本の関数シグネチャを1つに確定する。フロント（あかぷ／mirin）・バックエンド（だーあさ／terao）ともに、この契約に従って実装する。契約にない呼び方（別の引数名・別の戻り値形式）は使わない。
 
 ### 0.1 今日の衝突（関数 vs クラス）の解消
 
@@ -43,7 +43,7 @@
 
 画面側（`screens/*.py`）は、これらの例外を`try/except`で受け、仕様.mdに定めるエラーメッセージ文言（例：SP-11「社員IDかパスワードが違います。入力内容を確認してください」）を表示する。**エラーメッセージの文言はservice層では組み立てず、画面側で例外の種類に応じて仕様書どおりの文言を出す**（文言をservice/repositoryに持たせると、画面ごとの文言差異（例：SP-31の「すでに申し込み済みです」と「この開催には申し込みできません」の出し分け）に対応しづらいため）。
 
-## 1. services（5本）
+## 1. services（6本）
 
 ### 1.1 `services/auth_service.py`（対応SP: SP-01, SP-63, SP-11）
 
@@ -130,40 +130,6 @@ get_club_detail(club_id: int, viewer_id: str) -> dict
     公開範囲: employees の行には is_admin・available_slots・各公開設定などが含まれるが、上に列挙したキー以外は返さない（画面に渡す項目を契約で固定するため）。
     例外: NotFoundError（club_id に該当する部活が存在しない）。
     記録の分離（SP-32, SP-76）: 部活詳細を開いたときの view_club は、画面（screens）が action_log_service.record_view_club(employee_id, club_id) を別に呼ぶ。get_club_detail の中では呼ばない（読み取り関数に副作用を混ぜない。再描画のたびに関数が呼ばれても記録が増えないようにするため）。連続して同じ部活を開いた場合の二重記録防止は SP-76 どおり record_view_club 側が持つ。
-
-get_profile(employee_id: str, viewer_id: str) -> dict
-    社員プロフィール（S09）の表示に必要な情報をまとめて返す読み取り専用の関数（SP-53, SP-54, SP-55, SP-65）。書き込みや操作履歴の記録は行わない（操作履歴の対象は SP-76 の search_club / view_club / apply のみで、プロフィール閲覧は含まれない）。
-    引数: viewer_id は閲覧している本人の社員ID。is_self の判定と、非公開項目を他人に渡さない判断（SP-54, SP-65）に使う。employee_id・viewer_id とも大文字小文字を区別しない（get_by_id と同じ）。
-    戻り値のキー:
-      "employee"(dict): "id", "name", "dept", "location", "joined_year", "entry_type"（employees の列名。SP-53）。これ以外の列（is_admin・available_slots・公開設定の列など）は含めない。
-      "is_self"(bool): employee の id が viewer_id と一致するか。
-      "interests"(list[dict] | None): employees_repo.get_interests(employee_id) の戻り値（"activity_id", "activity_name", "level"）。interests_public が false で is_self が false のときは None（値を渡さない。画面は None を「非公開」と表示する）。本人（is_self）には公開設定にかかわらず値を返す。
-      "interests_public"(bool): employees.interests_public。本人の画面が「（他の人には非公開）」の表示と切り替えスイッチの初期値に使う（SP-56, SP-65）。他人が閲覧する場合も返すが、画面は本人のときだけ使う。
-      "available_slots"(list[str] | None): employees.available_slots。slots_public が false で is_self が false のときは None。本人には常に値を返す。
-      "slots_public"(bool): employees.slots_public。"interests_public" と同じ扱い。
-      "clubs"(list[dict]): 所属部活の部活カードdict（search_clubs と同じキー）。club_members に employee_id が登録されている部活のうち is_active=true のもの。並びは club_id 昇順。"next_event_date" の定義も search_clubs と同じ。SP-55 の「3.3と同じ形」のカード表示に使う。
-    例外: NotFoundError（employee_id に該当する社員が存在しない）。
-    非公開の扱い: 「非公開なら他人には値を渡さない」判断はこのservice関数が行う（画面で出し分けない）。search_employees の visibility（public / self_private / hidden）と同じ考え方で、interests・available_slots の値が None のときが「他人には非公開」に当たる。名前・部署・拠点・入社年・入社区分・所属部活は常に全員に返す（SP-65）。
-    実装方針: employees_repo.get_by_id・get_interests、club_members 経由の所属部活取得（club_members_repo に「社員の所属部活ID一覧」を返す関数が無いため、2.4に list_clubs_by_member を追加する。下記）、clubs_repo.get で部活カードdictを組み立てる。
-
-update_public_settings(employee_id: str, requester_id: str, *, interests_public: bool | None = None, slots_public: bool | None = None) -> None
-    プロフィール画面（S09）の公開・非公開の切り替え保存（SP-56。切り替えた時点で保存する）。2.1の employees_repo.update_public_settings（既出）を呼ぶservice側の入口で、新しいrepository関数は不要。
-    権限: 本人のみ。requester_id が employee_id と一致しない（大文字小文字は区別しない）場合は PermissionDeniedError（運営者・幹事でも他人の公開設定は変えられない）。
-    None を渡した項目は変更しない（repository と同じ）。両方 None のときは何もしない。
-    例外: PermissionDeniedError / NotFoundError（employee_id に該当する社員が存在しない）。
-    画面側: 画面は requester_id にログイン中の社員ID（state の employee_id）、employee_id に表示中のプロフィールの社員IDを渡す。SP-56 のとおり切り替えスイッチは本人が閲覧する場合しか出さないため、通常は両者が一致する。
-
-save_profile(employee_id: str, requester_id: str, interests: list[dict], available_slots: list[str]) -> None
-    プロフィール画面（S09）の「興味・経験」と「参加可能時間」の編集保存（SP-57、Should）。employee_interests の置き換え保存と、employees.available_slots の更新を行う。
-    引数: interests は [{"activity_id": int, "level": str}, ...]（employees_repo.set_interests と同じ形）。available_slots は仕様.md 3.2 の選択肢（"平日夜" | "土曜午前" | "土曜午後" | "日曜"）の値のリスト。どちらも空リストを許す（全部外す＝0件にする）。
-    権限: 本人のみ。requester_id が employee_id と一致しない場合は PermissionDeniedError。
-    検証（呼び出し順に employees_repo を呼ぶ前にすべて行い、1つでも不正なら何も保存しない）:
-      - interests の activity_id が activities に存在しない、level が仕様.md 3.2 の選択肢（"未経験" | "初心者" | "経験あり"）にない → ValidationError
-      - interests に同じ activity_id が複数ある → ValidationError（employee_id × activity_id は重複不可。employees_repo.set_interests の「同一 activity_id は後勝ち」にはここでは頼らず、service が弾く）
-      - available_slots に選択肢外の値がある、または同じ値が重複している → ValidationError
-    保存: employees_repo.set_interests(employee_id, interests) と、新設の employees_repo.set_available_slots(employee_id, available_slots)（2.1）を呼ぶ。
-    例外: PermissionDeniedError / ValidationError / NotFoundError（employee_id に該当する社員が存在しない）。
-    注意: 2つの保存は別テーブルへの書き込みで、まとめて1トランザクションにはしない（Supabaseクライアントの制約）。検証を先に済ませるのは、不正入力で片方だけ保存される事態を避けるため。
 
 list_departments() -> list[str]
     社員検索（S08）の部署の選択肢（SP-48）用。employees.dept の重複を除いた値を、五十音順ではなく文字列の昇順（Python の sorted と同じ）で返す。部署の独立したマスタテーブルは無い（仕様.md 3.1）ため、employees から導く。
@@ -265,6 +231,46 @@ record_apply(employee_id: str, club_id: int) -> None
 
 「直前に記録した内容」の比較は、`action_logs_repo.get_last(employee_id, action)` でDBから取得した最新の記録と比較する方式に統一する（`session_state`での比較は、アプリ再起動やタブ跨ぎで壊れるため採用しない。設計.md 5.5の記述は本書で以下のとおり確定・上書きする：比較はDB参照で行う）。
 
+### 1.6 `services/profile_service.py`（対応SP: SP-53〜SP-57, SP-65）
+
+本人のプロフィール（S09）の参照と更新を担当する6本目のservice。search_service は「探す・見る」ための参照（部活・社員の検索や詳細）、profile_service は「ある社員のプロフィールの参照（get_profile）と、本人による更新（update_public_settings / save_profile）」を持つ。更新は本人のみが行え、他人の更新・参照の公開判断はこのserviceが持つ。社員検索の一覧（search_employees）は引き続き search_service。
+
+```
+get_profile(employee_id: str, viewer_id: str) -> dict
+    社員プロフィール（S09）の表示に必要な情報をまとめて返す読み取り専用の関数（SP-53, SP-54, SP-55, SP-65）。書き込みや操作履歴の記録は行わない（操作履歴の対象は SP-76 の search_club / view_club / apply のみで、プロフィール閲覧は含まれない）。
+    引数: viewer_id は閲覧している本人の社員ID。is_self の判定と、非公開項目を他人に渡さない判断（SP-54, SP-65）に使う。employee_id・viewer_id とも大文字小文字を区別しない（get_by_id と同じ）。
+    戻り値のキー:
+      "employee"(dict): "id", "name", "dept", "location", "joined_year", "entry_type"（employees の列名。SP-53）。これ以外の列（is_admin・available_slots・公開設定の列など）は含めない。
+      "is_self"(bool): employee の id が viewer_id と一致するか。
+      "interests"(list[dict] | None): employees_repo.get_interests(employee_id) の戻り値（"activity_id", "activity_name", "level"）。interests_public が false で is_self が false のときは None（値を渡さない。画面は None を「非公開」と表示する）。本人（is_self）には公開設定にかかわらず値を返す。
+      "interests_public"(bool): employees.interests_public。本人の画面が「（他の人には非公開）」の表示と切り替えスイッチの初期値に使う（SP-56, SP-65）。他人が閲覧する場合も返すが、画面は本人のときだけ使う。
+      "available_slots"(list[str] | None): employees.available_slots。slots_public が false で is_self が false のときは None。本人には常に値を返す。
+      "slots_public"(bool): employees.slots_public。"interests_public" と同じ扱い。
+      "clubs"(list[dict]): 所属部活の部活カードdict（search_clubs と同じキー）。club_members に employee_id が登録されている部活のうち is_active=true のもの。並びは club_id 昇順。"next_event_date" の定義も search_clubs と同じ。SP-55 の「3.3と同じ形」のカード表示に使う。
+    例外: NotFoundError（employee_id に該当する社員が存在しない）。
+    非公開の扱い: 「非公開なら他人には値を渡さない」判断はこのservice関数が行う（画面で出し分けない）。search_employees の visibility（public / self_private / hidden）と同じ考え方で、interests・available_slots の値が None のときが「他人には非公開」に当たる。名前・部署・拠点・入社年・入社区分・所属部活は常に全員に返す（SP-65）。
+    実装方針: employees_repo.get_by_id・get_interests、club_members_repo.list_clubs_by_member（2.4に新規追加。その社員の所属部活ID一覧）、clubs_repo.get で部活カードdictを組み立てる。
+
+update_public_settings(employee_id: str, requester_id: str, *, interests_public: bool | None = None, slots_public: bool | None = None) -> None
+    プロフィール画面（S09）の公開・非公開の切り替え保存（SP-56。切り替えた時点で保存する）。2.1の employees_repo.update_public_settings（既出）を呼ぶservice側の入口で、新しいrepository関数は不要。
+    権限: 本人のみ。requester_id が employee_id と一致しない（大文字小文字は区別しない）場合は PermissionDeniedError（運営者・幹事でも他人の公開設定は変えられない）。
+    None を渡した項目は変更しない（repository と同じ）。両方 None のときは何もしない。
+    例外: PermissionDeniedError / NotFoundError（employee_id に該当する社員が存在しない）。
+    画面側: 画面は requester_id にログイン中の社員ID（state の employee_id）、employee_id に表示中のプロフィールの社員IDを渡す。SP-56 のとおり切り替えスイッチは本人が閲覧する場合しか出さないため、通常は両者が一致する。
+
+save_profile(employee_id: str, requester_id: str, interests: list[dict], available_slots: list[str]) -> None
+    プロフィール画面（S09）の「興味・経験」と「参加可能時間」の編集保存（SP-57、Should）。employee_interests の置き換え保存と、employees.available_slots の更新を行う。
+    引数: interests は [{"activity_id": int, "level": str}, ...]（employees_repo.set_interests と同じ形）。available_slots は仕様.md 3.2 の選択肢（"平日夜" | "土曜午前" | "土曜午後" | "日曜"）の値のリスト。どちらも空リストを許す（全部外す＝0件にする）。
+    権限: 本人のみ。requester_id が employee_id と一致しない場合は PermissionDeniedError。
+    検証（呼び出し順に employees_repo を呼ぶ前にすべて行い、1つでも不正なら何も保存しない）:
+      - interests の activity_id が activities に存在しない、level が仕様.md 3.2 の選択肢（"未経験" | "初心者" | "経験あり"）にない → ValidationError
+      - interests に同じ activity_id が複数ある → ValidationError（employee_id × activity_id は重複不可。employees_repo.set_interests の「同一 activity_id は後勝ち」にはここでは頼らず、service が弾く）
+      - available_slots に選択肢外の値がある、または同じ値が重複している → ValidationError
+    保存: employees_repo.set_interests(employee_id, interests) と、新設の employees_repo.set_available_slots(employee_id, available_slots)（2.1）を呼ぶ。
+    例外: PermissionDeniedError / ValidationError / NotFoundError（employee_id に該当する社員が存在しない）。
+    注意: 2つの保存は別テーブルへの書き込みで、まとめて1トランザクションにはしない（Supabaseクライアントの制約）。検証を先に済ませるのは、不正入力で片方だけ保存される事態を避けるため。
+```
+
 ## 2. repositories（9本）
 
 各`repositories/*.py`はSQL/Supabaseクエリの組み立てをここに閉じ込め、`services/`からのみ呼ばれる。画面（`screens/*.py`）からrepositoriesを直接呼ばない。
@@ -278,11 +284,11 @@ count(conditions: dict) -> int
 update_public_settings(employee_id: str, *, interests_public: bool | None = None, slots_public: bool | None = None) -> None
 get_interests(employee_id: str) -> list[dict]           # [{"activity_id":..,"activity_name":..,"level":..}, ...]
 set_interests(employee_id: str, interests: list[dict]) -> None   # SP-57（Should）の編集保存用
-set_available_slots(employee_id: str, available_slots: list[str]) -> None   # 【新規追加】SP-57（Should）。employees.available_slots を置き換え保存する。空リストは「0件にする」。検証（選択肢・重複）は service 層（save_profile）で済ませるため、repository は値をそのまま保存する
+set_available_slots(employee_id: str, available_slots: list[str]) -> None   # 【新規追加】SP-57（Should）。employees.available_slots を置き換え保存する。空リストは「0件にする」。検証（選択肢・重複）は service 層（profile_service.save_profile）で済ませるため、repository は値をそのまま保存する
 list_departments() -> list[str]                           # 【新規追加】employees.dept の重複を除いた値を昇順で返す。部署マスタは無いため employees から導く。search_service.list_departments が呼ぶ
 ```
 
-`update_public_settings` は既出のとおり（上記）。プロフィール画面からの呼び出しは、本人確認を行う `search_service.update_public_settings(employee_id, requester_id, ...)`（1.2）を経由する。screens から employees_repo を直接呼ばない。
+`update_public_settings` は既出のとおり（上記）。プロフィール画面からの呼び出しは、本人確認を行う `profile_service.update_public_settings(employee_id, requester_id, ...)`（1.6）を経由する。screens から employees_repo を直接呼ばない。
 
 ### 2.2 `repositories/activities_repo.py`（activities）
 
@@ -309,7 +315,7 @@ is_member(club_id: int, employee_id: str) -> bool
 list_members(club_id: int) -> list[dict]                # club_members の行のみ（employee_id, joined_at）。名前・部署は含まない
 add_member(club_id: int, employee_id: str, joined_at=None) -> None
 remove_member(club_id: int, employee_id: str) -> None
-list_clubs_by_member(employee_id: str) -> list[int]       # 【新規追加】その社員が所属する部活の club_id を昇順で返す。所属なしは空リスト。search_service.get_profile の所属部活カード用
+list_clubs_by_member(employee_id: str) -> list[int]       # 【新規追加】その社員が所属する部活の club_id を昇順で返す。所属なしは空リスト。profile_service.get_profile の所属部活カード用
 ```
 
 ### 2.5 `repositories/events_repo.py`（events）
