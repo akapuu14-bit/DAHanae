@@ -53,3 +53,13 @@ def get_role(employee_id: str, club_id: int | None = None) -> str:
     if club is not None and club["organizer_id"] == employee["id"]:
         return ROLE_ORGANIZER
     return ROLE_MEMBER
+
+
+def is_organizer(employee_id: str) -> bool:
+    """部活を指定せず、どこかの部活の幹事（clubs.organizer_id が一致）なら True を返す（SP-01）。
+
+    運営者（is_admin）かどうかは見ない。サイドバーの「部活の管理」は
+    get_role(employee_id) == ROLE_ADMIN または is_organizer(employee_id) で出し分ける（I-F契約 1.1）。
+    該当する社員・部活がなくても、例外にせず False を返す。
+    """
+    return len(clubs_repo.list_by_organizer(_normalize_id(employee_id))) > 0
