@@ -950,6 +950,344 @@ def print_event_summary(clubs: list[dict], events: list[dict], base_date: date) 
     print(f"  指紋: {fingerprint(events)}")
 
 
+# ---- 申込の作り方（PM 決定 2026-10-07） ----
+# 申込の状態は「申込済み」「キャンセル」の2種類だけ。ID は DB の自動採番に任せるので、
+# 申込が指す開催は、events リストの番号（"event"）で持つ。
+APP_SEED_OFFSET = 1  # 申込専用の乱数。開催までの指紋を変えないために、別の乱数にする
+APP_PAST_COUNT = 25  # 過去の開催への申込の数
+APP_FUTURE_COUNT = 35  # 未来の開催への申込の数（E001 の2件、中止の開催への申込を含む）
+APP_CANCEL_PAST = 3  # 過去の開催への申込のうち、キャンセルの数
+APP_CANCEL_FUTURE = 3  # 未来の開催への申込のうち、キャンセルの数（E001 の1件を含む）
+APP_MEMBER_PAST = 2  # 部活のメンバーが、自分の部活の過去の開催に申し込む件数
+APP_MEMBER_FUTURE = 3  # 同じく、未来の開催に申し込む件数
+APP_REPEAT_COUNT = 5  # 同じ部活の過去と未来の両方に申し込む外部の人の数（組）
+APP_CANCELED_EVENT_COUNT = 2  # 中止の開催への申込の数
+APP_E002_INBOUND = 2  # E001 以外から、E002 の部活（テニス部）の未来の開催に入る申込の数
+APP_CONFIRM_RATE_PAST = 0.8  # 過去の「申込済み」のうち、幹事が確認済みの割合
+APP_CONFIRM_RATE_FUTURE = 0.3  # 未来の「申込済み」のうち、幹事が確認済みの割合
+APP_DAYS_MAX = 14  # 申込日は、開催日（未来は基準日）の何日前までか
+APPLIED_HOURS = (9, 18)  # 申込した時刻（時）。確認・キャンセルは19時台にして、必ず後になるようにする
+LATER_HOUR = 19
+TZ_SUFFIX = "+09:00"
+
+
+def stamp(d: date, rng: random.Random, later: bool = False) -> str:
+    """日付に時刻を付けて、timestamptz に入れる文字列にする。"""
+    hour = LATER_HOUR if later else rng.randint(*APPLIED_HOURS)
+    return f"{d.isoformat()}T{hour:02d}:{rng.randint(0, 59):02d}:00{TZ_SUFFIX}"
+
+
+def make_applications(
+    employees: list[dict],
+    clubs: list[dict],
+    organizers: dict[str, str],
+    members: list[dict],
+    events: list[dict],
+    base_date: date,
+) -> list[dict]:
+    """申込を作る。"event" は events リストの番号。DB に入れるときに event_id に置き換える。"""
+    rng = random.Random(SEED + APP_SEED_OFFSET)
+    base = base_date.isoformat()
+    club_of = {c["name"]: c for c in clubs}
+    member_ids = {c["name"]: set() for c in clubs}
+    for m in members:
+        member_ids[m["club"]].add(m["employee_id"])
+    excluded = {"E001", "E003"} | set(organizers.values())
+    pool = {
+        loc: sorted(e["id"] for e in employees if e["location"] == loc and e["id"] not in excluded)
+        for loc in LOCATIONS
+    }
+
+    past_idx = [i for i, e in enumerate(events) if e["event_date"] < base]
+    open_idx = [i for i, e in enumerate(events) if e["event_date"] >= base and e["status"] == "予定"]
+    stop_idx = [i for i, e in enumerate(events) if e["event_date"] >= base and e["status"] == "中止"]
+    tennis_open = [i for i in open_idx if events[i]["club"] == E002_CLUB]
+    if len(tennis_open) < 2:
+        raise ValueError(f"{E002_CLUB}の未来の「予定」の開催が2件ありません（E001 の申込に必要）")
+
+    apps = []  # {"event", "applicant_id", "kind"}。kind は作り方の区別（あとで状態を決める）
+    taken = set()
+
+    def add(event: int, applicant: str, kind: str) -> None:
+        taken.add((event, applicant))
+        apps.append({"event": event, "applicant_id": applicant, "kind": kind})
+
+    def outsider(event: int) -> str:
+        """その部活のメンバーでも幹事でもない、同じ拠点の社員を選ぶ。"""
+        club = events[event]["club"]
+        candidates = pool[club_of[club]["location"]]
+        for _ in range(500):
+            who = rng.choice(candidates)
+            if who not in member_ids[club] and (event, who) not in taken:
+                return who
+        raise ValueError(f"{club}の開催に申し込める社員が見つかりません")
+
+    # 1) E001：テニス部の未来の「予定」の開催に2件（日付が早い方が「申込済み」、遅い方が「キャンセル」）
+    first, second = sorted(rng.sample(tennis_open, 2), key=lambda i: events[i]["event_date"])
+    add(first, "E001", "e001_active")
+    add(second, "E001", "e001_canceled")
+
+    # 2) リピーター：同じ部活の過去と未来の両方に申し込む外部の人
+    repeat_clubs = sorted(
+        {events[i]["club"] for i in past_idx} & {events[i]["club"] for i in open_idx}
+    )
+    for club in rng.sample(repeat_clubs, APP_REPEAT_COUNT):
+        past_event = rng.choice([i for i in past_idx if events[i]["club"] == club])
+        who = outsider(past_event)
+        add(past_event, who, "repeat_past")
+        future_event = rng.choice([i for i in open_idx if events[i]["club"] == club])
+        add(future_event, who, "repeat_future")
+
+    # 3) メンバー：自分の部活の開催に申し込む（幹事は除く）
+    def member_app(event_list: list[int], kind: str) -> None:
+        for _ in range(500):
+            event = rng.choice(event_list)
+            club = events[event]["club"]
+            candidates = sorted(member_ids[club] - {organizers[club]})
+            who = rng.choice(candidates)
+            if (event, who) not in taken:
+                add(event, who, kind)
+                return
+        raise ValueError("メンバーの申込が作れません")
+
+    for _ in range(APP_MEMBER_PAST):
+        member_app(past_idx, "member_past")
+    for _ in range(APP_MEMBER_FUTURE):
+        member_app(open_idx, "member_future")
+
+    # 4) 中止の開催への申込（人気集計から除かれるかの確認用）
+    for _ in range(APP_CANCELED_EVENT_COUNT):
+        event = rng.choice(stop_idx)
+        add(event, outsider(event), "stopped_event")
+
+    # 5) E002（テニス部の幹事）に届く申込
+    for _ in range(APP_E002_INBOUND):
+        event = rng.choice(tennis_open)
+        add(event, outsider(event), "e002_inbound")
+
+    # 6) 残りを、外部の人の申込で埋める
+    past_rest = APP_PAST_COUNT - sum(a["kind"].endswith("_past") for a in apps)
+    future_rest = APP_FUTURE_COUNT - (len(apps) - sum(a["kind"].endswith("_past") for a in apps))
+    if past_rest < 0 or future_rest < 0:
+        raise ValueError("申込の件数の設定が、決まった作り方の合計より小さくなっています")
+    for _ in range(past_rest):
+        event = rng.choice(past_idx)
+        add(event, outsider(event), "fill_past")
+    for _ in range(future_rest):
+        event = rng.choice(open_idx)
+        add(event, outsider(event), "fill_future")
+
+    # 7) キャンセルにする申込を決める（E001 の1件は決まっているので、その分を引く）
+    cancel_ids = set()
+    for kind, count in (("fill_past", APP_CANCEL_PAST), ("fill_future", APP_CANCEL_FUTURE - 1)):
+        pickable = [i for i, a in enumerate(apps) if a["kind"] == kind]
+        cancel_ids |= set(rng.sample(pickable, count))
+
+    # 8) 状態と日時を決める
+    result = []
+    for i, a in enumerate(apps):
+        event = events[a["event"]]
+        event_day = date.fromisoformat(event["event_date"])
+        is_past = event["event_date"] < base
+        if is_past:
+            applied_day = event_day - timedelta(days=rng.randint(1, APP_DAYS_MAX))
+        else:
+            applied_day = base_date - timedelta(days=rng.randint(1, APP_DAYS_MAX))
+        # 確認・キャンセルは、申込日から「開催日の前日か基準日の早い方」までの間
+        limit = min(event_day - timedelta(days=1), base_date)
+        later_day = applied_day + timedelta(days=rng.randint(0, (limit - applied_day).days))
+
+        canceled = i in cancel_ids or a["kind"] == "e001_canceled"
+        confirmed = False
+        if not canceled and a["kind"] != "e001_active" and event["status"] == "予定":
+            confirmed = rng.random() < (APP_CONFIRM_RATE_PAST if is_past else APP_CONFIRM_RATE_FUTURE)
+        result.append(
+            {
+                "event": a["event"],
+                "applicant_id": a["applicant_id"],
+                "status": "キャンセル" if canceled else "申込済み",
+                "is_first_time": True,  # 次の手順で決める
+                "applied_at": stamp(applied_day, rng),
+                "canceled_at": stamp(later_day, rng, later=True) if canceled else None,
+                "confirmed_at": stamp(later_day, rng, later=True) if confirmed else None,
+            }
+        )
+
+    # 9) 初参加かどうか：application_service と同じ考え方（その部活のメンバーでなく、
+    #    それより前に開かれた開催に、キャンセルしていない申込もない）
+    for a in result:
+        event = events[a["event"]]
+        cutoff = min(event["event_date"], base)
+        a["is_first_time"] = a["applicant_id"] not in member_ids[event["club"]] and not any(
+            b["applicant_id"] == a["applicant_id"]
+            and b["status"] != "キャンセル"
+            and events[b["event"]]["club"] == event["club"]
+            and events[b["event"]]["event_date"] < cutoff
+            for b in result
+        )
+
+    result.sort(key=lambda a: (a["applied_at"], a["event"], a["applicant_id"]))
+    return result
+
+def validate_applications(
+    employees: list[dict],
+    clubs: list[dict],
+    organizers: dict[str, str],
+    members: list[dict],
+    events: list[dict],
+    apps: list[dict],
+    base_date: date,
+) -> None:
+    """申込のデータが、DB の制約や PM 決定どおりかを確かめる。間違いはまとめて表示して止まる。"""
+    problems = []
+    base = base_date.isoformat()
+    employee_ids = {e["id"] for e in employees}
+    member_ids = {c["name"]: set() for c in clubs}
+    for m in members:
+        member_ids[m["club"]].add(m["employee_id"])
+
+    seen = set()
+    for a in apps:
+        label = f"申込（開催{a['event']}・{a['applicant_id']}）"
+        if not 0 <= a["event"] < len(events):
+            problems.append(f"{label}: 開催の番号が範囲外です")
+            continue
+        event = events[a["event"]]
+        club = event["club"]
+        if a["applicant_id"] not in employee_ids:
+            problems.append(f"{label}: 社員が存在しません")
+        if (a["event"], a["applicant_id"]) in seen:
+            problems.append(f"{label}: 同じ人が同じ開催に2回申し込んでいます")
+        seen.add((a["event"], a["applicant_id"]))
+        if a["applicant_id"] == "E003" or a["applicant_id"] == organizers[club]:
+            problems.append(f"{label}: 運営者と、その部活の幹事は申し込みません")
+        if a["status"] not in ("申込済み", "キャンセル"):
+            problems.append(f"{label}: 状態が不正です")
+        if (a["status"] == "キャンセル") != (a["canceled_at"] is not None):
+            problems.append(f"{label}: canceled_at は「キャンセル」のときだけ入ります")
+        if a["status"] == "キャンセル" and a["confirmed_at"] is not None:
+            problems.append(f"{label}: キャンセルに確認日時があります")
+        day = a["applied_at"][:10]
+        if not day < event["event_date"]:
+            problems.append(f"{label}: 申込日が開催日より前ではありません")
+        if not day < base:
+            problems.append(f"{label}: 申込日が基準日より前ではありません")
+        for key in ("canceled_at", "confirmed_at"):
+            if a[key] is not None:
+                if not a[key] > a["applied_at"]:
+                    problems.append(f"{label}: {key} が申込日時より後ではありません")
+                if not (a[key][:10] < event["event_date"] and a[key][:10] <= base):
+                    problems.append(f"{label}: {key} の日付が開催日・基準日と合いません")
+        if event["status"] == "中止" and a["confirmed_at"] is not None:
+            problems.append(f"{label}: 中止の開催に確認日時があります")
+
+        # 初参加の判定を、別の書き方で検算する
+        cutoff = min(event["event_date"], base)
+        earlier = [
+            b
+            for b in apps
+            if b["applicant_id"] == a["applicant_id"]
+            and b["status"] != "キャンセル"
+            and events[b["event"]]["club"] == club
+            and events[b["event"]]["event_date"] < cutoff
+        ]
+        expected = a["applicant_id"] not in member_ids[club] and not earlier
+        if a["is_first_time"] != expected:
+            problems.append(f"{label}: is_first_time が判定ルールと合いません")
+
+    def is_past(a: dict) -> bool:
+        return events[a["event"]]["event_date"] < base
+
+    past = [a for a in apps if is_past(a)]
+    future = [a for a in apps if not is_past(a)]
+    if len(past) != APP_PAST_COUNT:
+        problems.append(f"過去の開催への申込が {len(past)} 件です（{APP_PAST_COUNT} 件の予定）")
+    if len(future) != APP_FUTURE_COUNT:
+        problems.append(f"未来の開催への申込が {len(future)} 件です（{APP_FUTURE_COUNT} 件の予定）")
+    if sum(a["status"] == "キャンセル" for a in past) != APP_CANCEL_PAST:
+        problems.append("過去の開催のキャンセルの数が合いません")
+    if sum(a["status"] == "キャンセル" for a in future) != APP_CANCEL_FUTURE:
+        problems.append("未来の開催のキャンセルの数が合いません")
+    if any(a["status"] == "キャンセル" and events[a["event"]]["status"] == "中止" for a in apps):
+        problems.append("中止の開催への申込は、キャンセルにしない決まりです")
+    stopped = sum(events[a["event"]]["status"] == "中止" for a in apps)
+    if stopped != APP_CANCELED_EVENT_COUNT:
+        problems.append(f"中止の開催への申込が {stopped} 件です（{APP_CANCELED_EVENT_COUNT} 件の予定）")
+    member_apps = sum(a["applicant_id"] in member_ids[events[a["event"]]["club"]] for a in apps)
+    if member_apps != APP_MEMBER_PAST + APP_MEMBER_FUTURE:
+        problems.append(f"メンバーの申込が {member_apps} 件です")
+
+    e001 = [a for a in apps if a["applicant_id"] == "E001"]
+    if sorted(a["status"] for a in e001) != ["キャンセル", "申込済み"]:
+        problems.append("E001 の申込は、「申込済み」1件と「キャンセル」1件のはずです")
+    for a in e001:
+        e = events[a["event"]]
+        if e["club"] != E002_CLUB or e["status"] != "予定" or e["event_date"] < base:
+            problems.append(f"E001 の申込が、{E002_CLUB}の未来の「予定」の開催ではありません")
+        if not a["is_first_time"]:
+            problems.append("E001 の申込は、初参加のはずです")
+    inbound = [
+        a
+        for a in apps
+        if a["applicant_id"] != "E001"
+        and events[a["event"]]["club"] == E002_CLUB
+        and not is_past(a)
+        and a["status"] == "申込済み"
+    ]
+    if not inbound:
+        problems.append(f"{E002_CLUB}に、E001 以外からの未来の申込がありません")
+
+    if problems:
+        raise ValueError("データの検査で問題が見つかりました:\n" + "\n".join(problems))
+
+
+def print_application_summary(
+    clubs: list[dict],
+    events: list[dict],
+    members: list[dict],
+    apps: list[dict],
+    base_date: date,
+) -> None:
+    """作った申込データの件数や内訳を表示する（目で確認するため）。"""
+    base = base_date.isoformat()
+    member_ids = {c["name"]: set() for c in clubs}
+    for m in members:
+        member_ids[m["club"]].add(m["employee_id"])
+    past = [a for a in apps if events[a["event"]]["event_date"] < base]
+    future = [a for a in apps if events[a["event"]]["event_date"] >= base]
+
+    print()
+    print(f"■ 申込（{len(apps)}件）")
+    print(f"  過去の開催: {len(past)}件 / 未来の開催: {len(future)}件")
+    print("  状態:", dict(Counter(a["status"] for a in apps)))
+    print(
+        f"  初参加: {sum(a['is_first_time'] for a in apps)}件 / "
+        f"初参加でない: {sum(not a['is_first_time'] for a in apps)}件"
+    )
+    print(
+        "  メンバーが自分の部活の開催に申込: "
+        f"{sum(a['applicant_id'] in member_ids[events[a['event']]['club']] for a in apps)}件"
+    )
+    print(f"  幹事が確認済み: {sum(a['confirmed_at'] is not None for a in apps)}件")
+    print(f"  中止の開催への申込: {sum(events[a['event']]['status'] == '中止' for a in apps)}件")
+    print("  E001 の申込:")
+    for a in apps:
+        if a["applicant_id"] == "E001":
+            e = events[a["event"]]
+            print(f"    {e['club']} {e['event_date']} {a['status']}（初参加: {a['is_first_time']}）")
+    print(f"  {E002_CLUB}への申込（未来・E001 以外）:")
+    for a in apps:
+        e = events[a["event"]]
+        if e["club"] == E002_CLUB and a["applicant_id"] != "E001" and e["event_date"] >= base:
+            print(f"    {e['event_date']} {a['applicant_id']} {a['status']}")
+    print("  部活ごとの件数（過去 / 未来）:")
+    for c in clubs:
+        p = sum(1 for a in past if events[a["event"]]["club"] == c["name"])
+        f = sum(1 for a in future if events[a["event"]]["club"] == c["name"])
+        print(f"    {c['name']}: {p} / {f}")
+    print(f"  指紋: {fingerprint(apps)}")
+    
+
 def main() -> None:
     args = parse_args()
     rng = random.Random(SEED)  # 以降のデータ作りは、この乱数だけを使う
@@ -973,13 +1311,15 @@ def main() -> None:
     validate_membership(employees, clubs, organizers, members, interests)
     events = make_events(rng, clubs, args.base_date)
     validate_events(clubs, events, args.base_date)
+    applications = make_applications(employees, clubs, organizers, members, events, args.base_date)
+    validate_applications(employees, clubs, organizers, members, events, applications, args.base_date)
 
     print_employee_summary(employees)
     print_club_summary(activities, clubs, args.show_clubs)
     print_membership_summary(clubs, employees, organizers, members, interests)
     print_event_summary(clubs, events, args.base_date)
+    print_application_summary(clubs, events, members, applications, args.base_date)
 
 
 if __name__ == "__main__":
     main()
-    
