@@ -359,9 +359,15 @@ remove_club_member(club_id: int, requester_id: str, employee_id: str) -> None
 
 get_last_meeting_place(club_id: int) -> str | None
     開催追加フォーム（SP-60）の集合場所の初期値（前回の開催の集合場所）。events_repo.get_last_meeting_place(club_id) を呼ぶservice入口で、screens が events_repo を直接呼ばないための関数。開催が1件もない、または club_id に該当する部活がない場合は None（例外にしない）。権限の判定はしない（初期値の読み取りのみ。管理画面は権限のある人にしか開かれない）。
+list_selectable_employees(requester_id: str) -> list[dict]
+    部活管理画面（S10）の社員の選択肢。「幹事を選ぶ」（SP-59）と「メンバーを追加する」（SP-62）で使う。管理操作のための一覧なので、興味・参加可能時間の公開設定（SP-65）による表示制御は掛けず、全社員を返す。
+    戻り値: [{"id": str, "name": str}, ...]（全社員。キーは id と name のみ。部署などは含めない）。並びは name の昇順（文字列の昇順）、同名は id の昇順で固定する。0人なら空リスト。
+    権限: 運営者または幹事。幹事は「いずれかの部活の幹事」であればよい（club_id は渡さない）ため、判定は `get_role(requester_id) == "admin"` または `auth_service.is_organizer(requester_id)`（1.1）で行う。どちらでもない社員は PermissionDeniedError。
+    例外: PermissionDeniedError。
+    実装方針: 新設の employees_repo.list_all()（2.1）を呼ぶ。screens が employees_repo を直接呼ばないための service 経由の入口。
 ```
 
-使う既存repository（新規repository関数は不要）: clubs_repo（get / list_by_organizer / list_all_for_admin / create / update）、events_repo（get / list_upcoming_by_club / get_last_meeting_place / create / update / set_status）、club_members_repo（is_member / list_members / add_member / remove_member）、applications_repo（list_participants）、employees_repo（get_by_id）、activities_repo（get）。通知は notification_service.notify（1.4）。
+使うrepository（新規追加は employees_repo.list_all のみ。ほかは既存）: clubs_repo（get / list_by_organizer / list_all_for_admin / create / update）、events_repo（get / list_upcoming_by_club / get_last_meeting_place / create / update / set_status）、club_members_repo（is_member / list_members / add_member / remove_member）、applications_repo（list_participants）、employees_repo（get_by_id、list_selectable_employees 用に新規追加の list_all）、activities_repo（get）。通知は notification_service.notify（1.4）。
 
 ## 2. repositories（9本）
 
@@ -378,6 +384,7 @@ get_interests(employee_id: str) -> list[dict]           # [{"activity_id":..,"ac
 set_interests(employee_id: str, interests: list[dict]) -> None   # SP-57（Should）の編集保存用
 set_available_slots(employee_id: str, available_slots: list[str]) -> None   # 【新規追加】SP-57（Should）。employees.available_slots を置き換え保存する。空リストは「0件にする」。検証（選択肢・重複）は service 層（profile_service.save_profile）で済ませるため、repository は値をそのまま保存する
 list_departments() -> list[str]                           # 【新規追加】employees.dept の重複を除いた値を昇順で返す。部署マスタは無いため employees から導く。search_service.list_departments が呼ぶ
+list_all() -> list[dict]                                  # 【新規追加】全社員の "id" と "name" を、name の昇順（同名は id の昇順）で返す。公開設定（visibility）では絞らない。0人なら空リスト。club_admin_service.list_selectable_employees が呼ぶ
 ```
 
 `update_public_settings` は既出のとおり（上記）。プロフィール画面からの呼び出しは、本人確認を行う `profile_service.update_public_settings(employee_id, requester_id, ...)`（1.6）を経由する。screens から employees_repo を直接呼ばない。
