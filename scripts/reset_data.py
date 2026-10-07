@@ -697,6 +697,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="部活のひとこと・費用の補足・持ち物の文章も表示する（文章の確認用）",
     )
+    parser.add_argument(
+        "--check-db",
+        action="store_true",
+        help="DB に接続して、各テーブルの件数と、書き込み・削除ができるかを確かめる（試験行を1行入れてすぐ消す。入れ直しはしない）",
+    )
     return parser.parse_args()
 
 
@@ -1716,8 +1721,125 @@ def print_notification_summary(
     print(f"  指紋: {fingerprint(notifications)}")
     
 
+# ---- DB の接続・権限の確認（--check-db。PM 決定 2026-10-07） ----
+# 各テーブルの件数を読み取り、書き込み・削除ができるかを、試験行を1行入れてすぐ消して確かめる。
+# 試験行は activities テーブルに、名前 CHECK_ROW_NAME の1件だけ。ほかの行には触らない。
+# データの入れ直し（全部消す・入れる）は、ここではしない。
+CHECK_TABLES = [  # 入れる順番（親から先）で並べる
+    "employees",
+    "activities",
+    "clubs",
+    "club_members",
+    "employee_interests",
+    "events",
+    "applications",
+    "messages",
+    "notifications",
+    "action_logs",
+]
+CHECK_ROW_NAME = "__check__"
+CHECK_YES = ("はい", "y", "yes")
+
+
+def count_rows(supabase, table: str, **equals) -> int:
+    """テーブルの件数を数える（条件は 列名=値 で指定）。"""
+    query = supabase.table(table).select("*", count="exact").limit(1)
+    for column, value in equals.items():
+        query = query.eq(column, value)
+    return query.execute().count or 0
+
+
+def get_db_host(supabase) -> str:
+    """接続先のホスト名（キーは表示しない）。"""
+    from urllib.parse import urlparse
+
+    url = getattr(supabase, "supabase_url", None)
+    if not url:
+        try:
+            import streamlit as st
+
+            url = st.secrets["supabase_url"]
+        except Exception:
+            return "（取得できませんでした）"
+    return urlparse(str(url)).hostname or str(url)
+
+
+def check_db() -> None:
+    """DB に接続して、件数の表示と、書き込み・削除の試験をする（データの入れ直しはしない）。"""
+    supabase = get_supabase()
+    host = get_db_host(supabase)
+
+    print(f"接続先: {host}")
+    print()
+    print("■ 今入っているデータの件数（読み取りのみ）")
+    for table in CHECK_TABLES:
+        print(f"  {table}: {count_rows(supabase, table)}件")
+    print("  ※ 0件でも、読み取りが制限されている場合と、区別できません。下の試験で確かめます。")
+
+    leftover = count_rows(supabase, "activities", name=CHECK_ROW_NAME)
+    print()
+    print(f"この後、{host} の activities テーブルに、名前 {CHECK_ROW_NAME} の試験行を1行書き込んで、すぐ消します。")
+    print("ほかのデータには触れません。")
+    if leftover:
+        print(f"（前回の試験行が {leftover} 件残っているので、それも消します）")
+    answer = input("続けるには「はい」と入力してください（それ以外は、何も書き込まずに終了）: ").strip()
+    if answer not in CHECK_YES:
+        print("中止しました。何も書き込んでいません。")
+        return
+
+    def delete_check_rows() -> str:
+        """試験行を消す。エラーがあれば、その内容を返す（なければ空文字）。"""
+        try:
+            supabase.table("activities").delete().eq("name", CHECK_ROW_NAME).execute()
+        except Exception as error:  # 権限エラーなどを、そのまま表示するため
+            return f"{type(error).__name__}: {error}"
+        return ""
+
+    if leftover:
+        delete_check_rows()
+
+    print()
+    print("■ 書き込み・削除の試験")
+    insert_ok = False
+    visible = False
+    try:
+        inserted = supabase.table("activities").insert({"name": CHECK_ROW_NAME, "category": "スポーツ"}).execute()
+        insert_ok = True
+        visible = bool(inserted.data)  # 書き込んだ行が読み返せれば、読み取りは制限されていない
+    except Exception as error:
+        print(f"  書き込み: できませんでした（{type(error).__name__}: {error}）")
+
+    delete_error = ""
+    remaining = None
+    if insert_ok:
+        print("  書き込み: できました")
+        delete_error = delete_check_rows()
+        remaining = count_rows(supabase, "activities", name=CHECK_ROW_NAME)
+        if delete_error:
+            print(f"  削除: できませんでした（{delete_error}）")
+        elif remaining == 0:
+            print("  削除: できました（試験行は残っていません）")
+        else:
+            print(f"  削除: 実行しましたが、試験行が {remaining} 件残っています")
+        if not visible:
+            print("  読み取り: 書き込んだ行を読み返せませんでした。件数の表示は、あてになりません")
+
+    print()
+    print("■ 判定")
+    if insert_ok and visible and not delete_error and remaining == 0:
+        print("  書き込み・削除は、止められていません。データの入れ直しに進めます。")
+    else:
+        print("  書き込み・削除・読み取りのどれかが、できていません。RLS（行ごとの権限）が有効な可能性があります。")
+        print("  ここで止めて、運営に相談してください（#45）。データの入れ直しは実行しません。")
+        if remaining:
+            print(f"  activities に、名前 {CHECK_ROW_NAME} の試験行が残っています。Supabase の画面から消す必要があります。")
+            
+            
 def main() -> None:
     args = parse_args()
+    if args.check_db:
+        check_db()
+        return
     rng = random.Random(SEED)  # 以降のデータ作りは、この乱数だけを使う
 
     mode = "ドライラン（DB には書き込みません）" if args.dry_run else "本番（DB に書き込みます）"
