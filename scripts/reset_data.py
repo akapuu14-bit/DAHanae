@@ -1481,6 +1481,241 @@ def print_message_summary(
     print(f"  指紋: {fingerprint(messages)}")
     
     
+# ---- 通知の作り方（PM 決定 2026-10-07） ----
+# 通知は、申込・キャンセル・スタンプ・幹事の返信の「一部」だけ作る（通知は小さく作る）。
+# 作り方は本物の service に合わせる：文言は固定文。「メッセージ」の通知は event_id を持たない。
+# 中止の通知は作らない。申込のときに付けるメッセージ（申込側）は、通知を作らない。
+NOTIF_SEED_OFFSET = 3  # 通知専用の乱数。メッセージまでの指紋を変えないために、別の乱数にする
+NOTIF_APPLY_COUNT = 6  # 「申込」（幹事あて）の数
+NOTIF_CANCEL_COUNT = 2  # 「キャンセル」（幹事あて）の数
+NOTIF_STAMP_COUNT = 3  # 「スタンプ」（申込者あて）の数
+NOTIF_TENNIS_MAX = 3  # 「申込」のうち、E001 以外からテニス部（E002）あての数の上限
+NOTIF_UNREAD_DAYS = 3  # 作成日が基準日のこの日数前から後なら未読にする（E002 あては、すべて未読）
+NOTIF_READ_HOURS_MAX = 20  # 既読にした時刻は、作成の何時間後までか
+NOTIF_BODY = {
+    "申込": "新しい申込があります",
+    "キャンセル": "申込がキャンセルされました",
+    "スタンプ": "幹事が確認しました",
+    "メッセージ": "新しいメッセージがあります",
+}
+
+
+def make_notifications(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    messages: list[dict],
+    base_date: date,
+) -> list[dict]:
+    """通知を作る。"application" は apps リストの番号、"event" は events リストの番号（無いときは None）。"""
+    rng = random.Random(SEED + NOTIF_SEED_OFFSET)
+    base = base_date.isoformat()
+    e002 = organizers[E002_CLUB]
+
+    def club_of(i: int) -> str:
+        return events[apps[i]["event"]]["club"]
+
+    def future_open(i: int) -> bool:
+        e = events[apps[i]["event"]]
+        return e["event_date"] >= base and e["status"] == "予定"
+
+    # 作る通知を選ぶ：(種別, 申込の番号, 宛先, 作成日時)
+    picked = []
+
+    # 1) 申込（幹事あて）：E001 の「申込済み」、E001 以外からテニス部への申込、足りない分は他の部活の未来の申込
+    apply_ids = [i for i, a in enumerate(apps) if a["applicant_id"] == "E001" and a["status"] == "申込済み"]
+    tennis = sorted(
+        (
+            i
+            for i, a in enumerate(apps)
+            if a["applicant_id"] != "E001"
+            and a["status"] == "申込済み"
+            and future_open(i)
+            and club_of(i) == E002_CLUB
+        ),
+        key=lambda i: apps[i]["applied_at"],
+    )
+    apply_ids += tennis[:NOTIF_TENNIS_MAX]
+    others = [
+        i
+        for i, a in enumerate(apps)
+        if a["applicant_id"] != "E001"
+        and a["status"] == "申込済み"
+        and future_open(i)
+        and club_of(i) != E002_CLUB
+    ]
+    apply_ids += rng.sample(others, NOTIF_APPLY_COUNT - len(apply_ids))
+    for i in apply_ids:
+        picked.append(("申込", i, organizers[club_of(i)], apps[i]["applied_at"]))
+
+    # 2) キャンセル（幹事あて）：E001 のキャンセルと、他の未来の開催のキャンセル
+    cancel_ids = [i for i, a in enumerate(apps) if a["applicant_id"] == "E001" and a["status"] == "キャンセル"]
+    other_canceled = [
+        i
+        for i, a in enumerate(apps)
+        if a["applicant_id"] != "E001" and a["status"] == "キャンセル" and future_open(i)
+    ]
+    cancel_ids += rng.sample(other_canceled, NOTIF_CANCEL_COUNT - len(cancel_ids))
+    for i in cancel_ids:
+        picked.append(("キャンセル", i, organizers[club_of(i)], apps[i]["canceled_at"]))
+
+    # 3) スタンプ（申込者あて）：幹事が確認済みの申込から
+    confirmed = [i for i, a in enumerate(apps) if a["confirmed_at"] is not None]
+    for i in rng.sample(confirmed, NOTIF_STAMP_COUNT):
+        picked.append(("スタンプ", i, apps[i]["applicant_id"], apps[i]["confirmed_at"]))
+
+    # 4) メッセージ（申込者あて）：幹事の返信ぶんだけ
+    for m in messages:
+        a = apps[m["application"]]
+        if m["sender_id"] != a["applicant_id"]:
+            picked.append(("メッセージ", m["application"], a["applicant_id"], m["sent_at"]))
+
+    unread_from = (base_date - timedelta(days=NOTIF_UNREAD_DAYS)).isoformat()
+    notifications = []
+    for kind, i, recipient, created_at in picked:
+        if recipient == e002 or created_at[:10] >= unread_from:
+            read_at = None
+        else:
+            read_at = (
+                datetime.fromisoformat(created_at)
+                + timedelta(hours=rng.randint(1, NOTIF_READ_HOURS_MAX), minutes=rng.randint(0, 59))
+            ).isoformat(timespec="seconds")
+        notifications.append(
+            {
+                "recipient_id": recipient,
+                "type": kind,
+                "application": i,
+                "event": None if kind == "メッセージ" else apps[i]["event"],
+                "body": NOTIF_BODY[kind],
+                "created_at": created_at,
+                "read_at": read_at,
+            }
+        )
+    notifications.sort(key=lambda n: (n["created_at"], n["application"], n["type"]))
+    return notifications
+
+
+def validate_notifications(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    messages: list[dict],
+    notifications: list[dict],
+    base_date: date,
+) -> None:
+    """通知のデータが、DB の制約や PM 決定どおりかを確かめる。間違いはまとめて表示して止まる。"""
+    problems = []
+    base = base_date.isoformat()
+    e002 = organizers[E002_CLUB]
+    unread_from = (base_date - timedelta(days=NOTIF_UNREAD_DAYS)).isoformat()
+    replies = {
+        (m["application"], m["sent_at"])
+        for m in messages
+        if m["sender_id"] != apps[m["application"]]["applicant_id"]
+    }
+
+    seen = set()
+    for n in notifications:
+        label = f"通知（{n['type']}・申込{n['application']}・{n['recipient_id']}）"
+        if not 0 <= n["application"] < len(apps):
+            problems.append(f"{label}: 申込の番号が範囲外です")
+            continue
+        a = apps[n["application"]]
+        event = events[a["event"]]
+        organizer = organizers[event["club"]]
+        kind = n["type"]
+        if kind not in NOTIF_BODY:
+            problems.append(f"{label}: 種別が「申込」「キャンセル」「スタンプ」「メッセージ」ではありません（中止は作らない決まり）")
+            continue
+        if (kind, n["application"]) in seen:
+            problems.append(f"{label}: 同じ申込に同じ種別の通知が2件あります")
+        seen.add((kind, n["application"]))
+        if n["body"] != NOTIF_BODY[kind]:
+            problems.append(f"{label}: 本文が固定文と違います")
+        if n["recipient_id"] == "E001":
+            problems.append(f"{label}: E001 には通知を作らない決まりです")
+        if kind in ("申込", "キャンセル"):
+            if n["recipient_id"] != organizer:
+                problems.append(f"{label}: 宛先がその部活の幹事ではありません")
+            if a["applicant_id"] == organizer:
+                problems.append(f"{label}: 幹事本人の申込には通知を作りません")
+        else:
+            if n["recipient_id"] != a["applicant_id"]:
+                problems.append(f"{label}: 宛先が申込者ではありません")
+        if kind == "申込" and (a["status"] != "申込済み" or n["created_at"] != a["applied_at"]):
+            problems.append(f"{label}: 申込の状態・日時と合いません")
+        if kind == "キャンセル" and (a["status"] != "キャンセル" or n["created_at"] != a["canceled_at"]):
+            problems.append(f"{label}: キャンセルの状態・日時と合いません")
+        if kind == "スタンプ" and (a["confirmed_at"] is None or n["created_at"] != a["confirmed_at"]):
+            problems.append(f"{label}: 確認の日時と合いません")
+        if kind == "メッセージ" and (n["application"], n["created_at"]) not in replies:
+            problems.append(f"{label}: 幹事の返信と合いません")
+        expected_event = None if kind == "メッセージ" else a["event"]
+        if n["event"] != expected_event:
+            problems.append(f"{label}: event の指定が合いません")
+        if kind in ("申込", "キャンセル") and event["status"] == "中止":
+            problems.append(f"{label}: 中止の開催への通知は作りません")
+
+        should_unread = n["recipient_id"] == e002 or n["created_at"][:10] >= unread_from
+        if should_unread != (n["read_at"] is None):
+            problems.append(f"{label}: 既読・未読が決めたルールと合いません")
+        if n["read_at"] is not None:
+            if not n["read_at"] > n["created_at"]:
+                problems.append(f"{label}: 既読日時が作成日時より後ではありません")
+            if n["read_at"][:10] > base:
+                problems.append(f"{label}: 既読日時が基準日より後です")
+
+    count = Counter(n["type"] for n in notifications)
+    for kind, expected in (
+        ("申込", NOTIF_APPLY_COUNT),
+        ("キャンセル", NOTIF_CANCEL_COUNT),
+        ("スタンプ", NOTIF_STAMP_COUNT),
+        ("メッセージ", len(replies)),
+    ):
+        if count[kind] != expected:
+            problems.append(f"「{kind}」の通知が {count[kind]} 件です（{expected} 件の予定）")
+    to_e002 = [n for n in notifications if n["recipient_id"] == e002]
+    if not any(n["type"] == "申込" for n in to_e002) or not any(n["type"] == "キャンセル" for n in to_e002):
+        problems.append("E002 あての「申込」と「キャンセル」の通知が必要です（E001 の申込・キャンセル分）")
+    if not any(n["read_at"] is not None for n in notifications):
+        problems.append("既読の通知が1件もありません")
+    if not any(n["read_at"] is None and n["recipient_id"] != e002 for n in notifications):
+        problems.append("E002 以外あての未読の通知が1件もありません")
+
+    if problems:
+        raise ValueError("データの検査で問題が見つかりました:\n" + "\n".join(problems))
+
+
+def print_notification_summary(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    notifications: list[dict],
+    base_date: date,
+) -> None:
+    """作った通知データの件数や内訳を表示する（目で確認するため）。"""
+    e002 = organizers[E002_CLUB]
+    unread = [n for n in notifications if n["read_at"] is None]
+
+    print()
+    print(f"■ 通知（{len(notifications)}件）")
+    print("  種別:", dict(Counter(n["type"] for n in notifications)))
+    print(f"  未読: {len(unread)}件 / 既読: {len(notifications) - len(unread)}件")
+    print("  宛先ごとの件数（未読）:")
+    per_recipient = Counter(n["recipient_id"] for n in notifications)
+    per_unread = Counter(n["recipient_id"] for n in unread)
+    for recipient, total in sorted(per_recipient.items()):
+        print(f"    {recipient}: {total}件（未読 {per_unread[recipient]}件）")
+    print(f"  E002（{E002_CLUB}の幹事）あて:")
+    for n in notifications:
+        if n["recipient_id"] == e002:
+            a = apps[n["application"]]
+            e = events[a["event"]]
+            print(f"    {n['created_at'][:16]} {n['type']} {a['applicant_id']} → {e['event_date']}")
+    print(f"  E001 あて: {sum(n['recipient_id'] == 'E001' for n in notifications)}件")
+    print(f"  指紋: {fingerprint(notifications)}")
+    
+
 def main() -> None:
     args = parse_args()
     rng = random.Random(SEED)  # 以降のデータ作りは、この乱数だけを使う
@@ -1508,6 +1743,8 @@ def main() -> None:
     validate_applications(employees, clubs, organizers, members, events, applications, args.base_date)
     messages = make_messages(applications, events, organizers, args.base_date)
     validate_messages(applications, events, organizers, messages, args.base_date)
+    notifications = make_notifications(applications, events, organizers, messages, args.base_date)
+    validate_notifications(applications, events, organizers, messages, notifications, args.base_date)
 
     print_employee_summary(employees)
     print_club_summary(activities, clubs, args.show_clubs)
@@ -1515,6 +1752,7 @@ def main() -> None:
     print_event_summary(clubs, events, args.base_date)
     print_application_summary(clubs, events, members, applications, args.base_date)
     print_message_summary(applications, events, organizers, messages, args.base_date)
+    print_notification_summary(applications, events, organizers, notifications, args.base_date)
 
 
 if __name__ == "__main__":
