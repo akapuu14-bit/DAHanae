@@ -1835,6 +1835,268 @@ def check_db() -> None:
             print(f"  activities に、名前 {CHECK_ROW_NAME} の試験行が残っています。Supabase の画面から消す必要があります。")
             
             
+# ---- DB への書き込み（SP-78。PM 決定 2026-10-07） ----
+# --dry-run を付けずに実行すると、全テーブルを空にして、ダミーデータを入れ直す。
+# 途中で止まったときは、同じコマンドをもう一度実行すれば直る（最初に全部消すため）。
+WRITE_CHUNK = 200  # 1回の送信で入れる行数
+WRITE_CONFIRM_WORDS = ("消す", "reset")
+DELETE_ORDER = [  # 消す順番（子から先）：(テーブル, 絞り込みに使う列, 「どれとも等しくない」値)
+    ("notifications", "id", -1),
+    ("messages", "id", -1),
+    ("action_logs", "id", -1),
+    ("applications", "id", -1),
+    ("events", "id", -1),
+    ("club_members", "club_id", -1),
+    ("employee_interests", "activity_id", -1),
+    ("clubs", "id", -1),
+    ("activities", "id", -1),
+    ("employees", "id", ""),
+]
+
+
+def delete_all(supabase) -> None:
+    """全テーブルを、子から順に空にする。消したあとが0件でなければ、止まる（RLS で消えない場合の対策）。"""
+    print()
+    print("■ 消す（子のテーブルから）")
+    for table, column, never in DELETE_ORDER:
+        before = count_rows(supabase, table)
+        supabase.table(table).delete().neq(column, never).execute()
+        after = count_rows(supabase, table)
+        print(f"  {table}: {before}件 → {after}件")
+        if after != 0:
+            raise RuntimeError(
+                f"{table} を消せませんでした（{after}件残っています）。RLS（行ごとの権限）が有効な可能性があります"
+            )
+
+
+def insert_chunks(supabase, table: str, rows: list[dict]) -> list[dict]:
+    """行を WRITE_CHUNK 行ずつ入れて、DB が返した行（ID つき）を返す。"""
+    inserted = []
+    for start in range(0, len(rows), WRITE_CHUNK):
+        result = supabase.table(table).insert(rows[start : start + WRITE_CHUNK]).execute()
+        inserted += result.data or []
+    if len(inserted) != len(rows):
+        raise RuntimeError(f"{table}: {len(rows)}件を送りましたが、{len(inserted)}件しか返ってきませんでした")
+    print(f"  {table}: {len(rows)}件 入れました")
+    return inserted
+
+
+def insert_all(
+    supabase,
+    employees: list[dict],
+    activities: list[dict],
+    clubs: list[dict],
+    organizers: dict[str, str],
+    members: list[dict],
+    interests: list[dict],
+    events: list[dict],
+    applications: list[dict],
+    messages: list[dict],
+    notifications: list[dict],
+) -> None:
+    """全テーブルに、親から順に入れる。名前や番号は、DB が返した ID に置き換える。"""
+    print()
+    print("■ 入れる（親のテーブルから）")
+    insert_chunks(supabase, "employees", employees)
+
+    activity_id = {r["name"]: r["id"] for r in insert_chunks(supabase, "activities", activities)}
+
+    club_rows = [
+        {
+            **{key: value for key, value in c.items() if key != "activity"},
+            "activity_id": activity_id[c["activity"]],
+            "organizer_id": organizers[c["name"]],
+        }
+        for c in clubs
+    ]
+    club_id = {r["name"]: r["id"] for r in insert_chunks(supabase, "clubs", club_rows)}
+
+    insert_chunks(
+        supabase,
+        "club_members",
+        [
+            {"club_id": club_id[m["club"]], "employee_id": m["employee_id"], "joined_at": m["joined_at"]}
+            for m in members
+        ],
+    )
+    insert_chunks(
+        supabase,
+        "employee_interests",
+        [
+            {"employee_id": i["employee_id"], "activity_id": activity_id[i["activity"]], "level": i["level"]}
+            for i in interests
+        ],
+    )
+
+    event_rows = [
+        {
+            "club_id": club_id[e["club"]],
+            "event_date": e["event_date"],
+            "start_time": e["start_time"],
+            "end_time": e["end_time"],
+            "meeting_place": e["meeting_place"],
+            "meeting_time": e["meeting_time"],
+            "status": e["status"],
+        }
+        for e in events
+    ]
+    inserted_events = {(r["club_id"], r["event_date"]): r["id"] for r in insert_chunks(supabase, "events", event_rows)}
+    event_ids = [inserted_events[(club_id[e["club"]], e["event_date"])] for e in events]
+
+    application_rows = [
+        {
+            "event_id": event_ids[a["event"]],
+            "applicant_id": a["applicant_id"],
+            "status": a["status"],
+            "is_first_time": a["is_first_time"],
+            "applied_at": a["applied_at"],
+            "canceled_at": a["canceled_at"],
+            "confirmed_at": a["confirmed_at"],
+        }
+        for a in applications
+    ]
+    inserted_applications = {
+        (r["event_id"], r["applicant_id"]): r["id"] for r in insert_chunks(supabase, "applications", application_rows)
+    }
+    application_ids = [inserted_applications[(event_ids[a["event"]], a["applicant_id"])] for a in applications]
+
+    insert_chunks(
+        supabase,
+        "messages",
+        [
+            {
+                "application_id": application_ids[m["application"]],
+                "sender_id": m["sender_id"],
+                "body": m["body"],
+                "sent_at": m["sent_at"],
+            }
+            for m in messages
+        ],
+    )
+    insert_chunks(
+        supabase,
+        "notifications",
+        [
+            {
+                "recipient_id": n["recipient_id"],
+                "type": n["type"],
+                "application_id": application_ids[n["application"]],
+                "event_id": None if n["event"] is None else event_ids[n["event"]],
+                "body": n["body"],
+                "created_at": n["created_at"],
+                "read_at": n["read_at"],
+            }
+            for n in notifications
+        ],
+    )
+
+
+def verify_db(supabase, expected: dict, demo_checks: list[tuple[str, int, int]]) -> list[str]:
+    """入れ終わったあとの件数と、デモ用アカウントの確認を表示する。ずれがあれば、その内容を返す。"""
+    problems = []
+    print()
+    print("■ 件数の照合")
+    for table in CHECK_TABLES:
+        actual = count_rows(supabase, table)
+        ok = actual == expected[table]
+        print(f"  {table}: {actual}件（予定 {expected[table]}件） {'OK' if ok else 'NG'}")
+        if not ok:
+            problems.append(f"{table}: {actual}件（予定 {expected[table]}件）")
+    print()
+    print("■ デモ用アカウントの確認")
+    for label, actual, wanted in demo_checks:
+        ok = actual == wanted
+        print(f"  {label}: {actual}件（予定 {wanted}件） {'OK' if ok else 'NG'}")
+        if not ok:
+            problems.append(f"{label}: {actual}件（予定 {wanted}件）")
+    return problems
+
+
+def reset_db(
+    base_date: date,
+    employees: list[dict],
+    activities: list[dict],
+    clubs: list[dict],
+    organizers: dict[str, str],
+    members: list[dict],
+    interests: list[dict],
+    events: list[dict],
+    applications: list[dict],
+    messages: list[dict],
+    notifications: list[dict],
+) -> None:
+    """確認のあと、全部消して、入れ直して、照合する（SP-78）。"""
+    expected = {
+        "employees": len(employees),
+        "activities": len(activities),
+        "clubs": len(clubs),
+        "club_members": len(members),
+        "employee_interests": len(interests),
+        "events": len(events),
+        "applications": len(applications),
+        "messages": len(messages),
+        "notifications": len(notifications),
+        "action_logs": 0,
+    }
+    e002 = organizers[E002_CLUB]
+
+    print()
+    print(f"■ 入れるデータの件数（予定。基準日 {base_date}）")
+    for table in CHECK_TABLES:
+        print(f"  {table}: {expected[table]}件")
+
+    supabase = get_supabase()
+    host = get_db_host(supabase)
+    print()
+    print(f"接続先: {host}")
+    print("■ 今入っているデータの件数")
+    for table in CHECK_TABLES:
+        print(f"  {table}: {count_rows(supabase, table)}件")
+
+    print()
+    print("注意: ここで「消す」と入力すると、上のテーブルのデータが、すべて消えます。")
+    print("      申込・メッセージ・通知・操作履歴も含みます。")
+    print("      実行前に、チームに声をかけましたか？（SP-78）")
+    answer = input(f"続けるには「{WRITE_CONFIRM_WORDS[0]}」（または {WRITE_CONFIRM_WORDS[1]}）と入力してください（それ以外は、何も消さずに終了）: ").strip()
+    if answer not in WRITE_CONFIRM_WORDS:
+        print("中止しました。何も消していません。")
+        return
+
+    try:
+        delete_all(supabase)
+        insert_all(
+            supabase, employees, activities, clubs, organizers, members, interests,
+            events, applications, messages, notifications,
+        )
+        demo_checks = [
+            ("E001 の通知", count_rows(supabase, "notifications", recipient_id="E001"),
+             sum(n["recipient_id"] == "E001" for n in notifications)),
+            (f"E002（{E002_CLUB}の幹事）の未読の通知",
+             supabase.table("notifications").select("*", count="exact").limit(1)
+             .eq("recipient_id", e002).is_("read_at", "null").execute().count or 0,
+             sum(n["recipient_id"] == e002 and n["read_at"] is None for n in notifications)),
+            ("E001 の申込", count_rows(supabase, "applications", applicant_id="E001"),
+             sum(a["applicant_id"] == "E001" for a in applications)),
+            ("E003 の運営者（is_admin）", count_rows(supabase, "employees", id="E003", is_admin=True), 1),
+        ]
+        problems = verify_db(supabase, expected, demo_checks)
+    except Exception as error:  # どこで止まったかを、そのまま表示するため
+        print()
+        print(f"失敗しました: {type(error).__name__}: {error}")
+        print("いまの DB は、途中の状態です。同じコマンドをもう一度実行すれば、最初に全部消してから入れ直します。")
+        raise SystemExit(1)
+
+    print()
+    if problems:
+        print("照合で、ずれが見つかりました:")
+        for problem in problems:
+            print(f"  {problem}")
+        print("同じコマンドをもう一度実行して、入れ直してください。")
+        raise SystemExit(1)
+    print("完了しました。件数もデモ用アカウントも、予定どおりです。")
+    print(f"基準日は {base_date} です。日付が古くなったら（数週間後など）、もう一度実行して入れ直してください。")
+    
+    
 def main() -> None:
     args = parse_args()
     if args.check_db:
@@ -1846,9 +2108,6 @@ def main() -> None:
     print(f"モード: {mode}")
     print(f"基準日: {args.base_date}")
     print(f"seed: {SEED}")
-
-    if not args.dry_run:
-        raise SystemExit("DB への書き込みはまだ実装していません。--dry-run を付けて実行してください。")
 
     employees = make_employees(rng)
     apply_demo_overrides(employees)
@@ -1867,6 +2126,13 @@ def main() -> None:
     validate_messages(applications, events, organizers, messages, args.base_date)
     notifications = make_notifications(applications, events, organizers, messages, args.base_date)
     validate_notifications(applications, events, organizers, messages, notifications, args.base_date)
+
+    if not args.dry_run:
+        reset_db(
+            args.base_date, employees, activities, clubs, organizers, members, interests,
+            events, applications, messages, notifications,
+        )
+        return
 
     print_employee_summary(employees)
     print_club_summary(activities, clubs, args.show_clubs)
