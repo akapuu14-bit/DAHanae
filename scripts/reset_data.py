@@ -1126,6 +1126,11 @@ def make_applications(
             for b in result
         )
 
+    # 10) 「確認したよ」スタンプは、初参加の申込にだけ押せる（application_service.confirm_stamp と同じ）
+    for a in result:
+        if not a["is_first_time"]:
+            a["confirmed_at"] = None
+
     result.sort(key=lambda a: (a["applied_at"], a["event"], a["applicant_id"]))
     return result
 
@@ -1180,6 +1185,8 @@ def validate_applications(
                     problems.append(f"{label}: {key} の日付が開催日・基準日と合いません")
         if event["status"] == "中止" and a["confirmed_at"] is not None:
             problems.append(f"{label}: 中止の開催に確認日時があります")
+        if a["confirmed_at"] is not None and not a["is_first_time"]:
+            problems.append(f"{label}: 初参加でない申込に確認日時があります")
 
         # 初参加の判定を、別の書き方で検算する
         cutoff = min(event["event_date"], base)
