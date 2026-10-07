@@ -1288,6 +1288,192 @@ def print_application_summary(
     print(f"  指紋: {fingerprint(apps)}")
     
 
+# ---- メッセージの作り方（PM 決定 2026-10-07） ----
+# 申込についてのやりとり。"application" は、申込リストの番号。DB に入れるときに application_id に置き換える。
+MSG_SEED_OFFSET = 2  # メッセージ専用の乱数。申込までの指紋を変えないために、別の乱数にする
+MSG_FIRST_PAST = 1  # 初参加の申込のうち、過去の開催にメッセージを付ける数
+MSG_FIRST_FUTURE = 2  # 同じく、未来の開催に付ける数
+MSG_OTHER_PAST = 1  # 初参加でない申込のうち、過去の開催にメッセージを付ける数
+MSG_OTHER_FUTURE = 1  # 同じく、未来の開催に付ける数
+MSG_UNANSWERED = 1  # E001 以外で、幹事が返信していないメッセージの数（未来の開催のもの）
+MSG_FIRST_TIME = "初参加です。よろしくお願いします。"  # 初参加の申込にだけ使う
+MSG_ASK = "当日は現地集合で大丈夫ですか。"
+MSG_REPLY = "確認しました。お待ちしています。"  # 幹事の返信
+MSG_SENT_MINUTES_MAX = 5  # 申込側のメッセージは、申込日時の何分後までか
+REPLY_HOUR = 20  # 幹事が返信する時刻（時）。確認・キャンセル（19時台）より後
+
+
+def make_messages(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    base_date: date,
+) -> list[dict]:
+    """メッセージを作る。"application" は apps リストの番号。"""
+    rng = random.Random(SEED + MSG_SEED_OFFSET)
+    base = base_date.isoformat()
+
+    def eligible(is_first: bool, past: bool) -> list[int]:
+        """メッセージを付けられる申込（キャンセルでなく、中止でない開催への申込）の番号。"""
+        return [
+            i
+            for i, a in enumerate(apps)
+            if a["status"] == "申込済み"
+            and a["applicant_id"] != "E001"
+            and a["is_first_time"] == is_first
+            and events[a["event"]]["status"] == "予定"
+            and (events[a["event"]]["event_date"] < base) == past
+        ]
+
+    # 申込側のメッセージを付ける申込を決める：(申込の番号, 文面)
+    asked = []
+    e001 = [i for i, a in enumerate(apps) if a["applicant_id"] == "E001" and a["status"] == "申込済み"]
+    asked.append((e001[0], MSG_FIRST_TIME))
+    for is_first, past, count, text in (
+        (True, True, MSG_FIRST_PAST, MSG_FIRST_TIME),
+        (True, False, MSG_FIRST_FUTURE, MSG_FIRST_TIME),
+        (False, True, MSG_OTHER_PAST, MSG_ASK),
+        (False, False, MSG_OTHER_FUTURE, MSG_ASK),
+    ):
+        for i in rng.sample(eligible(is_first, past), count):
+            asked.append((i, text))
+
+    # 返信しないもの：E001 の1件と、E001 以外の未来の開催のうち MSG_UNANSWERED 件
+    other_future = [
+        i for i, _ in asked[1:] if events[apps[i]["event"]]["event_date"] >= base
+    ]
+    unanswered = {e001[0]} | set(rng.sample(sorted(other_future), MSG_UNANSWERED))
+
+    messages = []
+    for i, text in asked:
+        a = apps[i]
+        event = events[a["event"]]
+        sent = datetime.fromisoformat(a["applied_at"]) + timedelta(
+            minutes=rng.randint(1, MSG_SENT_MINUTES_MAX)
+        )
+        messages.append(
+            {
+                "application": i,
+                "sender_id": a["applicant_id"],
+                "body": text,
+                "sent_at": sent.isoformat(timespec="seconds"),
+            }
+        )
+        if i in unanswered:
+            continue
+        # 返信は、申込日から「開催日の前日か基準日の早い方」までの間の、夜
+        applied_day = date.fromisoformat(a["applied_at"][:10])
+        limit = min(date.fromisoformat(event["event_date"]) - timedelta(days=1), base_date)
+        reply_day = applied_day + timedelta(days=rng.randint(0, (limit - applied_day).days))
+        messages.append(
+            {
+                "application": i,
+                "sender_id": organizers[event["club"]],
+                "body": MSG_REPLY,
+                "sent_at": f"{reply_day.isoformat()}T{REPLY_HOUR:02d}:{rng.randint(0, 59):02d}:00{TZ_SUFFIX}",
+            }
+        )
+
+    messages.sort(key=lambda m: (m["sent_at"], m["application"], m["sender_id"]))
+    return messages
+
+
+def validate_messages(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    messages: list[dict],
+    base_date: date,
+) -> None:
+    """メッセージのデータが、DB の制約や PM 決定どおりかを確かめる。間違いはまとめて表示して止まる。"""
+    problems = []
+    base = base_date.isoformat()
+
+    by_application: dict[int, list[dict]] = {}
+    for m in messages:
+        by_application.setdefault(m["application"], []).append(m)
+
+    for m in messages:
+        label = f"メッセージ（申込{m['application']}・{m['sender_id']}）"
+        if not 0 <= m["application"] < len(apps):
+            problems.append(f"{label}: 申込の番号が範囲外です")
+            continue
+        a = apps[m["application"]]
+        event = events[a["event"]]
+        organizer = organizers[event["club"]]
+        if not m["body"].strip():
+            problems.append(f"{label}: 本文が空です")
+        if a["status"] != "申込済み":
+            problems.append(f"{label}: キャンセルの申込にメッセージが付いています")
+        if event["status"] != "予定":
+            problems.append(f"{label}: 中止の開催への申込にメッセージが付いています")
+        if m["sender_id"] not in (a["applicant_id"], organizer):
+            problems.append(f"{label}: 送り手が、申込者でも幹事でもありません")
+        if m["body"] == MSG_FIRST_TIME and not a["is_first_time"]:
+            problems.append(f"{label}: 初参加でない人が「初参加です」と送っています")
+        if m["sender_id"] == a["applicant_id"]:
+            if not m["sent_at"] > a["applied_at"]:
+                problems.append(f"{label}: 送信日時が申込日時より後ではありません")
+            if m["sent_at"][:10] != a["applied_at"][:10]:
+                problems.append(f"{label}: 申込側のメッセージが、申込と別の日になっています")
+        else:
+            asks = [x for x in by_application[m["application"]] if x["sender_id"] == a["applicant_id"]]
+            if len(asks) != 1 or not m["sent_at"] > asks[0]["sent_at"]:
+                problems.append(f"{label}: 返信が、申込側のメッセージの後ではありません")
+            if not (m["sent_at"][:10] < event["event_date"] and m["sent_at"][:10] <= base):
+                problems.append(f"{label}: 返信の日付が開催日・基準日と合いません")
+
+    asked = [m for m in messages if m["sender_id"] == apps[m["application"]]["applicant_id"]]
+    replies = [m for m in messages if m not in asked]
+    if len(asked) != 1 + MSG_FIRST_PAST + MSG_FIRST_FUTURE + MSG_OTHER_PAST + MSG_OTHER_FUTURE:
+        problems.append(f"申込側のメッセージが {len(asked)} 件です")
+    if len(asked) - len(replies) != 1 + MSG_UNANSWERED:
+        problems.append(f"返信がないメッセージが {len(asked) - len(replies)} 件です")
+    if len({m["application"] for m in asked}) != len(asked):
+        problems.append("同じ申込に、申込側のメッセージが2件以上あります")
+
+    e001 = [m for m in messages if apps[m["application"]]["applicant_id"] == "E001"]
+    if len(e001) != 1 or e001[0]["sender_id"] != "E001":
+        problems.append("E001 の申込には、E001 のメッセージが1件だけ付くはずです")
+
+    if problems:
+        raise ValueError("データの検査で問題が見つかりました:\n" + "\n".join(problems))
+
+
+def print_message_summary(
+    apps: list[dict],
+    events: list[dict],
+    organizers: dict[str, str],
+    messages: list[dict],
+    base_date: date,
+) -> None:
+    """作ったメッセージデータの件数や内訳を表示する（目で確認するため）。"""
+    base = base_date.isoformat()
+    asked = [m for m in messages if m["sender_id"] == apps[m["application"]]["applicant_id"]]
+    replies = [m for m in messages if m not in asked]
+    replied = {m["application"] for m in replies}
+
+    print()
+    print(f"■ メッセージ（{len(messages)}件）")
+    print(f"  申込側: {len(asked)}件 / 幹事の返信: {len(replies)}件")
+    print("  文面:", dict(Counter(m["body"] for m in messages)))
+    print(
+        f"  過去の開催: {sum(events[apps[m['application']]['event']]['event_date'] < base for m in messages)}件 / "
+        f"未来の開催: {sum(events[apps[m['application']]['event']]['event_date'] >= base for m in messages)}件"
+    )
+    print("  返信がないメッセージ:")
+    for m in asked:
+        if m["application"] not in replied:
+            a = apps[m["application"]]
+            e = events[a["event"]]
+            print(f"    {a['applicant_id']} → {e['club']} {e['event_date']}（幹事 {organizers[e['club']]}）")
+    print("  E001 のメッセージ:")
+    for m in messages:
+        if apps[m["application"]]["applicant_id"] == "E001":
+            print(f"    {m['sent_at']} {m['sender_id']}: {m['body']}")
+    print(f"  指紋: {fingerprint(messages)}")
+    
+    
 def main() -> None:
     args = parse_args()
     rng = random.Random(SEED)  # 以降のデータ作りは、この乱数だけを使う
@@ -1313,12 +1499,15 @@ def main() -> None:
     validate_events(clubs, events, args.base_date)
     applications = make_applications(employees, clubs, organizers, members, events, args.base_date)
     validate_applications(employees, clubs, organizers, members, events, applications, args.base_date)
+    messages = make_messages(applications, events, organizers, args.base_date)
+    validate_messages(applications, events, organizers, messages, args.base_date)
 
     print_employee_summary(employees)
     print_club_summary(activities, clubs, args.show_clubs)
     print_membership_summary(clubs, employees, organizers, members, interests)
     print_event_summary(clubs, events, args.base_date)
     print_application_summary(clubs, events, members, applications, args.base_date)
+    print_message_summary(applications, events, organizers, messages, args.base_date)
 
 
 if __name__ == "__main__":
