@@ -212,7 +212,7 @@ mark_read_all(employee_id: str) -> None
     通知一覧画面（S07）を開いたときに呼ぶ。自分あての通知をすべて既読にする（SP-46）。
 
 notify(recipient_id: str, type_: str, *, application_id: int | None = None, event_id: int | None = None, body: str) -> None
-    通知を1件作成する内部共通関数。application_service・screens/club_admin.py（開催中止のお知らせ、Should）から呼ぶ。
+    通知を1件作成する内部共通関数。application_service・club_admin_service（開催中止のお知らせ。set_event_status が自動で送る）から呼ぶ。画面（screens）から直接呼ばない（二重通知を防ぐ）。
     type_ は "申込" | "キャンセル" | "メッセージ" | "スタンプ" | "中止" のいずれか（仕様.md 4.9）。
 ```
 
@@ -304,6 +304,7 @@ create_club(requester_id: str, fields: dict) -> int
     権限: 運営者のみ。幹事・一般社員は PermissionDeniedError。
     fields: 上の「必須14」と「任意4」のキー。is_active は受け取らず、true で作る。必須14のどれかが未入力なら ValidationError("required:<key>")（SP-59「○○を入力してください」。複数ある場合は上の列挙順で最初の1件）。
     処理: 検証 → clubs_repo.create(data) → 幹事を所属メンバーとして club_members_repo.add_member(club_id, organizer_id) に登録する（SP-77: 幹事も club_members に入る）。
+    注意: clubs_repo.create の成功後に add_member が失敗した場合、メンバーのいない部活が残る（MVPではまとめて取り消す仕組みは設けない。失敗時は例外をそのまま上げ、運営者が add_club_member で補う）。
     例外: PermissionDeniedError / ValidationError。
 
 update_club(club_id: int, requester_id: str, fields: dict) -> None
@@ -314,7 +315,7 @@ update_club(club_id: int, requester_id: str, fields: dict) -> None
     例外（判定の順）: NotFoundError → PermissionDeniedError → ValidationError。
 
 list_club_events(club_id: int, requester_id: str) -> list[dict]
-    開催タブ（SP-60）の一覧。今日以降の開催を日付順（同日は id 順。events_repo.list_upcoming_by_club の順序のまま）で返す。中止の開催も含む。
+    開催タブ（SP-60）の一覧。今日以降の開催を日付順（同日は id 順。events_repo.list_upcoming_by_club の順序のまま）で返す。中止の開催も含む。「今日」は日本時間（Asia/Tokyo）の日付で判定する。
     各dictのキー: "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time|None), "status"("予定" | "中止"), "applicant_count"(int)。
     "applicant_count": その開催の状態「申込済み」の申込の件数（applications_repo.list_participants(event_id) の件数。キャンセルは数えない）。
     権限: 運営者または幹事。
@@ -322,21 +323,21 @@ list_club_events(club_id: int, requester_id: str) -> list[dict]
 
 create_event(club_id: int, requester_id: str, fields: dict) -> int
     開催の追加（SP-60, SP-61）。戻り値は採番された event_id。状態は「予定」で作る。
-    fields のキー: 必須 "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str)。任意 "meeting_time"(time|None, 集合時刻)。
-    検証: 必須が未入力なら ValidationError("required:<key>")。event_date が今日より前なら ValidationError("past_date")（今日は可）。end_time <= start_time なら ValidationError("end_before_start")。判定の順は required → past_date → end_before_start。
+    fields のキー（許可キーのホワイトリスト）: 必須 "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str)。任意 "meeting_time"(time|None, 集合時刻)。この5つ以外のキー（status・id など）が含まれる場合は ValidationError("unknown:<key>")（club 側と同じ。status を混ぜて通知なしで中止にする抜け道を塞ぐ）。
+    検証: 必須が未入力なら ValidationError("required:<key>")。event_date が今日（日本時間 Asia/Tokyo の日付）より前なら ValidationError("past_date")（今日は可）。end_time <= start_time なら ValidationError("end_before_start")。判定の順は unknown → required → past_date → end_before_start。
     権限: 運営者または幹事。
     例外（判定の順）: NotFoundError（club_id）→ PermissionDeniedError → ValidationError。
 
 update_event(event_id: int, requester_id: str, fields: dict) -> None
-    開催の編集（SP-60, SP-61）。fields は create_event と同じキーで、含めたキーだけを更新する。status は fields では受け取らない（変更は set_event_status）。
-    検証: create_event と同じ。end_before_start は更新後の開始・終了時刻（fields に無いキーは現在の値）で判定する。"past_date" は fields に event_date を含む場合に判定する（含めない場合、過去日の既存開催の他の項目は更新できる）。
+    開催の編集（SP-60, SP-61）。fields は create_event と同じキー（許可キーは上の5つのみ）で、含めたキーだけを更新する。status は fields では受け取らず、含まれていれば他の想定外のキーと同じく ValidationError("unknown:status")（変更は set_event_status）。
+    検証: create_event と同じ（unknown の判定も含む。past_date の「今日」も日本時間 Asia/Tokyo）。end_before_start は更新後の開始・終了時刻（fields に無いキーは現在の値）で判定する。"past_date" は fields に event_date を含む場合に判定する（含めない場合、過去日の既存開催の他の項目は更新できる）。
     例外（判定の順）: NotFoundError（event_id）→ PermissionDeniedError → ValidationError。
 
 set_event_status(event_id: int, requester_id: str, status: str) -> None
     開催の「中止にする」「予定に戻す」（SP-60, SP-73）。status は "予定" | "中止"（それ以外は ValidationError("invalid:status")）。
     権限: 運営者または幹事。
     すでに同じ状態への変更は ConflictError（引数の理由コードは "same_status"）。
-    中止にしたとき（B-1裁定）: events_repo.set_status を行ったあと、その開催の状態「申込済み」の申込者全員に、service側で自動的に通知する。applications_repo.list_participants(event_id) の各申込について notification_service.notify(applicant_id, "中止", application_id=その申込の id, event_id=event_id, body="開催が中止になりました")。本文は固定文（他の種別と同じく、service内で文言を組み立てない）。申込の状態は変えない（SP-73）。「予定に戻す」ときは通知しない。
+    中止にしたとき（B-1裁定）: events_repo.set_status を行ったあと、その開催の状態「申込済み」の申込者全員に、service側で自動的に通知する。applications_repo.list_participants(event_id) の各申込について notification_service.notify(applicant_id, "中止", application_id=その申込の id, event_id=event_id, body="開催が中止になりました")。本文は固定文（他の種別と同じく、service内で文言を組み立てない）。申込の状態は変えない（SP-73）。「予定に戻す」ときは通知しない。中止 → 予定に戻す → 再び中止にした場合も、そのつど申込済みの人に通知する（通知済みかどうかは記憶しない。PdM確定。通知済みを覚える仕組みはMVPには重いため）。
     例外（判定の順）: NotFoundError → PermissionDeniedError → ValidationError → ConflictError。
 
 list_club_members(club_id: int, requester_id: str) -> list[dict]
@@ -359,6 +360,7 @@ remove_club_member(club_id: int, requester_id: str, employee_id: str) -> None
 
 get_last_meeting_place(club_id: int) -> str | None
     開催追加フォーム（SP-60）の集合場所の初期値（前回の開催の集合場所）。events_repo.get_last_meeting_place(club_id) を呼ぶservice入口で、screens が events_repo を直接呼ばないための関数。開催が1件もない、または club_id に該当する部活がない場合は None（例外にしない）。権限の判定はしない（初期値の読み取りのみ。管理画面は権限のある人にしか開かれない）。
+
 list_selectable_employees(requester_id: str) -> list[dict]
     部活管理画面（S10）の社員の選択肢。「幹事を選ぶ」（SP-59）と「メンバーを追加する」（SP-62）で使う。管理操作のための一覧なので、興味・参加可能時間の公開設定（SP-65）による表示制御は掛けず、全社員を返す。
     戻り値: [{"id": str, "name": str}, ...]（全社員。キーは id と name のみ。部署などは含めない）。並びは name の昇順（文字列の昇順）、同名は id の昇順で固定する。0人なら空リスト。
