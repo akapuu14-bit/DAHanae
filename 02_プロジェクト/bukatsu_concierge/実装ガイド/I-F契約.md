@@ -179,7 +179,7 @@ send_message(application_id: int, sender_id: str, body: str) -> None
     画面側: キャンセル済みの申込には入力欄を出さない（SP-39）ため、この ConflictError は画面の表示と送信の間に状態が変わった場合の防御。
 
 list_my_applications(employee_id: str) -> list[dict]
-    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順、終わった開催・キャンセルは後ろ。
+    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順。終わった開催・キャンセルは後ろに置き、後ろ側は開催日時の新しい順。
     各dictは applications の行に "events"（開催。"events"."clubs" に部活）と "messages"（やり取り）を付けたもの。これに加えて次のキーを持つ。
       "organizer"(dict): その申込の部活の幹事。キーは "id", "name"（employees の列名）。clubs.organizer_id を employees_repo.get_by_id で解決する。画面は「幹事：○○」の表示に使う（SP-37）。
     "organizer" の解決: 幹事の社員行が見つからない場合（想定外）は {"id": clubs.organizer_id, "name": None} とし、例外にしない（一覧全体を落とさない）。
