@@ -17,7 +17,12 @@ from repositories import (
     messages_repo,
 )
 from services import action_log_service, notification_service
-from services.errors import ConflictError, NotFoundError, PermissionDeniedError
+from services.errors import (
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 
 _JST = ZoneInfo("Asia/Tokyo")
 
@@ -172,3 +177,43 @@ def confirm_stamp(application_id: int, organizer_id: str) -> None:
         event_id=event["id"],
         body="幹事が確認しました",
     )
+
+
+def send_message(application_id: int, sender_id: str, body: str) -> None:
+    """申込へのメッセージ送信（SP-38, I-F契約 1.3）。送れるのは申込者本人とその部活の幹事のみ。
+
+    例外の判定順は NotFoundError → PermissionDeniedError → ValidationError → ConflictError（キャンセル済み）。
+    body は前後の空白を除いて保存し、相手に種別「メッセージ」の通知を1件送る（本文は固定文）。
+    申込者が幹事本人のときは相手がいないため通知は送らない。
+    """
+    application = applications_repo.get(application_id)
+    if application is None:
+        raise NotFoundError(f"application {application_id}")
+    event = events_repo.get(application["event_id"])
+    if event is None:
+        raise NotFoundError(f"event {application['event_id']}")
+    club = clubs_repo.get(event["club_id"])
+    if club is None:
+        raise NotFoundError(f"club {event['club_id']}")
+
+    applicant_id = application["applicant_id"]
+    organizer_id = club["organizer_id"]
+    if sender_id not in (applicant_id, organizer_id):
+        raise PermissionDeniedError("only the applicant or the organizer can send")
+
+    text = (body or "").strip()
+    if not text:
+        raise ValidationError("body is required")
+    if application["status"] == _STATUS_CANCELED:
+        raise ConflictError()
+
+    messages_repo.insert(application_id, sender_id, text)
+
+    recipient_id = organizer_id if sender_id == applicant_id else applicant_id
+    if recipient_id != sender_id:
+        notification_service.notify(
+            recipient_id,
+            "メッセージ",
+            application_id=application_id,
+            body="新しいメッセージがあります",
+        )
