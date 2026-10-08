@@ -95,6 +95,7 @@ get_recommendations(employee_id: str) -> list[dict]
       "score"(int, 一致度スコア。自分の興味・拠点・参加可能時間と部活の活動・拠点・時間帯が一致した項目の数。SP-18, SP-75),
       "reason"(str, 一致した項目を並べた説明文。画面はそのまま表示する。SP-75「一致項目をおすすめ理由として表示」)。
     並びは "score" の降順。
+    所属済みの部活（club_members に登録がある部活）は結果に含めない。本人の所属は club_members_repo.list_clubs_by_member(employee_id) で判定する。
 
 get_this_week_clubs() -> list[dict]
     ホーム（S02）の「今週開催の部活」用（SP-16, SP-75, SP-08）。

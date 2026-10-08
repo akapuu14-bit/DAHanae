@@ -144,6 +144,7 @@ def get_recommendations(employee_id: str) -> list[dict]:
     本人の興味・拠点・参加可能時間（非公開設定に関わらず本人分を使う。裁定#19）と、
     各部活の活動・拠点・時間帯の一致数を "score" とし、1以上の部活を score 降順で返す。
     同点は次回開催日が近い順、さらに club_id 昇順。"reason" は一致した項目を並べた説明文。
+    所属済みの部活（club_members に登録がある部活）は対象から除く。
     """
     employee = employees_repo.get_by_id(employee_id)
     if employee is None:
@@ -153,10 +154,13 @@ def get_recommendations(employee_id: str) -> list[dict]:
         for i in employees_repo.get_interests(employee["id"])
     }
     slots = set(employee.get("available_slots") or [])
+    joined = set(club_members_repo.list_clubs_by_member(employee["id"]))
     next_dates = _next_event_dates()
 
     results = []
     for club in clubs_repo.search({}):
+        if club["id"] in joined:
+            continue
         matched = []
         if club["activity_id"] in interests:
             matched.append(f"興味（{interests[club['activity_id']]}）")
