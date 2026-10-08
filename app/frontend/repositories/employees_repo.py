@@ -169,3 +169,19 @@ def set_interests(employee_id: str, interests: list[dict]) -> None:
         supabase.table("employee_interests").delete().eq(
             "employee_id", employee_id
         ).execute()
+
+
+def set_available_slots(employee_id: str, available_slots: list[str]) -> None:
+    """参加可能時間を置き換え保存する。空リストは「0件にする」。
+
+    選択肢・重複の検証は service 層（profile_service.save_profile）で済ませるため、値をそのまま保存する。
+    """
+    supabase.table("employees").update({"available_slots": available_slots}).eq(
+        "id", employee_id
+    ).execute()
+
+
+def list_departments() -> list[str]:
+    """employees.dept の重複を除いた値を昇順（Python の sorted と同じ）で返す。社員が0人なら空リスト。"""
+    res = supabase.table("employees").select("dept").execute()
+    return sorted({r["dept"] for r in (res.data or []) if r.get("dept")})
