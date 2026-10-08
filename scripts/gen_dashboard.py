@@ -269,8 +269,10 @@ def deadline_badge(done: bool, due_on: str | None, today: date) -> tuple[str, st
     return f"期限内(残{diff}日)", "badge-ok"
 
 
-_TITLE_TAG_RE = re.compile(r"^\s*(\[[^\]]*\])\s*")
+_TITLE_TAG_RE = re.compile(r"^\s*((?:\[[^\]]*\]\s*)+)")
 _PATH_RE = re.compile(r"[\w.\-]+(?:/[\w.\-]+)+|[\w\-]+\.(?:py|md|yml|yaml|json|html|sh|ts|js|css|toml|txt)\b", re.ASCII)
+
+_DIR_PREFIX_RE = re.compile(r"^(?:(?:app|frontend|backend|screens|scripts|components|repositories|services|mocks)/)+")
 
 
 def _title_html(title: str) -> str:
@@ -278,12 +280,18 @@ def _title_html(title: str) -> str:
     tag = ""
     m = _TITLE_TAG_RE.match(title)
     if m:
-        tag = f'<span class="task-tag">{html.escape(m.group(1))}</span> '
+        tag = f'<span class="task-tag">{html.escape(m.group(1).rstrip())}</span> '
         title = title[m.end():]
     out, pos = [], 0
     for pm in _PATH_RE.finditer(title):
         out.append(html.escape(title[pos:pm.start()]))
-        out.append(f"<code>{html.escape(pm.group(0))}</code>")
+        path = pm.group(0)
+        # 先頭/空白/・直後のパスだけ、表示上ディレクトリ接頭辞を省く（文中の「mocks/」等の日本語混在は触らない）
+        if pm.start() == 0 or title[pm.start() - 1] in " \u3000・":
+            stripped = _DIR_PREFIX_RE.sub("", path)
+            if "." in stripped:
+                path = stripped
+        out.append(f"<code>{html.escape(path)}</code>")
         pos = pm.end()
     out.append(html.escape(title[pos:]))
     return tag + "".join(out)
@@ -561,13 +569,14 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .task-no {{ font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }}
   .task-title {{
     color: var(--accent); text-decoration: none; font-weight: 600;
-    min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0; flex: 1 1 auto; overflow: hidden; overflow-wrap: break-word; line-break: strict;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
   }}
   .task-title:hover {{ text-decoration: underline; }}
   .task-title code {{
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em;
     background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 0 4px; border-radius: 3px;
-    overflow-wrap: anywhere; word-break: keep-all;
+    display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
   }}
   .task-tag {{ color: var(--muted); font-weight: 500; white-space: nowrap; }}
   .task-done .task-title {{ color: var(--muted); text-decoration: line-through; font-weight: 400; }}
