@@ -32,6 +32,7 @@ _CARD_KEYS = (
     "fee",
     "fee_note",
     "after_activity",
+    "level",
 )
 
 

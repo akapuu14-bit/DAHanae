@@ -77,7 +77,7 @@ search_clubs(conditions: dict) -> list[dict]
     指定しないキーは省略可（未指定＝条件にしない、仕様.md SP-20）。
     戻り値: is_active=trueの部活を、次回開催日が近い順（予定の開催がない部活は最後）に並べたdictのリスト。各dictはカード表示（SP-21）に必要な項目（部活名・拠点・活動時間・次回開催日・雰囲気タグ・費用・活動後の過ごし方・club_id等）を含む。
     各dictのキー（「部活カードdict」。下記の他の関数でも共通）:
-      "club_id"(int, = clubs.id), "name"(str), "icon"(str), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "next_event_date"(date | None)。
+      "club_id"(int, = clubs.id), "name"(str), "icon"(str | None), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "level"(str, clubs.level。「初心者歓迎」「レベル問わず」「経験者向け」のいずれか), "next_event_date"(date | None)。
       キー名は clubs テーブルの列名（仕様.md 3.1）に一致させる。ただし主キーのみ、「id」だと events.id・activities.id と取り違えやすいため "club_id" とする（値は clubs.id）。
       "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。今日（日本時間）より前の開催は対象に含めない（今日の開催は含める）。
     例外: なし（条件に合わない場合は空リストを返す。0件時の文言はSP-22どおり画面側で出す）。
@@ -123,7 +123,7 @@ get_club_detail(club_id: int, viewer_id: str) -> dict
       "members"(list[dict]): 所属メンバー。各dictは "id", "name", "dept"（SP-28）。club_members_repo.list_members(club_id) の employee_id ごとに employees_repo.get_by_id で名前・部署を解決する。幹事も club_members に登録される（SP-77）ため、幹事本人も含まれる。
       "member_count"(int): len(members)。
       "events"(list[dict]): 今日以降の開催を日付順（同日はid順）。events_repo.list_upcoming_by_club(club_id) の順序のまま。各dictのキー:
-        "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time), "status"("予定" | "中止"),
+        "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time | None), "status"("予定" | "中止"),
         "participant_count"(int), "first_timer_count"(int), "participants"(list[dict]), "is_applied"(bool)。
         "participants" の各dictは "id"(申込者の社員ID), "name", "is_first_time"(bool), "is_self"(bool, id == viewer_id)。applications.id 順。
         "is_applied": viewer_id 本人が、その開催に状態「申込済み」の申込を持つか（= participants のどれかが is_self）。SP-27 のボタン出し分け（予定・未申込→「申し込む」／予定・申込済み→「申込済み」／中止→「中止」でボタンなし）は、この値と "status" で画面側が決める。
