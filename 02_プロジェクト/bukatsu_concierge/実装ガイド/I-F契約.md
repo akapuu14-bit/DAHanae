@@ -187,6 +187,7 @@ list_my_applications(employee_id: str) -> list[dict]
 
 list_received_applications(organizer_id: str) -> list[dict]
     自分が幹事を務める部活への申込一覧（メッセージ画面「届いた申込」タブ用。SP-40）。未読の通知がある申込を先頭、そのあとは新しい順。
+    各dictは applications の行に "events"（開催。"events"."clubs" に部活）・"employees"（申込者）・"messages"（やり取り）を付けたもの。
 
 confirm_stamp(application_id: int, organizer_id: str) -> None
     「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。キャンセル済みの申込には押せない（SP-67「キャンセルした申込は閲覧のみ」）。

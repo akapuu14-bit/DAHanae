@@ -121,7 +121,7 @@ def list_by_applicant(applicant_id: str) -> list[dict]:
 def list_by_organizer_club(club_id: int) -> list[dict]:
     """その部活の全開催に対する申込一覧を id 順で返す（キャンセル行も含む）。
 
-    各dictの "events" に開催、"employees" に申込者の社員行が入る。
+    各dictの "events" に開催（"events"."clubs" に部活）、"employees" に申込者の社員行が入る。
     並び順（SP-40：未読を先頭、そのあとは新しい順）は service 層で行う。
     """
     event_rows = (
@@ -136,7 +136,7 @@ def list_by_organizer_club(club_id: int) -> list[dict]:
         return []
     res = (
         supabase.table("applications")
-        .select("*, events(*), employees(*)")
+        .select("*, events(*, clubs(*)), employees(*)")
         .in_("event_id", event_ids)
         .order("id")
         .execute()
