@@ -79,7 +79,7 @@ search_clubs(conditions: dict) -> list[dict]
     各dictのキー（「部活カードdict」。下記の他の関数でも共通）:
       "club_id"(int, = clubs.id), "name"(str), "icon"(str), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "next_event_date"(date | None)。
       キー名は clubs テーブルの列名（仕様.md 3.1）に一致させる。ただし主キーのみ、「id」だと events.id・activities.id と取り違えやすいため "club_id" とする（値は clubs.id）。
-      "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。
+      "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。今日（日本時間）より前の開催は対象に含めない（今日の開催は含める）。
     例外: なし（条件に合わない場合は空リストを返す。0件時の文言はSP-22どおり画面側で出す）。
 
 search_employees(conditions: dict, requester_id: str, limit: int = 20, offset: int = 0) -> tuple[list[dict], int]
@@ -108,6 +108,7 @@ get_this_week_clubs() -> list[dict]
 get_popular_clubs() -> list[dict]
     ホーム（S02）の「今月の人気部活」用（SP-17, SP-75）。
     今月の開催への申込のうち、is_first_time が true かつ status がキャンセル以外のものを部活ごとに数え、件数の多い順に返す。
+    集計対象は is_active=true の部活のみ。中止になった開催（events.status が「中止」）への申込は集計しない（PM裁定）。"next_event_date" の意味は search_clubs と同じ（今日（日本時間）以降の「予定」の開催で最も近い日）。
     戻り値: 部活カードdict（search_clubsと同じキー）に加えて "rank"(int, 1始まりの順位＝並び順の通し番号) を持つdictのリスト。集計対象が0件の部活は含めない。
     件数の絞り込み（SP-17の「上位3件」）は行わない。集計できた部活を順位つきですべて返し、先頭3件の切り出し（[:3]）と0件時の案内文は画面側が持つ。
     同数のときの並び：仕様に定めがないため、club_id の昇順で決める（テスト・表示を毎回同じにするためだけの決め。順位は通し番号とし同順位は作らない）。

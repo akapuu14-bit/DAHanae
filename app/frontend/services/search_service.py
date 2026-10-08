@@ -55,11 +55,14 @@ def _card(club: dict, next_event_date: date | None) -> dict:
 def _next_event_dates() -> dict[int, date]:
     """部活ごとの「予定」の開催のうち最も近い日付（今日以降）。予定の開催がない部活は含まない。"""
     result: dict[int, date] = {}
+    today = _today()
     for event in events_repo.list_upcoming_all_with_club():
         if event["status"] != _EVENT_OPEN:
             continue
         d = _as_date(event["event_date"])
         club_id = event["club_id"]
+        if d < today:
+            continue
         if club_id not in result or d < result[club_id]:
             result[club_id] = d
     return result
