@@ -243,8 +243,28 @@ class TestAssigneeBreakdown(unittest.TestCase):
                 "areas": [], "html_url": "u"}
         out = gd.render_task_rows([task], self.TODAY)
         self.assertIn('title="[Wave0-1] scripts/reset_data.py を直す"', out)
-        self.assertIn("<code>scripts/reset_data.py</code>", out)
+        self.assertIn("<code>reset_data.py</code>", out)
         self.assertIn('<span class="task-tag">[Wave0-1]</span>', out)
+
+    def test_dir_prefix_folded_only_for_leading_paths(self):
+        h = gd._title_html
+        self.assertEqual(h("[Wave1-3][UI] screens/employee_search.py（S08）"),
+                         '<span class="task-tag">[Wave1-3][UI]</span> <code>employee_search.py</code>（S08）')
+        self.assertIn("<code>rule_notice.py</code>・<code>error_banner.py</code>", h("[W][PDM] components/rule_notice.py・error_banner.py"))
+        self.assertIn("profile_service の実装", h("[W][BE] profile_service の実装と、S09 に"))
+        self.assertEqual(h("[Wave4] 画面×サービス×DB通し確認・単体テスト添付"),
+                         '<span class="task-tag">[Wave4]</span> 画面×サービス×DB通し確認・単体テスト添付')
+        mixed = h("[W][UI] 仮認証（mocks/）を本物の auth_service に")
+        self.assertIn("（mocks/）を本物の", mixed)
+        self.assertNotIn("<code>", mixed)
+        self.assertIn("<code>employee_search.py</code>", h("app/frontend/screens/employee_search.py"))
+        self.assertIn("scripts/x", h("日本語scripts/x"))
+
+    def test_title_clamped_to_two_lines_in_css(self):
+        css = gd.PAGE_TEMPLATE
+        self.assertIn("-webkit-line-clamp: 2", css)
+        self.assertIn("-webkit-box-orient: vertical", css)
+        self.assertNotIn("white-space: nowrap;\n    min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow", css)
 
     def test_late_first_larger_delay_first_then_within_deadline(self):
         def t(n, due, done=False):
