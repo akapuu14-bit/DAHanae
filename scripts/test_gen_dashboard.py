@@ -226,11 +226,35 @@ class TestAssigneeBreakdown(unittest.TestCase):
         self.assertIn("遅延 3日", out)
         self.assertIn("完了", out)
         self.assertIn("期限: 2026-09-25", out)
-        self.assertIn("〜9/29 アプリのカタチ ・ 期限: 2026-09-25", out)
+        self.assertIn('<span class="meta-item">〜9/29 アプリのカタチ</span><span class="meta-item">期限: 2026-09-25</span>', out)
         # T-023: 担当者カードの内訳では『担当:』『状態:』を省略（カードの主が担当・状態はバッジ）
         self.assertNotIn("担当:", out)
         self.assertNotIn("状態:", out)
         self.assertIn('target="_blank" rel="noopener"', out)
+
+    def test_breakdown_has_no_category_chip_per_task(self):
+        board = gd.aggregate_by_assignee(self.items())
+        out = gd.render_task_rows(board["alice"]["tasks"], self.TODAY)
+        self.assertNotIn("chip", out)
+
+    def test_title_is_single_line_with_full_title_attr_and_code_path(self):
+        task = {"number": 9, "title": "[Wave0-1] scripts/reset_data.py を直す", "assignee": "a",
+                "done": False, "is_pr": False, "milestone_title": "m", "due_on": None,
+                "areas": [], "html_url": "u"}
+        out = gd.render_task_rows([task], self.TODAY)
+        self.assertIn('title="[Wave0-1] scripts/reset_data.py を直す"', out)
+        self.assertIn("<code>scripts/reset_data.py</code>", out)
+        self.assertIn('<span class="task-tag">[Wave0-1]</span>', out)
+
+    def test_late_first_larger_delay_first_then_within_deadline(self):
+        def t(n, due, done=False):
+            return {"number": n, "title": f"t{n}", "assignee": "a", "done": done, "is_pr": False,
+                    "milestone_title": "m", "due_on": due, "areas": [], "html_url": "u"}
+        tasks = [t(1, "2026-10-20T00:00:00Z"), t(2, "2026-09-20T00:00:00Z"),
+                 t(3, "2026-09-25T00:00:00Z"), t(4, "2026-09-01T00:00:00Z", done=True)]
+        out = gd.render_task_rows(tasks, date(2026, 9, 28))
+        order = [out.index(f">#{n}<") for n in (2, 3, 1, 4)]
+        self.assertEqual(order, sorted(order))
 
     def test_unassigned_and_no_milestone_visible_without_crash(self):
         board = gd.aggregate_by_assignee(self.items())
@@ -324,10 +348,10 @@ class TestMilestoneBreakdown(unittest.TestCase):
     def test_milestone_column_omitted_in_milestone_view(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())
         out = gd.render_milestone_bars(ms, self.TODAY)
-        self.assertNotIn("・ 〜9/29", out)
+        self.assertNotIn('<span class="meta-item">〜9/29 アプリのカタチ</span>', out)
         self.assertNotIn("状態:", out)
         board = gd.aggregate_by_assignee(self.items())
-        self.assertIn("〜9/29 アプリのカタチ ・ 期限", gd.render_assignee_cards(board, self.TODAY))
+        self.assertIn('<span class="meta-item">〜9/29 アプリのカタチ</span>', gd.render_assignee_cards(board, self.TODAY))
 
     def test_empty_milestone_has_no_breakdown_or_placeholder(self):
         ms = gd.aggregate_by_milestone(self.items(), self.milestones())

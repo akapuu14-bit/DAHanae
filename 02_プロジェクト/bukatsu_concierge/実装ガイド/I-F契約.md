@@ -4,7 +4,7 @@
 
 ## 0. 本書の位置づけと決定事項
 
-`設計.md`（層分離・5フロー）・`仕様.md`（SP-01〜SP-78）を一次情報に、`services/` 6本・`repositories/` 9本の関数シグネチャを1つに確定する。フロント（あかぷ／mirin）・バックエンド（だーあさ／terao）ともに、この契約に従って実装する。契約にない呼び方（別の引数名・別の戻り値形式）は使わない。
+`設計.md`（層分離・5フロー）・`仕様.md`（SP-01〜SP-78）を一次情報に、`services/` 7本・`repositories/` 9本の関数シグネチャを1つに確定する。フロント（あかぷ／mirin）・バックエンド（だーあさ／terao）ともに、この契約に従って実装する。契約にない呼び方（別の引数名・別の戻り値形式）は使わない。
 
 ### 0.1 今日の衝突（関数 vs クラス）の解消
 
@@ -43,7 +43,7 @@
 
 画面側（`screens/*.py`）は、これらの例外を`try/except`で受け、仕様.mdに定めるエラーメッセージ文言（例：SP-11「社員IDかパスワードが違います。入力内容を確認してください」）を表示する。**エラーメッセージの文言はservice層では組み立てず、画面側で例外の種類に応じて仕様書どおりの文言を出す**（文言をservice/repositoryに持たせると、画面ごとの文言差異（例：SP-31の「すでに申し込み済みです」と「この開催には申し込みできません」の出し分け）に対応しづらいため）。
 
-## 1. services（6本）
+## 1. services（7本）
 
 ### 1.1 `services/auth_service.py`（対応SP: SP-01, SP-63, SP-11）
 
@@ -271,6 +271,104 @@ save_profile(employee_id: str, requester_id: str, interests: list[dict], availab
     注意: 2つの保存は別テーブルへの書き込みで、まとめて1トランザクションにはしない（Supabaseクライアントの制約）。検証を先に済ませるのは、不正入力で片方だけ保存される事態を避けるため。
 ```
 
+### 1.7 `services/club_admin_service.py`（対応SP: SP-58〜SP-62, SP-73, SP-74）
+
+部活管理（S10）の部活・開催・メンバーの登録と編集を担当する7本目のservice。search_service は一般社員向けの「見る」ための参照（get_club_detail など）、club_admin_service は幹事・運営者が行う部活管理の参照と更新。管理画面の編集用の取得（get_club）は表示用の get_club_detail とは別の関数で、役割を混ぜない。
+
+権限の判定（SP-74）: 新しい権限関数は作らず、`auth_service.get_role` を使う。運営者は `get_role(requester_id) == "admin"`、その部活の幹事は `get_role(requester_id, club_id) == "organizer"`。以下で「運営者または幹事」は、どちらかが成り立つこと。どちらでもない場合は PermissionDeniedError。club_id に該当する部活が無い場合、get_role が NotFoundError を送出するため、各関数は先に NotFoundError になる。開催（event_id）を受け取る関数は events_repo.get(event_id) で club_id を求め、event_id が無ければ NotFoundError。
+
+部活のフィールド定義（A-1裁定）:
+  必須14: name, icon, activity_id, location, slot, frequency, level, fact_adult_starters, message, fee, rental, join_leave, after_activity, organizer_id
+  任意4: schedule_note, fee_note, belongings_note, mood_tags（0〜3件。最大3件はDBのCHECK制約でもあるが、アプリ側でも件数と許可値を検証する。許可値は「ゆるめ」「しっかり練習」「黙々と集中」「わいわい賑やか」「おしゃべり多め」「少人数」）
+  上記18項目以外に fields で受け取るのは is_active のみ（update_club で運営者だけが変更できる。create_club では受け取らず、新規作成時は true で作る）。id・updated_at など上記以外のキーが fields に含まれる場合は ValidationError。
+  備考: 必須/任意の最終定義は開発仕様書v0.1で、相違があればそちらで上書きする。選択肢の許可値（location, slot, frequency, level, fact_adult_starters, fee, rental, join_leave, after_activity）は仕様.md 3.2・DBのCHECK制約と同じで、アプリ側でも事前に検証する。
+  ※ DBでは icon・message は NOT NULL でないが、アプリ側では必須として検証する（上記必須14は SP-59 の「必須が空なら保存しない」に対応）。
+
+ValidationError の理由コード（ConflictError の理由コードと同じく、例外の引数に文字列で持たせ、画面側が SP-59/SP-61 の文言を出し分ける）:
+  "required:<key>"（必須項目が未入力。None・空文字・空白のみ。<key> は上のフィールド名または開催の項目名）／"past_date"（開催日が今日より前）／"end_before_start"（終了時刻が開始時刻以前。同時刻も不可）／"invalid:<key>"（選択肢外・存在しない activity_id / organizer_id・mood_tags の件数超過や許可値外）／"unknown:<key>"（fields に受け付けないキーがある）。
+
+```
+list_manageable_clubs(requester_id: str) -> list[dict]
+    管理画面（S10）の部活選択の一覧（SP-58）。運営者は is_active を問わず全部活（clubs_repo.list_all_for_admin）、幹事は自分が organizer_id の部活を非公開（is_active=false）も含めて（clubs_repo.list_by_organizer）、id 昇順で返す。運営者でも幹事でもない社員には空リスト（例外にしない。サイドバーの「部活の管理」の表示可否は auth_service 側で決める）。
+    各dictのキー: "club_id"(int), "name"(str), "icon"(str|None), "location"(str), "slot"(str), "organizer_id"(str), "is_active"(bool)。
+    例外: なし。
+
+get_club(club_id: int, requester_id: str) -> dict
+    部活情報タブ（SP-59）の編集用に、部活の全項目を返す読み取り専用の関数。表示用の search_service.get_club_detail（幹事・メンバー・開催をまとめて返す）とは別物。
+    戻り値: clubs_repo.get(club_id) の全列（仕様.md 3.1）。organizer_id と is_active を含む。主キーのみ "id" ではなく "club_id" に読み替える（"id" キーは含めない）。
+    権限: 運営者または幹事。
+    例外: NotFoundError / PermissionDeniedError。
+
+create_club(requester_id: str, fields: dict) -> int
+    部活の新規作成（SP-58, SP-59, SP-74）。戻り値は採番された club_id。
+    権限: 運営者のみ。幹事・一般社員は PermissionDeniedError。
+    fields: 上の「必須14」と「任意4」のキー。is_active は受け取らず、true で作る。必須14のどれかが未入力なら ValidationError("required:<key>")（SP-59「○○を入力してください」。複数ある場合は上の列挙順で最初の1件）。
+    処理: 検証 → clubs_repo.create(data) → 幹事を所属メンバーとして club_members_repo.add_member(club_id, organizer_id) に登録する（SP-77: 幹事も club_members に入る）。
+    例外: PermissionDeniedError / ValidationError。
+
+update_club(club_id: int, requester_id: str, fields: dict) -> None
+    部活情報の保存（SP-59）。fields に含めたキーだけを更新する（含めないキーは変更しない）。
+    権限: 運営者、または その部活の幹事。ただし organizer_id と is_active の「変更」は運営者のみ。幹事の fields に organizer_id または is_active があり、現在の値と異なる場合は PermissionDeniedError（現在と同じ値なら変更とみなさず無視する。画面がフォーム全体を送ってもよい）。
+    検証: fields に含まれる必須14のキーが空になる場合は ValidationError("required:<key>")。選択肢・mood_tags・存在確認（activity_id, organizer_id）は create_club と同じ。
+    処理: clubs_repo.update(club_id, data)。organizer_id が変わった場合、新しい幹事が club_members に未登録なら add_member で登録する（前の幹事は所属メンバーのまま残す。メンバーの削除は remove_club_member の操作）。
+    例外（判定の順）: NotFoundError → PermissionDeniedError → ValidationError。
+
+list_club_events(club_id: int, requester_id: str) -> list[dict]
+    開催タブ（SP-60）の一覧。今日以降の開催を日付順（同日は id 順。events_repo.list_upcoming_by_club の順序のまま）で返す。中止の開催も含む。
+    各dictのキー: "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time|None), "status"("予定" | "中止"), "applicant_count"(int)。
+    "applicant_count": その開催の状態「申込済み」の申込の件数（applications_repo.list_participants(event_id) の件数。キャンセルは数えない）。
+    権限: 運営者または幹事。
+    例外: NotFoundError / PermissionDeniedError。
+
+create_event(club_id: int, requester_id: str, fields: dict) -> int
+    開催の追加（SP-60, SP-61）。戻り値は採番された event_id。状態は「予定」で作る。
+    fields のキー: 必須 "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str)。任意 "meeting_time"(time|None, 集合時刻)。
+    検証: 必須が未入力なら ValidationError("required:<key>")。event_date が今日より前なら ValidationError("past_date")（今日は可）。end_time <= start_time なら ValidationError("end_before_start")。判定の順は required → past_date → end_before_start。
+    権限: 運営者または幹事。
+    例外（判定の順）: NotFoundError（club_id）→ PermissionDeniedError → ValidationError。
+
+update_event(event_id: int, requester_id: str, fields: dict) -> None
+    開催の編集（SP-60, SP-61）。fields は create_event と同じキーで、含めたキーだけを更新する。status は fields では受け取らない（変更は set_event_status）。
+    検証: create_event と同じ。end_before_start は更新後の開始・終了時刻（fields に無いキーは現在の値）で判定する。"past_date" は fields に event_date を含む場合に判定する（含めない場合、過去日の既存開催の他の項目は更新できる）。
+    例外（判定の順）: NotFoundError（event_id）→ PermissionDeniedError → ValidationError。
+
+set_event_status(event_id: int, requester_id: str, status: str) -> None
+    開催の「中止にする」「予定に戻す」（SP-60, SP-73）。status は "予定" | "中止"（それ以外は ValidationError("invalid:status")）。
+    権限: 運営者または幹事。
+    すでに同じ状態への変更は ConflictError（引数の理由コードは "same_status"）。
+    中止にしたとき（B-1裁定）: events_repo.set_status を行ったあと、その開催の状態「申込済み」の申込者全員に、service側で自動的に通知する。applications_repo.list_participants(event_id) の各申込について notification_service.notify(applicant_id, "中止", application_id=その申込の id, event_id=event_id, body="開催が中止になりました")。本文は固定文（他の種別と同じく、service内で文言を組み立てない）。申込の状態は変えない（SP-73）。「予定に戻す」ときは通知しない。
+    例外（判定の順）: NotFoundError → PermissionDeniedError → ValidationError → ConflictError。
+
+list_club_members(club_id: int, requester_id: str) -> list[dict]
+    メンバータブ（SP-62, Should）の一覧。club_members_repo.list_members(club_id) の各行を employees_repo.get_by_id で解決して返す。club_members の並び順のまま。
+    各dictのキー: "id"(str, 社員ID), "name", "dept", "joined_at"(date|None), "is_organizer"(bool, clubs.organizer_id と一致するか)。
+    権限: 運営者または幹事。
+    例外: NotFoundError / PermissionDeniedError。
+
+add_club_member(club_id: int, requester_id: str, employee_id: str) -> None
+    メンバーの追加（SP-62, Should。裁定#13）。
+    権限: 運営者または幹事。
+    例外（判定の順）: NotFoundError（club_id、または employee_id に該当する社員がいない）→ PermissionDeniedError → ConflictError（すでに所属している。理由コード "already_member"）。
+    処理: club_members_repo.is_member で重複を確認し、add_member(club_id, employee_id)。
+
+remove_club_member(club_id: int, requester_id: str, employee_id: str) -> None
+    メンバーの削除（SP-62, Should）。
+    権限: 運営者または幹事。
+    例外（判定の順）: NotFoundError（club_id、または employee_id がその部活の所属メンバーでない）→ PermissionDeniedError → ConflictError（employee_id が clubs.organizer_id と一致する＝幹事は削除できない。理由コード "organizer"。幹事を外すには update_club で organizer_id を変更する）。
+    処理: club_members_repo.remove_member(club_id, employee_id)。
+
+get_last_meeting_place(club_id: int) -> str | None
+    開催追加フォーム（SP-60）の集合場所の初期値（前回の開催の集合場所）。events_repo.get_last_meeting_place(club_id) を呼ぶservice入口で、screens が events_repo を直接呼ばないための関数。開催が1件もない、または club_id に該当する部活がない場合は None（例外にしない）。権限の判定はしない（初期値の読み取りのみ。管理画面は権限のある人にしか開かれない）。
+list_selectable_employees(requester_id: str) -> list[dict]
+    部活管理画面（S10）の社員の選択肢。「幹事を選ぶ」（SP-59）と「メンバーを追加する」（SP-62）で使う。管理操作のための一覧なので、興味・参加可能時間の公開設定（SP-65）による表示制御は掛けず、全社員を返す。
+    戻り値: [{"id": str, "name": str}, ...]（全社員。キーは id と name のみ。部署などは含めない）。並びは name の昇順（文字列の昇順）、同名は id の昇順で固定する。0人なら空リスト。
+    権限: 運営者または幹事。幹事は「いずれかの部活の幹事」であればよい（club_id は渡さない）ため、判定は `get_role(requester_id) == "admin"` または `auth_service.is_organizer(requester_id)`（1.1）で行う。どちらでもない社員は PermissionDeniedError。
+    例外: PermissionDeniedError。
+    実装方針: 新設の employees_repo.list_all()（2.1）を呼ぶ。screens が employees_repo を直接呼ばないための service 経由の入口。
+```
+
+使うrepository（新規追加は employees_repo.list_all のみ。ほかは既存）: clubs_repo（get / list_by_organizer / list_all_for_admin / create / update）、events_repo（get / list_upcoming_by_club / get_last_meeting_place / create / update / set_status）、club_members_repo（is_member / list_members / add_member / remove_member）、applications_repo（list_participants）、employees_repo（get_by_id、list_selectable_employees 用に新規追加の list_all）、activities_repo（get）。通知は notification_service.notify（1.4）。
+
 ## 2. repositories（9本）
 
 各`repositories/*.py`はSQL/Supabaseクエリの組み立てをここに閉じ込め、`services/`からのみ呼ばれる。画面（`screens/*.py`）からrepositoriesを直接呼ばない。
@@ -286,6 +384,7 @@ get_interests(employee_id: str) -> list[dict]           # [{"activity_id":..,"ac
 set_interests(employee_id: str, interests: list[dict]) -> None   # SP-57（Should）の編集保存用
 set_available_slots(employee_id: str, available_slots: list[str]) -> None   # 【新規追加】SP-57（Should）。employees.available_slots を置き換え保存する。空リストは「0件にする」。検証（選択肢・重複）は service 層（profile_service.save_profile）で済ませるため、repository は値をそのまま保存する
 list_departments() -> list[str]                           # 【新規追加】employees.dept の重複を除いた値を昇順で返す。部署マスタは無いため employees から導く。search_service.list_departments が呼ぶ
+list_all() -> list[dict]                                  # 【新規追加】全社員の "id" と "name" を、name の昇順（同名は id の昇順）で返す。公開設定（visibility）では絞らない。0人なら空リスト。club_admin_service.list_selectable_employees が呼ぶ
 ```
 
 `update_public_settings` は既出のとおり（上記）。プロフィール画面からの呼び出しは、本人確認を行う `profile_service.update_public_settings(employee_id, requester_id, ...)`（1.6）を経由する。screens から employees_repo を直接呼ばない。
