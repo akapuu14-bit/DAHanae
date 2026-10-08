@@ -189,11 +189,11 @@ list_received_applications(organizer_id: str) -> list[dict]
     自分が幹事を務める部活への申込一覧（メッセージ画面「届いた申込」タブ用。SP-40）。未読の通知がある申込を先頭、そのあとは新しい順。
 
 confirm_stamp(application_id: int, organizer_id: str) -> None
-    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。
+    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。キャンセル済みの申込には押せない（SP-67「キャンセルした申込は閲覧のみ」）。
     例外:
       - NotFoundError
       - PermissionDeniedError（organizer_idがその部活の幹事でない）
-      - ConflictError（is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
+      - ConflictError（申込が「キャンセル」状態、is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
 ```
 
 ### 1.4 `services/notification_service.py`（対応SP: SP-70, SP-71）

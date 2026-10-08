@@ -154,7 +154,7 @@ def list_received_applications(organizer_id: str) -> list[dict]:
 
 
 def confirm_stamp(application_id: int, organizer_id: str) -> None:
-    """「確認したよ」スタンプ（SP-72）。is_first_time が true で未確認の申込にのみ有効。"""
+    """「確認したよ」スタンプ（SP-72）。is_first_time が true で未確認の申込にのみ有効。キャンセル済みの申込には押せない（SP-67）。"""
     application = applications_repo.get(application_id)
     if application is None:
         raise NotFoundError(f"application {application_id}")
@@ -164,7 +164,11 @@ def confirm_stamp(application_id: int, organizer_id: str) -> None:
     club = clubs_repo.get(event["club_id"])
     if club is None or club["organizer_id"] != organizer_id:
         raise PermissionDeniedError("only the organizer can confirm")
-    if not application["is_first_time"] or application.get("confirmed_at") is not None:
+    if (
+        application["status"] == _STATUS_CANCELED
+        or not application["is_first_time"]
+        or application.get("confirmed_at") is not None
+    ):
         raise ConflictError()
 
     applications_repo.update_status(
