@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from repositories import (
+    activities_repo,
     applications_repo,
     club_members_repo,
     clubs_repo,
@@ -178,6 +179,17 @@ def get_recommendations(employee_id: str) -> list[dict]:
         )
     )
     return results
+
+
+def list_departments() -> list[str]:
+    """社員検索（S08）の部署の選択肢（SP-48）。employees.dept の重複を除いた文字列昇順のリスト。"""
+    return employees_repo.list_departments()
+
+
+def list_activities() -> list[dict]:
+    """活動マスタ（SP-48, SP-57）。[{"id", "name"}] を id 昇順で返す。0件なら空リスト。"""
+    rows = sorted(activities_repo.list_all(), key=lambda r: r["id"])
+    return [{"id": r["id"], "name": r["name"]} for r in rows]
 
 
 def _visibility(is_public: bool, is_self: bool) -> str:
