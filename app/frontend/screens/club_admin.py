@@ -7,7 +7,7 @@
 サービスが返したエラーを、仕様どおりの文言にして出すこと。
 """
 
-from datetime import date
+from datetime import datetime, time, timedelta, timezone
 
 import streamlit as st
 
@@ -18,10 +18,21 @@ from services.errors import AppError, ConflictError, NotFoundError, PermissionDe
 #     from services import auth_service, club_admin_service, search_service
 # に書き換える。ただし club_admin_service は I-F契約への追加待ち（依頼予定）。
 from mocks import auth_service, club_admin_service, search_service
-from mocks.club_admin_service import (
-    AFTER_ACTIVITIES, FACT_ADULT_STARTERS, FEES, FREQUENCIES, JOIN_LEAVES, LEVELS, LOCATIONS, MAX_MOOD_TAGS,
-    MOOD_TAGS, RENTALS, SLOTS, STATUS_CANCELED, STATUS_PLANNED,
-)
+
+# 選択肢（仕様.md 3.2）。サービスの契約には定数が無いので、画面が持つ（選択肢の最終チェックはサービスがする）
+LOCATIONS = ["東京", "大阪"]
+SLOTS = ["平日夜", "土曜午前", "土曜午後", "日曜"]
+FREQUENCIES = ["毎週", "月2回", "月1回", "不定期"]
+LEVELS = ["初心者歓迎", "レベル問わず", "経験者向け"]
+FACT_ADULT_STARTERS = ["多い", "少しいる", "いない"]
+MOOD_TAGS = ["ゆるめ", "しっかり練習", "黙々と集中", "わいわい賑やか", "おしゃべり多め", "少人数"]
+FEES = ["無料", "500円以下", "1,000円以下", "それ以上"]
+RENTALS = ["あり", "なし"]
+JOIN_LEAVES = ["OK", "できれば最初から", "要相談"]
+AFTER_ACTIVITIES = ["なし", "ランチ・お茶", "飲み会", "日による"]
+STATUS_PLANNED = "予定"
+STATUS_CANCELED = "中止"
+MAX_MOOD_TAGS = 3
 
 MESSAGE_SAVED = "保存しました"  # SP-59
 MESSAGE_SAVE_FAILED = "保存できませんでした。もう一度お試しください"
@@ -47,6 +58,19 @@ _FLASH_KEY = "club_admin_flash"  # 保存後に1回だけ出す案内
 _EDIT_EVENT_KEY = "club_admin_edit_event"  # 編集中の開催ID
 _CANCEL_EVENT_KEY = "club_admin_cancel_event"  # 中止の確認中の開催ID
 NEW = "new"
+
+
+def _today():
+    """「今日」は日本時間（サーバーの時計が海外でもずれないように）。"""
+    return datetime.now(timezone(timedelta(hours=9))).date()
+
+
+def _employee_labels(employees):
+    """{社員ID: 表示名}。同じ名前の人がいるときだけ ID を添えて見分ける。"""
+    counts = {}
+    for e in employees:
+        counts[e["name"]] = counts.get(e["name"], 0) + 1
+    return {e["id"]: (f"{e['name']}（{e['id']}）" if counts[e["name"]] > 1 else e["name"]) for e in employees}
 
 
 def _hhmm(value):
@@ -76,12 +100,11 @@ def _render_club_form(club, is_admin, me, key_prefix):
     k = lambda name: f"{key_prefix}_{name}"
     activities = search_service.list_activities()
     activity_names = {a["id"]: a["name"] for a in activities}
-    employees, _total = search_service.search_employees({}, me, limit=500)
-    employee_names = {e["id"]: f"{e['name']}（{e['dept']}）" for e in employees}
+    employee_names = _employee_labels(club_admin_service.list_selectable_employees(me))
 
     with st.form(k("form")):
         name = st.text_input("部活名", value=club.get("name", ""), key=k("name"))
-        icon = st.text_input("アイコン（絵文字1つ）", value=club.get("icon", ""), key=k("icon"))
+        icon = st.text_input("アイコン（絵文字1つ）", value=club.get("icon") or "", key=k("icon"))
         activity_id = st.selectbox("活動", list(activity_names), key=k("activity"), format_func=lambda a: activity_names[a],
                                    index=list(activity_names).index(club["activity_id"]) if club.get("activity_id") in activity_names else None,
                                    placeholder="選んでください")
@@ -105,7 +128,10 @@ def _render_club_form(club, is_admin, me, key_prefix):
             "幹事", organizer_options, key=k("organizer"), format_func=lambda e: employee_names.get(e, e),
             index=organizer_options.index(club["organizer_id"]) if club.get("organizer_id") in organizer_options else None,
             placeholder="選んでください", disabled=not is_admin)
-        is_active = st.checkbox("公開中", value=club.get("is_active", True), key=k("active"), disabled=not is_admin)
+        # 公開中の切り替えは既存の部活だけ（新規作成はサービスが公開中で作る）
+        is_active = None
+        if club:
+            is_active = st.checkbox("公開中", value=club.get("is_active", True), key=k("active"), disabled=not is_admin)
         submitted = st.form_submit_button("保存する")
 
     if not submitted:
@@ -115,8 +141,10 @@ def _render_club_form(club, is_admin, me, key_prefix):
         "schedule_note": schedule_note.strip() or None, "frequency": frequency, "level": level,
         "fact_adult_starters": starters, "mood_tags": mood_tags, "message": message.strip(), "fee": fee,
         "fee_note": fee_note.strip() or None, "rental": rental, "belongings_note": belongings_note.strip() or None,
-        "join_leave": join_leave, "after_activity": after_activity, "organizer_id": organizer_id, "is_active": is_active,
+        "join_leave": join_leave, "after_activity": after_activity, "organizer_id": organizer_id,
     }
+    if club:
+        data["is_active"] = is_active
     # 先回りの案内（親切）。最終的な判断はサービスがする
     for key, label in _LABELS.items():
         if data.get(key) in (None, ""):
@@ -126,11 +154,11 @@ def _render_club_form(club, is_admin, me, key_prefix):
         st.error(MESSAGE_TOO_MANY_TAGS)
         return
     try:
-        if club.get("id") is None:
+        if club.get("club_id") is None:
             new_id = club_admin_service.create_club(me, data)
             st.session_state[_SELECTED_KEY] = new_id
         else:
-            club_admin_service.update_club(club["id"], me, data)
+            club_admin_service.update_club(club["club_id"], me, data)
     except PermissionDeniedError:
         st.error(MESSAGE_NO_PERMISSION)
         return
@@ -150,7 +178,7 @@ def _validation_text(error):
     if code.startswith("required:"):
         key = code.split(":", 1)[1]
         return f"{_LABELS.get(key) or _EVENT_LABELS.get(key, key)}を入力してください"
-    return {"too_many_mood_tags": MESSAGE_TOO_MANY_TAGS, "end_before_start": MESSAGE_END_BEFORE_START,
+    return {"invalid:mood_tags": MESSAGE_TOO_MANY_TAGS, "end_before_start": MESSAGE_END_BEFORE_START,
             "past_date": MESSAGE_PAST_DATE}.get(code, MESSAGE_SAVE_FAILED)
 
 
@@ -159,7 +187,7 @@ def _validation_text(error):
 def _event_fields(prefix, event, default_place):
     """開催の入力欄（追加・編集で共通）。値の dict を返す。"""
     event = event or {}
-    event_date = st.date_input("開催日", value=event.get("event_date", date.today()), key=f"{prefix}_date")
+    event_date = st.date_input("開催日", value=event.get("event_date", _today()), key=f"{prefix}_date")
     start = st.time_input("開始時刻", value=event.get("start_time") and _to_time(event["start_time"]) or _to_time("19:00"),
                           key=f"{prefix}_start")
     end = st.time_input("終了時刻", value=event.get("end_time") and _to_time(event["end_time"]) or _to_time("20:30"),
@@ -175,7 +203,6 @@ def _to_time(value):
     if hasattr(value, "hour"):
         return value
     hh, mm = str(value)[:5].split(":")
-    from datetime import time
     return time(int(hh), int(mm))
 
 
@@ -196,7 +223,7 @@ def _render_events(club_id, me):
             _render_event_actions(event, club_id, me)
 
     st.subheader("開催を追加")
-    default_place = club_admin_service.get_last_meeting_place(club_id, me)  # 前回の開催を初期値に（SP-60）
+    default_place = club_admin_service.get_last_meeting_place(club_id)  # 前回の開催を初期値に（SP-60）
     with st.form(f"club_admin_{club_id}_add_event"):
         data = _event_fields(f"club_admin_{club_id}_add", None, default_place)
         submitted = st.form_submit_button("追加する")
@@ -211,7 +238,7 @@ def _render_events(club_id, me):
 
 
 def _render_event_actions(event, club_id, me):
-    event_id = event["id"]
+    event_id = event["event_id"]
     if st.session_state.get(_EDIT_EVENT_KEY) == event_id:
         with st.form(f"club_admin_event_edit_form_{event_id}"):
             data = _event_fields(f"club_admin_event_edit_{event_id}", event, None)
@@ -268,33 +295,37 @@ def _set_status(event_id, me, status):
 # ---- メンバータブ（Should）-------------------------------------------------------
 
 def _render_members(club, me):
-    members = club_admin_service.list_club_members(club["id"], me)
+    members = club_admin_service.list_club_members(club["club_id"], me)
     for member in members:
         left, right = st.columns([4, 1])
         is_organizer = member["id"] == club["organizer_id"]
         left.write(f"{member['name']}（{member['dept']}）" + ("　幹事" if is_organizer else ""))
-        if not is_organizer and right.button("削除", key=f"club_admin_member_remove_{club['id']}_{member['id']}"):
+        if not is_organizer and right.button("削除", key=f"club_admin_member_remove_{club['club_id']}_{member['id']}"):
             try:
-                club_admin_service.remove_club_member(club["id"], me, member["id"])
+                club_admin_service.remove_club_member(club["club_id"], me, member["id"])
+            except ConflictError:
+                st.error("幹事はメンバーから外せません。先に幹事を変更してください")
+                return
             except AppError:
                 st.error(MESSAGE_SAVE_FAILED)
                 return
             st.rerun()
 
     st.subheader("メンバーを追加")
-    employees, _total = search_service.search_employees({}, me, limit=500)
     member_ids = {m["id"] for m in members}
-    candidates = {e["id"]: f"{e['name']}（{e['dept']}）" for e in employees if e["id"] not in member_ids}
-    with st.form(f"club_admin_{club['id']}_add_member"):
+    everyone = club_admin_service.list_selectable_employees(me)
+    labels = _employee_labels(everyone)
+    candidates = {e["id"]: labels[e["id"]] for e in everyone if e["id"] not in member_ids}
+    with st.form(f"club_admin_{club['club_id']}_add_member"):
         employee_id = st.selectbox("社員", list(candidates), format_func=lambda e: candidates[e], index=None,
-                                   placeholder="社員を選んでください", key=f"club_admin_{club['id']}_member_pick")
+                                   placeholder="社員を選んでください", key=f"club_admin_{club['club_id']}_member_pick")
         submitted = st.form_submit_button("追加する")
     if submitted:
         if employee_id is None:
             st.error("社員を選んでください")
             return
         try:
-            club_admin_service.add_club_member(club["id"], me, employee_id)
+            club_admin_service.add_club_member(club["club_id"], me, employee_id)
         except AppError:
             st.error(MESSAGE_SAVE_FAILED)
             return
@@ -313,8 +344,8 @@ def render():
         st.info(MESSAGE_NO_CLUBS)
         return
 
-    ids = [c["id"] for c in clubs]
-    names = {c["id"]: f"{c['icon']} {c['name']}" + ("" if c["is_active"] else "（非公開）") for c in clubs}
+    ids = [c["club_id"] for c in clubs]
+    names = {c["club_id"]: f"{c['icon'] or ''} {c['name']}".strip() + ("" if c["is_active"] else "（非公開）") for c in clubs}
     selected = st.session_state.get(_SELECTED_KEY)
     if selected != NEW and selected not in ids:
         selected = st.session_state[_SELECTED_KEY] = ids[0] if ids else NEW

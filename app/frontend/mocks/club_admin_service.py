@@ -9,12 +9,13 @@ I-F契約には、部活・開催の管理用の関数がまだ無い。画面�
   list_club_events(club_id, requester_id)             … 今日以降の開催（申込人数つき）
   get_last_meeting_place(club_id)                     … 前回の開催の集合場所（開催追加の初期値）
   create_event / update_event / set_event_status      … 開催の追加・変更・中止／予定に戻す
+  list_selectable_employees(requester_id)            … 幹事・メンバーの選択肢（全社員の id と name）
   list_club_members / add_club_member / remove_club_member … メンバー（Should）
 権限と入力の検証は、すべてこのサービスがする（画面は「親切」のための先回りだけ）。
 DB の代わりに、メモリ上の dict で動く。ここで変えた内容は、検索・詳細など他の仮物には反映されない。
 """
 
-from datetime import date
+from datetime import datetime, timedelta, timezone
 
 from mocks import profile_service, search_service
 from mocks.auth_service import ROLE_ADMIN, get_role
@@ -40,6 +41,13 @@ REQUIRED_KEYS = ("name", "icon", "activity_id", "location", "slot", "frequency",
                  "message", "fee", "rental", "join_leave", "after_activity", "organizer_id")
 _ADMIN_ONLY_KEYS = ("organizer_id", "is_active")
 
+_JST = timezone(timedelta(hours=9))  # 「今日」は日本時間（Asia/Tokyo）
+
+
+def _today():
+    return datetime.now(_JST).date()
+
+
 _clubs = {}
 _events = {}
 _members = {}
@@ -56,17 +64,16 @@ def _ensure():
         info = search_service._DETAIL_INFO[club_id]
         (frequency, starters, fee_note, rental, belongings, join_leave, organizer_id, *_rest) = info
         _clubs[club_id] = {
-            "id": club_id, "name": club["name"], "icon": club["icon"], "activity_id": club_id,
+            "club_id": club_id, "name": club["name"], "icon": club["icon"], "activity_id": club_id,
             "location": club["location"], "slot": club["slot"], "schedule_note": None, "frequency": frequency,
             "level": club["level"], "fact_adult_starters": starters, "mood_tags": list(club["mood_tags"]),
             "message": search_service._SEARCH_INFO[club_id][2], "fee": club["fee"], "fee_note": fee_note,
             "rental": rental, "belongings_note": belongings, "join_leave": join_leave,
             "after_activity": club["after_activity"], "organizer_id": organizer_id, "is_active": True,
         }
-        _events[club_id] = [dict(e, id=e["event_id"]) for e in search_service._events_of(club)]
+        _events[club_id] = [dict(e) for e in search_service._events_of(club)]
         for event in _events[club_id]:
-            event.pop("event_id", None)
-            event["_base_count"] = len(search_service._participants_of(dict(event, event_id=event["id"]), None))
+            event["_base_count"] = len(search_service._participants_of(event, None))
         _members[club_id] = [organizer_id] + [
             e for e in profile_service.employee_ids()
             if club_id in profile_service.memberships(e) and e != organizer_id
@@ -94,7 +101,7 @@ def _validate_club(data):
         if value is None or (isinstance(value, str) and not value.strip()):
             raise ValidationError(f"required:{key}")
     if len(data.get("mood_tags") or []) > MAX_MOOD_TAGS:
-        raise ValidationError("too_many_mood_tags")
+        raise ValidationError("invalid:mood_tags")
     choices = {"location": LOCATIONS, "slot": SLOTS, "frequency": FREQUENCIES, "level": LEVELS,
                "fact_adult_starters": FACT_ADULT_STARTERS, "fee": FEES, "rental": RENTALS,
                "join_leave": JOIN_LEAVES, "after_activity": AFTER_ACTIVITIES}
@@ -107,8 +114,10 @@ def _validate_club(data):
         raise ValidationError("invalid:activity_id")
 
 
-def _clean(data):
-    keys = REQUIRED_KEYS + ("schedule_note", "fee_note", "belongings_note", "mood_tags", "is_active")
+def _clean(data, allow_active=False):
+    keys = REQUIRED_KEYS + ("schedule_note", "fee_note", "belongings_note", "mood_tags")
+    if allow_active:
+        keys += ("is_active",)
     return {k: data.get(k) for k in keys if k in data}
 
 
@@ -119,7 +128,7 @@ def list_manageable_clubs(requester_id):
     _ensure()
     requester = (requester_id or "").strip().upper()
     clubs = [c for c in _clubs.values() if _is_admin(requester) or c["organizer_id"] == requester]
-    return [dict(c, mood_tags=list(c["mood_tags"])) for c in sorted(clubs, key=lambda c: c["id"])]
+    return [dict(c, mood_tags=list(c["mood_tags"])) for c in sorted(clubs, key=lambda c: c["club_id"])]
 
 
 def get_club(club_id, requester_id):
@@ -135,7 +144,8 @@ def create_club(requester_id, data):
     _validate_club(data)
     _next_club_id[0] += 1
     club_id = _next_club_id[0]
-    _clubs[club_id] = dict(_clean(data), id=club_id, is_active=bool(data.get("is_active", True)),
+    _clubs[club_id] = dict(_clean(data), club_id=club_id, is_active=True,  # 作成時は公開中。is_active は受け取らない
+                           
                            mood_tags=list(data.get("mood_tags") or []))
     for key in ("schedule_note", "fee_note", "belongings_note"):
         _clubs[club_id].setdefault(key, None)
@@ -151,7 +161,7 @@ def update_club(club_id, requester_id, data):
         for key in _ADMIN_ONLY_KEYS:
             if key in data and data[key] != club[key]:
                 raise PermissionDeniedError(f"only an admin can change {key}")
-    merged = dict(club, **_clean(data))
+    merged = dict(club, **_clean(data, allow_active=True))
     _validate_club(merged)
     club.update(merged)
     club["mood_tags"] = list(merged.get("mood_tags") or [])
@@ -170,24 +180,32 @@ def _event_view(event):
 def list_club_events(club_id, requester_id):
     """今日以降の開催を日付順に（SP-60）。各 dict に applicant_count（申込済みの人数）が付く。"""
     _check_club_access(club_id, requester_id)
-    today = date.today()
-    return [_event_view(e) for e in sorted(_events[club_id], key=lambda e: (e["event_date"], e["id"]))
+    today = _today()
+    return [_event_view(e) for e in sorted(_events[club_id], key=lambda e: (e["event_date"], e["event_id"]))
             if e["event_date"] >= today]
 
 
-def get_last_meeting_place(club_id, requester_id):
+def get_last_meeting_place(club_id):
     """前回の開催の集合場所（開催追加の初期値。SP-60）。無ければ None。"""
-    _check_club_access(club_id, requester_id)
-    rows = sorted(_events[club_id], key=lambda e: (e["event_date"], e["id"]))
+    _ensure()
+    if club_id not in _events:
+        raise NotFoundError(f"club {club_id}")
+    rows = sorted(_events[club_id], key=lambda e: (e["event_date"], e["event_id"]))
     return rows[-1]["meeting_place"] if rows else None
 
 
+_EVENT_KEYS = ("event_date", "start_time", "end_time", "meeting_place", "meeting_time")
+
+
 def _validate_event(data):
+    for key in data:
+        if key not in _EVENT_KEYS:
+            raise ValidationError(f"unknown:{key}")
     for key in ("event_date", "start_time", "end_time", "meeting_place"):
         value = data.get(key)
         if value is None or (isinstance(value, str) and not value.strip()):
             raise ValidationError(f"required:{key}")
-    if data["event_date"] < date.today():
+    if data["event_date"] < _today():
         raise ValidationError("past_date")  # 画面が SP-61 の文言を出す
     if data["end_time"] <= data["start_time"]:
         raise ValidationError("end_before_start")  # 画面が SP-61 の文言を出す
@@ -198,19 +216,19 @@ def create_event(club_id, requester_id, data):
     _check_club_access(club_id, requester_id)
     _validate_event(data)
     _next_event_id[0] += 1
-    event = {"id": _next_event_id[0], "club_id": club_id, "event_date": data["event_date"],
+    event = {"event_id": _next_event_id[0], "club_id": club_id, "event_date": data["event_date"],
              "start_time": data["start_time"], "end_time": data["end_time"],
              "meeting_place": data["meeting_place"].strip(), "meeting_time": data.get("meeting_time"),
              "status": STATUS_PLANNED, "_base_count": 0}
     _events[club_id].append(event)
-    return event["id"]
+    return event["event_id"]
 
 
 def _find_event(event_id, requester_id):
     _ensure()
     for club_id, events in _events.items():
         for event in events:
-            if event["id"] == event_id:
+            if event["event_id"] == event_id:
                 _check_club_access(club_id, requester_id)
                 return event
     raise NotFoundError(f"event {event_id}")
@@ -218,10 +236,13 @@ def _find_event(event_id, requester_id):
 
 def update_event(event_id, requester_id, data):
     event = _find_event(event_id, requester_id)
-    merged = dict(event, **{k: v for k, v in data.items() if k in
-                            ("event_date", "start_time", "end_time", "meeting_place", "meeting_time")})
+    for key in data:
+        if key not in _EVENT_KEYS:
+            raise ValidationError(f"unknown:{key}")
+    merged = {k: event.get(k) for k in _EVENT_KEYS}
+    merged.update(data)
     _validate_event(merged)
-    event.update({k: merged[k] for k in ("event_date", "start_time", "end_time", "meeting_place", "meeting_time")})
+    event.update(merged)
 
 
 def set_event_status(event_id, requester_id, status):
@@ -241,6 +262,15 @@ def _member_row(employee_id):
     return {"id": employee_id, "name": name, "dept": dept}
 
 
+def list_selectable_employees(requester_id):
+    """幹事・メンバーの選択肢にする社員（全社員）。[{"id","name"}]（部署は付かない）。"""
+    _ensure()
+    if not _is_admin(requester_id) and not any(c["organizer_id"] == (requester_id or "").strip().upper()
+                                               for c in _clubs.values()):
+        raise PermissionDeniedError("only an organizer or an admin can list employees")
+    return [{"id": e, "name": profile_service._basic(e)[0]} for e in profile_service.employee_ids()]
+
+
 def list_club_members(club_id, requester_id):
     """メンバー一覧（幹事を含む）。"""
     _check_club_access(club_id, requester_id)
@@ -252,16 +282,16 @@ def add_club_member(club_id, requester_id, employee_id):
     employee_id = (employee_id or "").strip().upper()
     if not profile_service._is_valid_id(employee_id):
         raise NotFoundError(f"employee {employee_id}")
-    if employee_id in _members[club["id"]]:
+    if employee_id in _members[club["club_id"]]:
         raise ConflictError("already_member")
-    _members[club["id"]].append(employee_id)
+    _members[club["club_id"]].append(employee_id)
 
 
 def remove_club_member(club_id, requester_id, employee_id):
     club = _check_club_access(club_id, requester_id)
     employee_id = (employee_id or "").strip().upper()
     if employee_id == club["organizer_id"]:
-        raise ValidationError("organizer")  # 幹事は外せない（先に幹事を変更する）
-    if employee_id not in _members[club["id"]]:
+        raise ConflictError("organizer")  # 幹事は外せない（先に幹事を変更する）
+    if employee_id not in _members[club["club_id"]]:
         raise NotFoundError(f"member {employee_id}")
-    _members[club["id"]].remove(employee_id)
+    _members[club["club_id"]].remove(employee_id)
