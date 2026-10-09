@@ -179,7 +179,7 @@ send_message(application_id: int, sender_id: str, body: str) -> None
     画面側: キャンセル済みの申込には入力欄を出さない（SP-39）ため、この ConflictError は画面の表示と送信の間に状態が変わった場合の防御。
 
 list_my_applications(employee_id: str) -> list[dict]
-    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順、終わった開催・キャンセルは後ろ。
+    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順。終わった開催・キャンセルは後ろに置き、後ろ側は開催日時の新しい順。
     各dictは applications の行に "events"（開催。"events"."clubs" に部活）と "messages"（やり取り）を付けたもの。これに加えて次のキーを持つ。
       "organizer"(dict): その申込の部活の幹事。キーは "id", "name"（employees の列名）。clubs.organizer_id を employees_repo.get_by_id で解決する。画面は「幹事：○○」の表示に使う（SP-37）。
     "organizer" の解決: 幹事の社員行が見つからない場合（想定外）は {"id": clubs.organizer_id, "name": None} とし、例外にしない（一覧全体を落とさない）。
@@ -187,13 +187,14 @@ list_my_applications(employee_id: str) -> list[dict]
 
 list_received_applications(organizer_id: str) -> list[dict]
     自分が幹事を務める部活への申込一覧（メッセージ画面「届いた申込」タブ用。SP-40）。未読の通知がある申込を先頭、そのあとは新しい順。
+    各dictは applications の行に "events"（開催。"events"."clubs" に部活）・"employees"（申込者）・"messages"（やり取り）を付けたもの。
 
 confirm_stamp(application_id: int, organizer_id: str) -> None
-    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。
+    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。キャンセル済みの申込には押せない（SP-67「キャンセルした申込は閲覧のみ」）。
     例外:
       - NotFoundError
       - PermissionDeniedError（organizer_idがその部活の幹事でない）
-      - ConflictError（is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
+      - ConflictError（申込が「キャンセル」状態、is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
 ```
 
 ### 1.4 `services/notification_service.py`（対応SP: SP-70, SP-71）

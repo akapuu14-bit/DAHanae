@@ -13,6 +13,7 @@ from repositories import (
     applications_repo,
     club_members_repo,
     clubs_repo,
+    employees_repo,
     events_repo,
     messages_repo,
 )
@@ -115,24 +116,46 @@ def cancel(application_id: int, requester_id: str) -> None:
         )
 
 
-def _my_application_sort_key(application: dict, now: datetime):
+def _is_back_group(application: dict, now: datetime) -> bool:
+    """「自分の申込」の後ろ側（終わった開催・キャンセル）か。"""
     event = application["events"]
     ended = _event_datetime(event, "end_time") <= now
-    back = ended or application["status"] == _STATUS_CANCELED
-    return (
-        1 if back else 0,
-        _event_datetime(event, "start_time"),
-        application["id"],
-    )
+    return ended or application["status"] == _STATUS_CANCELED
+
+
+def _start_key(application: dict):
+    return (_event_datetime(application["events"], "start_time"), application["id"])
+
+
+def _organizer_of(application: dict, cache: dict) -> dict:
+    """その申込の部活の幹事 {"id", "name"}（SP-37）。見つからなければ name を None にする。"""
+    organizer_id = application["events"]["clubs"]["organizer_id"]
+    if organizer_id not in cache:
+        employee = employees_repo.get_by_id(organizer_id)
+        if employee is None:
+            cache[organizer_id] = {"id": organizer_id, "name": None}
+        else:
+            cache[organizer_id] = {"id": employee["id"], "name": employee["name"]}
+    return dict(cache[organizer_id])
 
 
 def list_my_applications(employee_id: str) -> list[dict]:
-    """自分の申込一覧（SP-37）。開催日が近い順、終わった開催・キャンセルは後ろ。各dictに "messages" を付ける。"""
+    """自分の申込一覧（SP-37）。前側は開催日が近い順、後ろ側（終わった開催・キャンセル）は新しい順。
+
+    各dictに "messages" と "organizer"（幹事 {"id", "name"}）を付ける。
+    """
     now = _now()
     rows = applications_repo.list_by_applicant(employee_id)
-    rows = sorted(rows, key=lambda a: _my_application_sort_key(a, now))
+    front = sorted((a for a in rows if not _is_back_group(a, now)), key=_start_key)
+    back = sorted((a for a in rows if _is_back_group(a, now)), key=_start_key, reverse=True)
+    organizers: dict = {}
     return [
-        {**a, "messages": messages_repo.list_by_application(a["id"])} for a in rows
+        {
+            **a,
+            "messages": messages_repo.list_by_application(a["id"]),
+            "organizer": _organizer_of(a, organizers),
+        }
+        for a in front + back
     ]
 
 
@@ -154,7 +177,7 @@ def list_received_applications(organizer_id: str) -> list[dict]:
 
 
 def confirm_stamp(application_id: int, organizer_id: str) -> None:
-    """「確認したよ」スタンプ（SP-72）。is_first_time が true で未確認の申込にのみ有効。"""
+    """「確認したよ」スタンプ（SP-72）。is_first_time が true で未確認の申込にのみ有効。キャンセル済みの申込には押せない（SP-67）。"""
     application = applications_repo.get(application_id)
     if application is None:
         raise NotFoundError(f"application {application_id}")
@@ -164,7 +187,11 @@ def confirm_stamp(application_id: int, organizer_id: str) -> None:
     club = clubs_repo.get(event["club_id"])
     if club is None or club["organizer_id"] != organizer_id:
         raise PermissionDeniedError("only the organizer can confirm")
-    if not application["is_first_time"] or application.get("confirmed_at") is not None:
+    if (
+        application["status"] == _STATUS_CANCELED
+        or not application["is_first_time"]
+        or application.get("confirmed_at") is not None
+    ):
         raise ConflictError()
 
     applications_repo.update_status(
