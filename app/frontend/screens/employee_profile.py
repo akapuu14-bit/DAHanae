@@ -16,9 +16,9 @@ from components import club_card
 from services.errors import AppError, NotFoundError, ValidationError
 
 # 本物ができたら、次の 1 行を
-#     from services import profile_service   （※名前は仮。I-F契約への追加待ち）
+#     from services import profile_service, search_service
 # に書き換える。ほかは変えなくてよい。
-from mocks import profile_service
+from mocks import profile_service, search_service
 
 PRIVATE_TEXT = "非公開"
 SELF_PRIVATE_NOTE = "（他の人には非公開）"  # SP-65：本人には値と一緒に出す
@@ -28,6 +28,10 @@ SAVED_TEXT = "保存しました"
 SAVE_FAILED_TEXT = "保存できませんでした。もう一度お試しください"
 COLUMNS = 3
 NOT_SELECTED = "選択しない"
+# 選択肢は契約に無いので画面の定数にする（仕様 3.2）。活動の一覧だけは search_service.list_activities() から取る。
+EXPERIENCE_LEVELS = ["未経験", "初心者", "経験あり"]
+SLOTS = ["平日夜", "土曜午前", "土曜午後", "日曜"]
+LEVEL_COLUMNS = 4  # 活動の経験レベルは、この数ずつ並べて全部出す
 _SAVED_FLAG = "profile_saved"
 
 
@@ -98,15 +102,17 @@ def _render_editor(profile, me):
         with st.form("profile_edit_form"):
             st.write("活動ごとの経験レベル")
             levels = {}
-            for column, (activity_id, name) in zip(st.columns(4), profile_service.ACTIVITIES[:4]):
-                options = [NOT_SELECTED] + profile_service.EXPERIENCE_LEVELS
-                levels[activity_id] = column.selectbox(name, options, index=options.index(current.get(activity_id, NOT_SELECTED)),
-                                                       key=f"profile_edit_level_{activity_id}")
-            for column, (activity_id, name) in zip(st.columns(4), profile_service.ACTIVITIES[4:]):
-                options = [NOT_SELECTED] + profile_service.EXPERIENCE_LEVELS
-                levels[activity_id] = column.selectbox(name, options, index=options.index(current.get(activity_id, NOT_SELECTED)),
-                                                       key=f"profile_edit_level_{activity_id}")
-            slots = st.multiselect("参加可能時間", profile_service.SLOTS, default=profile["available_slots"] or [],
+            options = [NOT_SELECTED] + EXPERIENCE_LEVELS
+            activities = search_service.list_activities()
+            # 活動の数にかかわらず、LEVEL_COLUMNS 個ずつの行に分けて全部出す（保存は置き換えなので、出さない活動の興味は消えてしまう）
+            for start in range(0, len(activities), LEVEL_COLUMNS):
+                row = activities[start : start + LEVEL_COLUMNS]
+                for column, activity in zip(st.columns(LEVEL_COLUMNS), row):
+                    activity_id = activity["id"]
+                    levels[activity_id] = column.selectbox(activity["name"], options,
+                                                           index=options.index(current.get(activity_id, NOT_SELECTED)),
+                                                           key=f"profile_edit_level_{activity_id}")
+            slots = st.multiselect("参加可能時間", SLOTS, default=profile["available_slots"] or [],
                                    key="profile_edit_slots")
             submitted = st.form_submit_button("保存する")
         if submitted:
