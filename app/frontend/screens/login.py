@@ -8,10 +8,8 @@ import streamlit as st
 
 import state
 
-# 本物の auth_service ができたら、次の 1 行を
-#     from services import auth_service
-# に書き換える。ほかは変えなくてよい。
-from mocks import auth_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import auth_service
 from services.errors import AuthenticationError
 
 APP_NAME = "部活コンシェルジュ"
