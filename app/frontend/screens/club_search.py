@@ -15,10 +15,8 @@ import streamlit as st
 
 from components import club_card
 
-# 本物ができたら、次の 2 行を
-#     from services import action_log_service, search_service
-# に書き換える。ほかは変えなくてよい。
-from mocks import action_log_service, search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import action_log_service, search_service
 
 # 選択肢は仕様.md 3.2 のとおり
 CATEGORIES = ["スポーツ", "ゲーム", "ウェルネス", "文化・趣味"]

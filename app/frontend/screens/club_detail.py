@@ -12,16 +12,12 @@
 import streamlit as st
 
 import state
-from components import club_card
+from components import club_card, rule_notice
 from services.errors import ConflictError, NotFoundError
 
-# 本物ができたら、次の 3 行を
-#     from services import action_log_service, application_service, search_service
-# に書き換える（get_club_detail は I-F契約への追加待ち）。ほかは変えなくてよい。
-from mocks import action_log_service, application_service, search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import action_log_service, application_service, search_service
 
-# SP-04: 全部活共通の運営ルールの一文
-RULE_NOTICE = "体験参加は入部ではありません／参加は毎回でなくてOK／活動後の集まりは任意です／キャンセルもできます"
 MESSAGE_ALREADY_APPLIED = "すでに申し込み済みです"  # SP-31
 MESSAGE_NOT_OPEN = "この開催には申し込みできません"  # SP-31
 MESSAGE_NOT_FOUND = "この部活は見つかりませんでした"
@@ -76,7 +72,7 @@ def _render_header(club):
         state.back()
     st.title(f"{club['icon']} {club['name']}")
     st.caption(f"{' ／ '.join(club['mood_tags'] or [])}　レベル：{club['level']}")
-    st.info(RULE_NOTICE)  # SP-04
+    rule_notice.render()  # SP-04
 
 
 def _render_about(club, member_count):
@@ -164,7 +160,7 @@ def _render_apply_form(event, detail, employee_id):
             f"申し込む開催：{club_card.format_date(event['event_date'])}　"
             f"{_hhmm(event['start_time'])}〜　集合場所：{event['meeting_place']}"
         )
-        st.caption(RULE_NOTICE)
+        st.caption(rule_notice.TEXT)
         st.caption("キャンセルもできます")
         message = st.text_area("幹事への一言・質問（任意）", key=f"club_detail_message_{event_id}")
         submit_column, close_column = st.columns(2)
