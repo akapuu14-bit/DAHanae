@@ -46,6 +46,58 @@ _MEMBERSHIPS = {
     "E205": [5], "E206": [6], "E207": [7], "E208": [8],
 }
 
+# 検索の確認用に、E301〜E330 の30人を決まった規則で作る（20件ずつ表示の確認に使う）
+_DEPTS = ["営業部", "開発部", "人事部", "経理部", "企画部", "総務部"]
+_SURNAMES = ["青木", "石川", "上田", "遠藤", "大野", "岡田", "加藤", "菊地", "久保", "近藤"]
+_GIVEN = ["太郎", "花子", "健", "美咲", "翔", "彩"]
+_ENTRY_TYPES = ["新卒", "中途", "異動"]
+_GENERATED_IDS = [f"E{n}" for n in range(301, 331)]
+
+
+def departments():
+    """部署の選択肢（仮）。"""
+    return list(_DEPTS) + ["デモ部"]
+
+
+def employee_ids():
+    """仮データにいる社員ID（社員検索用）。"""
+    return sorted(set(_EMPLOYEES) | set(_GENERATED_IDS))
+
+
+def _basic(employee_id):
+    """(名前, 部署, 拠点, 入社年, 入社区分)。"""
+    if employee_id in _EMPLOYEES:
+        return _EMPLOYEES[employee_id]
+    n = int(employee_id[1:])
+    if employee_id in _GENERATED_IDS:
+        return (f"{_SURNAMES[n % 10]} {_GIVEN[n % 6]}", _DEPTS[n % 6], "東京" if n % 2 else "大阪",
+                2010 + n % 13, _ENTRY_TYPES[n % 3])
+    return (f"デモ社員 {employee_id}", "デモ部", "東京", 2020, "中途")
+
+
+def memberships(employee_id):
+    """所属している部活ID。"""
+    if employee_id in _MEMBERSHIPS:
+        return list(_MEMBERSHIPS[employee_id])
+    n = int(employee_id[1:])
+    return [] if n % 3 == 0 else [n % 8 + 1]
+
+
+def _default_state(employee_id):
+    """変更されていない社員の興味・参加可能時間・公開設定（番号から決まった規則で作る）。"""
+    n = int(employee_id[1:])
+    interests = [{"activity_id": n % 8 + 1, "level": EXPERIENCE_LEVELS[n % 3]}]
+    if n % 2:
+        interests.append({"activity_id": (n + 3) % 8 + 1, "level": EXPERIENCE_LEVELS[(n + 1) % 3]})
+    return {"interests": interests, "slots": [SLOTS[n % 4]] + ([SLOTS[(n + 1) % 4]] if n % 3 == 0 else []),
+            "interests_public": n % 4 != 0, "slots_public": n % 5 != 0}
+
+
+def employee_state(employee_id):
+    """社員の興味・参加可能時間・公開設定（社員検索用。本物の employees 行と同じ内容）。"""
+    return _own_state(employee_id)
+
+
 # 変更できる状態：社員ID -> {interests: [{activity_id, level}], slots: [...], interests_public, slots_public}
 _state = {
     "E001": {"interests": [{"activity_id": 1, "level": "初心者"}, {"activity_id": 4, "level": "経験あり"}],
@@ -61,7 +113,7 @@ def _is_valid_id(employee_id):
 
 
 def _own_state(employee_id):
-    return _state.setdefault(employee_id, {"interests": [], "slots": [], "interests_public": True, "slots_public": True})
+    return _state.setdefault(employee_id, _default_state(employee_id))
 
 
 def get_profile(employee_id, viewer_id):
@@ -76,8 +128,7 @@ def get_profile(employee_id, viewer_id):
     employee_id = (employee_id or "").strip().upper()
     if not _is_valid_id(employee_id):
         raise NotFoundError(f"employee {employee_id}")
-    name, dept, location, joined_year, entry_type = _EMPLOYEES.get(
-        employee_id, (f"デモ社員 {employee_id}", "デモ部", "東京", 2020, "中途"))
+    name, dept, location, joined_year, entry_type = _basic(employee_id)
     own = _own_state(employee_id)
     is_self = employee_id == (viewer_id or "").strip().upper()
 
@@ -92,7 +143,7 @@ def get_profile(employee_id, viewer_id):
         "interests_public": own["interests_public"],
         "available_slots": list(own["slots"]) if (is_self or own["slots_public"]) else None,
         "slots_public": own["slots_public"],
-        "clubs": [cards[club_id] for club_id in _MEMBERSHIPS.get(employee_id, []) if club_id in cards],
+        "clubs": [cards[club_id] for club_id in memberships(employee_id) if club_id in cards],
     }
 
 
