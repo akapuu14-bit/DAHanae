@@ -14,10 +14,8 @@ import streamlit as st
 import state
 from services.errors import AppError, ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 
-# 本物ができたら、次の 3 行を
-#     from services import auth_service, club_admin_service, search_service
-# に書き換える。ただし club_admin_service は I-F契約への追加待ち（依頼予定）。
-from mocks import auth_service, club_admin_service, search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import auth_service, club_admin_service, search_service
 
 # 選択肢（仕様.md 3.2）。サービスの契約には定数が無いので、画面が持つ（選択肢の最終チェックはサービスがする）
 LOCATIONS = ["東京", "大阪"]
