@@ -53,7 +53,12 @@ def render(*, name, dept, employee_id, unread_count=0, can_manage=False):
                 type="primary" if page == current else "secondary",
             )
             if pressed:
-                state.go(page)
+                if page == state.EMPLOYEE_PROFILE:
+                    # 「自分のプロフィール」は、表示する人を自分に書き換えてから移動する
+                    # （書き換えないと、直前に見た他の人のIDが target_employee_id に残る）
+                    state.go(page, employee_id=employee_id)
+                else:
+                    state.go(page)
 
         st.divider()
         if st.button("ログアウト", key="sidebar_logout", width="stretch"):

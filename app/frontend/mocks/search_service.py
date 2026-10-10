@@ -226,3 +226,10 @@ def get_club_detail(club_id, viewer_id):
         "members": members,
         "events": events,
     }
+
+
+def list_activities():
+    """【提案】活動（興味）の選択肢。"""
+    from mocks import profile_service
+
+    return [{"id": activity_id, "name": name} for activity_id, name in profile_service.ACTIVITIES]
