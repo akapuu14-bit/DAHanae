@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>だーあさのBE実装チートシート（Wave0 / 1 / 2）</title>
+  <title>だーあさのBE実装チートシート</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
   <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
@@ -180,15 +180,16 @@
   <nav aria-label="資料内ナビゲーション">
     <a class="hub-link" href="hub.html">← 開発ハブ</a>
     <strong>BE実装チートシート</strong>
-    <a href="#overview">開発の全体像</a><a href="#issue-map">Issue対応マップ</a><a href="#s0">0 この記事の読み方</a><a href="#s1">1 層構成</a><a href="#s2">2 Wave0 基盤</a><a href="#s3">3 Wave1 repository</a><a href="#s4">4 service前提</a><a href="#s5">5 Wave2 service</a><a href="#s6">6 総まとめ</a><a href="#refs">出典・未確認</a>
+    <a href="#overview">開発の全体像</a><a href="#issue-map">Issue対応マップ</a><a href="#s0">0 この記事の読み方</a><a href="#s1">1 層構成</a><a href="#s2">2 Wave0 基盤</a><a href="#s3">3 Wave1 repository</a><a href="#s4">4 service前提</a><a href="#s5">5 Wave2 service</a><a href="#s6">6 総まとめ</a><a href="#s7">7 追補編</a><a href="#refs">出典・未確認</a>
   </nav>
   <main>
     <section class="sheet" id="top">
-      <h1>だーあさのBE実装チートシート（Wave0 / 1 / 2）</h1>
+      <h1>だーあさのBE実装チートシート</h1>
       <p class="meta"><strong>対象読者:</strong> 後続チームのBE初心者（Python は読めるが、Supabase・Streamlit・層構成は初めて）</p>
       <p class="meta"><strong>案件:</strong> 部活コンシェルジュ（bukatsu_concierge）MVP</p>
       <p class="meta"><strong>範囲:</strong> だーあさ担当 18 issue（Wave0 = #8〜#10、Wave1 = #13〜#22、Wave2 = #23〜#27）</p>
-      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 記録日: 2026-10-04</p>
+      <p class="meta"><strong>追補:</strong> 7 章に、10/04 以降に増えた service とレビューで学んだことを追加（#110・#111・#118・#119・#123・#124、#129 はレビュー待ちの暫定）</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 記録日: 2026-10-04（追補編: 2026-10-10）</p>
       <p class="meta"><strong>状態:</strong> 初版。コード抜粋は <code>origin/main</code>（7834ef0）の実ファイルから引用した。根拠は各節の「出典」と末尾に記載。性能の実測値は取っていないため載せていない。</p>
     </section>
 
@@ -865,11 +866,274 @@ if not body or not body.strip():
 </ul>
     </section>
 
+    <section class="sheet" id="s7">
+  <div class="number">7</div>
+  <h2>追補編: service の増補とレビューで学んだこと</h2>
+  <p class="meta"><strong>収録 PR:</strong> #110 / #111 / #118 / #119 / #123 / #124 / #129。10/04 以降に増えた service とその修正。新機能を網羅する章ではなく、「指摘やレビューから何を学んだか」を残す章。</p>
+  <h3 id="s7-0">この章の構成</h3>
+<div class="tablewrap"><table>
+    <thead><tr><th>節</th><th>対象</th><th>学んだ原則（ひとこと）</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#s7-1">7.1</a></td><td>#110 <code>auth_service.is_organizer</code></td><td>権限判定は小さい関数 1 本に置き、「いない」は例外にしない</td></tr>
+      <tr><td><a href="#s7-2">7.2</a></td><td>#111 <code>search_service.get_club_detail</code></td><td>仮から本物へ差し替えるときの基準は契約。読み取り関数に副作用を混ぜない</td></tr>
+      <tr><td><a href="#s7-3">7.3</a></td><td>#118 <code>application_service.send_message</code></td><td>例外は判定する順番を決めて、docstring に書く</td></tr>
+      <tr><td><a href="#s7-4">7.4</a></td><td>#119 <code>profile_service</code> 新設</td><td>service を足すときは repo の関数も足す。値を出すかどうかは service が決める</td></tr>
+      <tr><td><a href="#s7-5">7.5</a></td><td>#123 <code>application_service</code> 修正（指摘対応）</td><td>並び順は「グループ分け → 各グループの向き」で書く。ガードは仕様の 1 行から作る</td></tr>
+      <tr><td><a href="#s7-6">7.6</a></td><td>#124 <code>search_service</code> 修正（指摘対応）</td><td>日付の「今日」は service が JST で持つ</td></tr>
+      <tr><td><a href="#s7-7">7.7</a></td><td>#129 <code>club_admin_service</code>（暫定）</td><td>許可リスト検証と例外順。通知は 1 操作に紐づける</td></tr>
+      <tr><td><a href="#s7-8">7.8</a></td><td>横断テーマ 5 本</td><td>上の節を貫く 5 つの見方</td></tr>
+      <tr><td><a href="#s7-9">7.9</a></td><td>総まとめへの追加提案（c）</td><td>背骨 3 本とチェックリスト 5 行の追加案</td></tr>
+    </tbody>
+  </table></div>
+<div class="callout danger">
+    <p><strong>#129 は未マージで、レビュー待ちの暫定収録。</strong>確認した時点で state は OPEN、レビューはまだ付いていない。7.7 の内容は確定ではなく、レビューで変わる可能性がある。</p>
+  </div>
+<div class="callout">
+    <p><strong>読む前の注意（「指摘対応」の意味）。</strong>#123 と #124 の元になった指摘は、PR のレビュー指摘ではなく、先にマージした #76 / #78 をレビューして起こした Issue（#83 / #82）にある。#123 と #124 自体の PR レビューは APPROVE で、修正を求める指摘は付いていない。3 点セットの「どんな指摘」は Issue の本文に基づいて書いた。</p>
+  </div>
+  <p>Wave2 の時点で service は 5 本だった。その後に <code>profile_service</code>（#119）が入り、<code>club_admin_service</code>（#129）がレビュー待ちで 7 本目になる。<code>app/frontend/services/</code> を実際に読み、PR のレビューコメントと Issue の本文を根拠にした。</p>
+
+  <h3 id="s7-1">7.1 <a href="https://github.com/akapuu14-bit/DAHanae/pull/110" target="_blank" rel="noopener">#110</a> <code>is_organizer</code>: 権限判定の土台 【マージ済み】</h3>
+  <p><strong>経緯。</strong>画面の実装中に、サイドバーの「部活の管理」（SP-01）を幹事にも出す必要が見つかった。<code>get_role(employee_id, club_id=None)</code> は <code>is_admin</code> しか見ないので、「どこかの部活の幹事か」を判定できなかった。契約の穴埋めとして I-F契約に追加され（#90）、実装が #110（10 行）で入った。</p>
+<pre><code class="language-python">def is_organizer(employee_id: str) -&gt; bool:
+    return len(clubs_repo.list_by_organizer(_normalize_id(employee_id))) &gt; 0
+</code></pre>
+  <p><strong>学んだ原則: 権限判定は小さい 1 本にして、あとの service がそれを呼ぶ。</strong></p>
+  <ul>
+    <li>運営者かどうかは見ない。docstring のとおり、出し分けは <code>get_role(...) == ROLE_ADMIN</code> と <code>is_organizer(...)</code> を組み合わせる。1 つの関数に「誰が管理できるか」を全部詰めない。</li>
+    <li>社員も部活も存在しないときは例外にせず <code>False</code>（0.4 の「存在しないは例外にしない」と同じ考え方）。</li>
+    <li>ID は <code>_normalize_id</code> で揃えてから渡す。大文字小文字をここで吸収する。</li>
+    <li>後で #129 の <code>list_selectable_employees</code> が「運営者、またはいずれかの部活の幹事」の判定にこの関数をそのまま使う（7.7）。土台を 1 本にしておいた効果。</li>
+  </ul>
+
+  <h3 id="s7-2">7.2 <a href="https://github.com/akapuu14-bit/DAHanae/pull/111" target="_blank" rel="noopener">#111</a> <code>get_club_detail</code>: 仮から本物へ 【マージ済み】</h3>
+  <p><strong>経緯。</strong>S04 部活詳細の画面は、先に画面側が組まれていた。画面側のコメントに「<code>get_club_detail</code> は I-F契約への追加待ち」とあり、契約が #91、実装が #111（69 行追加）。画面が呼ぶ側、service が答える側という順序で、契約を基準にして差し替えた。</p>
+<pre><code class="language-python">club = clubs_repo.get(club_id)
+if club is None:
+    raise NotFoundError(f"club_id={club_id}")
+...
+club_dict = {("club_id" if key == "id" else key): value for key, value in club.items()}
+return {"club": club_dict, "organizer": organizer, "members": members,
+        "member_count": len(members), "events": events}
+</code></pre>
+  <p><strong>学んだ原則: 差し替えの基準は「いまの画面の都合」ではなく契約。読み取り関数に副作用を混ぜない。</strong></p>
+  <ul>
+    <li><strong>キー名は契約どおりにそろえる。</strong>DB の列名は <code>id</code>、契約は <code>club_id</code>。返す側で読み替える（上のコード）。<code>events</code> の各要素も <code>event_id</code>。</li>
+    <li><strong>副作用を入れない。</strong>docstring:「view_club は画面が <code>record_view_club</code> を別に呼ぶ」。再描画のたびに関数が呼ばれても、操作履歴が増えないようにするため（I-F契約 1.2）。</li>
+    <li><strong>返す列を絞る。</strong>幹事の社員は <code>_ORGANIZER_KEYS</code> の列だけ、メンバーは <code>id / name / dept</code> だけ。社員の行をそのまま渡さない。</li>
+    <li>参加者・人数は状態「申込済み」のみ。中止開催も <code>participants</code> に含める（docstring の PM 裁定）。</li>
+  </ul>
+  <div class="callout">
+    <p><strong>ハマりどころ（気配）。</strong>メンバーごとに <code>employees_repo.get_by_id</code>、開催ごとに <code>list_participants</code> を呼ぶ作りで、5.10 の N+1 と同じ形をしている。性能への影響は確認していない。</p>
+  </div>
+
+  <h3 id="s7-3">7.3 <a href="https://github.com/akapuu14-bit/DAHanae/pull/118" target="_blank" rel="noopener">#118</a> <code>send_message</code>: 例外の判定順 【マージ済み】</h3>
+  <p>I-F契約 1.3、SP-38。送れるのは申込者本人とその部活の幹事だけ（運営者も不可）。</p>
+<pre><code class="language-python">application = applications_repo.get(application_id)
+if application is None: raise NotFoundError(...)
+...                                       # event, club も同様に NotFound
+if sender_id not in (applicant_id, organizer_id):
+    raise PermissionDeniedError(...)
+text = (body or "").strip()
+if not text: raise ValidationError("body is required")
+if application["status"] == _STATUS_CANCELED: raise ConflictError()
+
+messages_repo.insert(application_id, sender_id, text)
+recipient_id = organizer_id if sender_id == applicant_id else applicant_id
+if recipient_id != sender_id:
+    notification_service.notify(recipient_id, "メッセージ", application_id=application_id,
+                                body="新しいメッセージがあります")
+</code></pre>
+  <p><strong>学んだ原則: 例外は「どの順で判定するか」を決めて docstring に 1 行で書く（NotFound → Permission → Validation → Conflict）。</strong></p>
+  <ul>
+    <li><strong>なぜ NotFound が先か。</strong>権限を判定するには、申込から部活を引いて幹事を知る必要がある。引けなければ判定できない。</li>
+    <li>検証（本文の空チェック）はすべて、保存の前。<code>body</code> は <code>strip</code> してから保存し、通知の本文は固定文。</li>
+    <li>申込者が幹事本人のときは相手がいないので通知しない（<code>recipient_id != sender_id</code>）。</li>
+    <li><strong>レビューでの判断。</strong>通知に <code>event_id</code> を付けるかを PR で質問し、「メッセージ画面は通知の <code>event_id</code> を使っていないので不要」と回答された。画面が使っていない値は渡さない。必要になったらその時点で契約に足す。</li>
+  </ul>
+  <div class="callout">
+    <p><strong>気づき（要確認）。</strong><code>send_message</code> の <code>sender_id</code> 比較は大文字小文字を区別する（<code>cancel</code> / <code>confirm_stamp</code> と同じ方針で OK と回答済み）。一方、7.4 の <code>profile_service</code> は <code>_same_id</code> で区別しない。層ごとに ID の扱いが違う点は、画面が渡す ID の形（正規化済みか）を確認してから揃えるか決める。</p>
+  </div>
+
+  <h3 id="s7-4">7.4 <a href="https://github.com/akapuu14-bit/DAHanae/pull/119" target="_blank" rel="noopener">#119</a> <code>profile_service</code> 新設: repo と一緒に足す 【マージ済み】</h3>
+  <p>S09 のプロフィール。<code>get_profile</code> / <code>update_public_settings</code> / <code>save_profile</code>。新しい service を 1 本足すと、その下の repository にも関数が増えた。</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>層</th><th>追加</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>club_members_repo</td><td><code>list_clubs_by_member</code></td><td>所属部活の <code>club_id</code> を昇順で返す。所属なしは空リスト</td></tr>
+      <tr><td>employees_repo</td><td><code>set_available_slots</code> / <code>list_departments</code></td><td>参加可能時間の置き換え保存と、部署の選択肢</td></tr>
+      <tr><td>search_service</td><td><code>list_activities</code> / <code>list_departments</code></td><td>画面の選択肢を service 経由で渡す</td></tr>
+    </tbody>
+  </table></div>
+<pre><code class="language-python">show_interests = is_self or bool(employee["interests_public"])
+...
+"interests": employees_repo.get_interests(employee["id"]) if show_interests else None,
+</code></pre>
+  <p><strong>学んだ原則: 「非公開なら他人には値を渡さない」は service が決める。画面で隠さない。</strong></p>
+  <ul>
+    <li>非公開の相手には値そのものを <code>None</code> にして返す。画面が隠し忘れても漏れない（多層防御の 1 例）。</li>
+    <li><strong>許可リスト検証。</strong><code>_SLOT_CHOICES</code> / <code>_LEVEL_CHOICES</code> は DB の CHECK 制約と同じ値（レビューで完全一致を確認済み）。検証は保存の前にすべて済ませ、1 つでも不正なら何も保存しない。</li>
+    <li><strong>例外順が #118 と違う。</strong>こちらは Permission → NotFound → Validation。レビューの回答では、権限が引数（本人かどうか）だけで決まるので先に見て、他人の ID で存在の有無を漏らさないため。#118 が NotFound 先行なのは、申込を引かないと権限を判定できないため。違いは意図どおり。</li>
+    <li>2 つの保存（興味と参加可能時間）は別テーブルで、1 トランザクションにはしない（docstring に明記）。</li>
+    <li><code>search_service._card</code> / <code>_next_event_dates</code> という先頭アンダースコアの関数を、別モジュールから呼んでいる。名前変更で壊れるので、レビューで #82 側に注意を残すとされた。</li>
+  </ul>
+  <div class="callout">
+    <p><strong>確認の範囲。</strong>PR の説明では、偽 repo を使った単体確認（27 ケース）までで、実 DB での確認は別の Issue 以降。<code>available_slots</code> 列がスキーマにあることはレビューで確認された。実 DB での動作は、この記事では確認していない。</p>
+  </div>
+
+  <h3 id="s7-5">7.5 <a href="https://github.com/akapuu14-bit/DAHanae/pull/123" target="_blank" rel="noopener">#123</a> <code>application_service</code> 修正: どんな指摘→どう直した→学び 【指摘対応】</h3>
+  <p class="meta">元の Issue は #83（#76 のレビューから起票）。画面側（#102 の messages.py）が読む形に合わせる修正も含む。</p>
+
+  <p><strong>(a) キャンセル済みの申込にスタンプを押せてしまう</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td>SP-67「キャンセルした申込は閲覧のみ」なのに、<code>confirm_stamp</code> が押せてしまう。仕様に定めはなく、PdM が決めた。</td><td>キャンセル済みなら <code>ConflictError</code>。契約 1.3 の例外条件にも反映。</td><td>別の仕様の 1 行（SP-67）が、別の関数のガードになる。ガードを足したら契約も同じ PR で直す。</td></tr></tbody></table></div>
+<pre><code class="language-python">if (
+    application["status"] == _STATUS_CANCELED
+    or not application["is_first_time"]
+    or application.get("confirmed_at") is not None
+):
+    raise ConflictError()
+</code></pre>
+
+  <p><strong>(b) 「自分の申込」の並び順と幹事の名前</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td>終わった開催・キャンセルの後ろ側も新しい順にしたい。各申込に幹事 <code>{id, name}</code> を付けたい（SP-37）。</td><td>前側と後ろ側にグループ分けし、後ろ側だけ <code>reverse=True</code>。幹事の社員が見つからないときは <code>name</code> を <code>None</code> にして例外にしない。</td><td>1 本の複雑なソートキーより、「分ける → 各グループの向きを決める」の方が読める。</td></tr></tbody></table></div>
+<pre><code class="language-python">front = sorted((a for a in rows if not _is_back_group(a, now)), key=_start_key)
+back  = sorted((a for a in rows if _is_back_group(a, now)),     key=_start_key, reverse=True)
+organizers: dict = {}          # 同じ幹事を何度も引かないためのキャッシュ
+...
+for a in front + back
+</code></pre>
+  <ul>
+    <li>修正前は 1 つのキー <code>(1 if back else 0, start_time, id)</code> で並べていて、グループ内の向きを変えられなかった。向きがグループごとに違う要件では、キーに押し込まない。</li>
+    <li>幹事の解決はキャッシュを使い、返すときは <code>dict(...)</code> で複製する（レビューで「共有汚染なし」と確認された）。</li>
+    <li>「見つからない」を <code>name: None</code> で返す点は、0.4 と同じ考え方。</li>
+  </ul>
+
+  <p><strong>(c) 届いた申込に部活が入っていない</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td>画面が <code>application["events"]["clubs"]["name"]</code> を読むのに、<code>list_by_organizer_club</code> が部活を含めていない。本物に差し替えると KeyError になる。</td><td>repository の select を <code>events(*, clubs(*))</code> にして、<code>list_by_applicant</code> と同じ形にそろえた。</td><td>同じ「申込の一覧」を返す関数は、同じ形で返す。画面が読むキーは契約に 1 行で書く。</td></tr></tbody></table></div>
+
+  <h3 id="s7-6">7.6 <a href="https://github.com/akapuu14-bit/DAHanae/pull/124" target="_blank" rel="noopener">#124</a> <code>search_service</code> 修正: どんな指摘→どう直した→学び 【指摘対応】</h3>
+  <p class="meta">元の Issue は #82（#78 のレビューから起票）。</p>
+
+  <p><strong>(a) 所属済みの部活がおすすめに出る</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td>すでに入っている部活を勧めている。仕様（SP-18・SP-75）に定めはなく、PdM が決めた。</td><td>本人の所属を 1 回で取り（<code>list_clubs_by_member</code>）、ループ内で <code>continue</code>。</td><td>ループの中で部活ごとに <code>is_member</code> を呼ぶと問い合わせが増える。ループの外で集合にしておく。</td></tr></tbody></table></div>
+<pre><code class="language-python">joined = set(club_members_repo.list_clubs_by_member(employee["id"]))
+...
+for club in clubs_repo.search({}):
+    if club["id"] in joined:
+        continue
+</code></pre>
+  <p class="meta">Issue 本文では <code>is_member</code> で判定する案だった。実装は 7.4 で足した <code>list_clubs_by_member</code> を使っている。</p>
+
+  <p><strong>(b) 日本時間の 0〜9 時に、昨日の開催が次回開催日に出る</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td><code>events_repo</code> は「今日」をサーバー時刻で判定する。そのため日本時間の 0〜9 時に、昨日の開催が出ることがある。</td><td>repository は変えず、service の <code>_next_event_dates</code> で <code>_today()</code>（日本時間）と比べて今日より前を除く。</td><td>日付の境界は repository ではなく service が JST で持つ。3.5 の「今日を含む／含まない」の話と地続き。</td></tr></tbody></table></div>
+<pre><code class="language-python">today = _today()
+for event in events_repo.list_upcoming_all_with_club():
+    ...
+    d = _as_date(event["event_date"])
+    if d &lt; today:
+        continue
+</code></pre>
+  <p>契約 1.2 にも「<code>next_event_date</code> は今日以降」と書き足した。<strong>コードを直したら、契約の文章も同じ PR で直す</strong>（#123 と共通）。</p>
+
+  <p><strong>(c) 部活カードに <code>level</code> がない</strong></p>
+  <div class="tablewrap stack"><table><thead><tr><th>どんな指摘</th><th>どう直した</th><th>学び</th></tr></thead><tbody><tr><td>ホームのおすすめ切り替えで <code>clubs.level</code> が要る（#80 のレビューより）。契約の型も実装とずれていた（<code>icon</code> は <code>str | None</code>、<code>meeting_time</code> は <code>time | None</code>）。</td><td><code>_CARD_KEYS</code> に <code>"level"</code> を追加。契約の型を実装に合わせた。</td><td>DB で空を許す列は、契約の型でも <code>| None</code> にする。カードのキーは 1 か所（<code>_CARD_KEYS</code>）に集める。</td></tr></tbody></table></div>
+
+  <h3 id="s7-7">7.7 <a href="https://github.com/akapuu14-bit/DAHanae/pull/129" target="_blank" rel="noopener">#129</a> <code>club_admin_service</code>: 部活管理（S10） 【レビュー待ち・暫定】</h3>
+  <div class="callout danger">
+    <p><strong>この節は確定ではない。</strong>#129 は未マージで、レビューはまだ付いていない。コードは #129 のブランチで読んだ内容で、レビューで変わる可能性がある。マージ後に確認して書き直す前提で読む。</p>
+  </div>
+  <p>7 本目の service。部活・開催・メンバーの参照と更新（I-F契約 1.7、SP-58〜SP-62、SP-73、SP-74）。契約側は #117 で先に入り、その PR のレビュー 5 点が契約と設計に反映されている。</p>
+
+  <p><strong>許可リスト（whitelist）検証と、検証の順番</strong></p>
+<pre><code class="language-python">def _validate_club_fields(fields: dict, *, allow_is_active: bool) -&gt; None:
+    """unknown → required → invalid の順に判定する。"""
+    allowed = _CLUB_KEYS + (("is_active",) if allow_is_active else ())
+    for key in fields:
+        if key not in allowed:
+            raise ValidationError(f"unknown:{key}")
+    for key in _CLUB_REQUIRED:
+        if key in fields and _is_blank(fields[key]):
+            raise ValidationError(f"required:{key}")
+    for key, choices in _CHOICES.items():
+        if key in fields and fields[key] not in choices:
+            raise ValidationError(f"invalid:{key}")
+</code></pre>
+  <p><strong>学んだ原則: 「受け取ってよい名前と値」を先に決めておき、それ以外は理由コード付きで断る。</strong></p>
+  <ul>
+    <li>キーの許可リスト（<code>_CLUB_KEYS</code>）に無い名前は <code>unknown:&lt;key&gt;</code>。画面が余計なキー（たとえば <code>status</code>）を渡しても、そのまま DB に流れない。</li>
+    <li>値の許可リスト（<code>_CHOICES</code>）は仕様 3.2 と DB の CHECK 制約と同じ値。7.4 と同じ考え方で、service・DB の二重で守る。</li>
+    <li>理由コードは文字列（<code>required:&lt;key&gt;</code> など）で持たせ、文言は画面が作る。5.2 の「ロジックと文言の分離」の延長。</li>
+    <li><strong>例外の順を関数ごとに docstring へ書く。</strong>たとえば <code>create_event</code> は <code>NotFound</code>（club_id）→ <code>Permission</code> → <code>Validation</code>。検証の中も unknown → required → past_date → end_before_start と決めてある。</li>
+    <li>権限は新しい関数を作らず、7.1 の <code>get_role</code> / <code>is_organizer</code> で判定する。</li>
+  </ul>
+
+  <p><strong>JST の「今日」が再登場する</strong></p>
+<pre><code class="language-python">_JST = ZoneInfo("Asia/Tokyo")
+def _today() -&gt; date:
+    return datetime.now(_JST).date()
+...
+if parsed["event_date"] &lt; _today():
+    raise ValidationError("past_date")
+</code></pre>
+  <p>7.6 と同じ考え方で、開催日が過去かどうかも、一覧の「今日以降」も JST で判定する（契約に <code>Asia/Tokyo</code> と明記する修正が #117 のレビューで入った）。<code>_today()</code> を持つモジュールは、search_service に続いてこれで 2 つ目。同じ関数が複数の service に増えている点は、集約するかどうかを後で考えたい（未決）。</p>
+
+  <p><strong>通知を「中止にする」1 操作に紐づける</strong></p>
+<pre><code class="language-python">events_repo.set_status(event_id, status)
+if status == "中止":
+    for application in applications_repo.list_participants(event_id):
+        notification_service.notify(application["applicant_id"], "中止",
+            application_id=application["id"], event_id=event_id, body=_CANCEL_BODY)
+</code></pre>
+  <p><strong>学んだ原則: 副作用（通知）は、それを起こす操作の関数の中に置く。画面が別に呼ぶ作りにしない。</strong></p>
+  <ul>
+    <li>状態を変えたあとに、申込済みの全員へ通知する（B-1 裁定、本文は固定文）。「予定に戻す」ときは通知しない。</li>
+    <li>同じ状態への変更は <code>ConflictError("same_status")</code>。通知済みかどうかは記憶せず、再中止のたびに通知する（#117 のレビューで契約に明記された）。</li>
+    <li>5.3 と同じ「保存してから副作用」の順。</li>
+  </ul>
+  <div class="callout">
+    <p><strong>ハマりどころ（気配）。</strong>状態の更新のあとで通知を 1 件ずつ送る。途中で通知が失敗すると、状態は「中止」になったまま一部の人にしか届かない。トランザクションは無い（5.3 と同じ）。同様に <code>create_club</code> は、部活の作成と幹事のメンバー登録が別の書き込みで、部分失敗の注意書きが契約に任意で入った。実際にどうなるかは確認していない。</p>
+  </div>
+
+  <h3 id="s7-8">7.8 横断テーマ 5 本</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>テーマ</th><th>登場する節</th><th>ひとこと</th></tr></thead>
+    <tbody>
+      <tr><td>①</td><td><strong>JST の日付境界</strong></td><td>7.6、7.7（暫定）、既存 3.5 / 5.6</td><td>repository の「今日」はサーバー時刻。service が JST で持つ</td></tr>
+      <tr><td>②</td><td><strong>仮 → 本物の差し替え</strong></td><td>7.2、7.5(c)</td><td>基準は契約。キー名と形をそろえる</td></tr>
+      <tr><td>③</td><td><strong>service を足すとき repo も足す</strong></td><td>7.4、7.6(a)</td><td>足した関数が次の service で再利用される</td></tr>
+      <tr><td>④</td><td><strong>許可リスト検証と例外順</strong></td><td>7.3、7.4、7.7（暫定）</td><td>順番を決めて、docstring に書く</td></tr>
+      <tr><td>⑤</td><td><strong>通知を 1 操作に紐づける</strong></td><td>7.3、7.7（暫定）</td><td>保存してから、その関数の中で通知する</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="s7-9">7.9 総まとめへの追加提案（c）</h3>
+  <p>既存の「6 本の背骨」の表に足す案。まず 3 本。</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>背骨（案）</th><th>実例</th></tr></thead>
+    <tbody>
+      <tr><td>7</td><td><strong>判定の順番を決めて書く</strong></td><td>例外順（7.3、7.4、7.7）。docstring に 1 行</td></tr>
+      <tr><td>8</td><td><strong>契約と実装を同じ PR で直す</strong></td><td>7.5、7.6 の契約追記。仮から本物への差し替え（7.2）</td></tr>
+      <tr><td>9</td><td><strong>副作用は、それを起こす 1 操作に紐づける</strong></td><td>通知（7.3、7.7）、view_club を読み取り関数に入れない（7.2）</td></tr>
+    </tbody>
+  </table></div>
+  <p>既存の背骨 6「TZ と正規化」の実例欄には、<code>_today()</code>（JST）と「service で日付境界を持つ」（7.6）の追加を提案する。</p>
+  <p><strong>チェックリストに足す案</strong>（既存 8 行の後ろ）</p>
+  <ul class="checklist">
+    <li>例外を返す順番（NotFound → Permission → Validation → Conflict など）を決め、docstring に書いた</li>
+    <li>「受け取ってよいキー・値」の許可リストを持ち、DB の CHECK 制約と同じ値にした</li>
+    <li>契約（I-F契約.md）の戻り値のキー名・型と、実装を見比べた（<code>| None</code> を含む）</li>
+    <li>コードを直した PR で、契約の文章も直した</li>
+    <li>通知・履歴は、起こす操作の関数の中にあり、保存の後に呼んでいる</li>
+  </ul>
+</section>
+
     <section class="sheet" id="refs">
       <h2>出典</h2>
 <ul>
 <li>実コード（<code>origin/main</code> 7834ef0）: <code>app/frontend/db/client.py</code>、<code>app/frontend/services/{errors,auth_service,search_service,action_log_service,notification_service,application_service}.py</code>、<code>app/frontend/repositories/{employees,activities,clubs,club_members,events,applications,messages,notifications,action_logs}_repo.py</code></li>
 <li>スキーマ: <code>supabase/migrations/202609280001_create_initial_schema.sql</code>、<code>202609300001_action_logs_apply_requires_club.sql</code></li>
+<li>追補編（7 章）の実コード: <code>origin/main</code> afab013 の <code>app/frontend/services/{auth,search,application,profile}_service.py</code>、<code>repositories/{club_members,employees,applications}_repo.py</code>。#129 は <code>club_admin_service.py</code>（#129 のブランチ版、コミット dbf3264）。</li>
+<li>追補編の PR / Issue: PR #110、#111、#118、#119、#123、#124、#129（状態・レビュー本文は <code>gh pr view</code> で確認）、Issue #82、#83。#117 のレビュー反映（コミット c32795b）。契約は <code>実装ガイド/I-F契約.md</code>（1.1、1.2、1.3、1.6、1.7）。</li>
 <li>背景文書: <code>実装ガイド/I-F契約.md</code>（0.1、0.4、1.2）、<code>実装ガイド/環境セットアップ.md</code>（2〜3章）、<code>仕様.md</code>（SP-07、SP-11 ほか）、<code>要件.md</code>（N-05）、<code>01_ナレッジ/実践ナレッジ.md</code></li>
 </ul>
       <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
@@ -879,6 +1143,7 @@ if not body or not body.strip():
 <li>各 repository / service のテスト結果・合格状況は確認していない。この記事は挙動の解説であり、品質保証ではない。</li>
 <li><code>auth_service.login</code> で ID 不在時にも <code>compare_digest</code> を実行する意図、repository の <code>date.today()</code> と service の JST 日付のずれが実害になるか、N+1 の性能影響は、いずれも未確認。</li>
 <li>画面層（<code>screens/</code>）の実装との結合は、この記事の範囲外。</li>
+<li>追補編: #129 のレビュー結果（マージ後にコードが変わっていないか 7.7 を確認し直す）。#119 は偽 repo での単体確認の報告のみで、実 DB での動作は確認していない。#111 の「仮」実装のコードは読んでいない。7.2 の N+1 の性能影響、7.7 の通知の途中失敗の実際の挙動、7.3 の ID の大文字小文字の扱いを揃えるべきかも未確認。</li>
 <li>技術監修（だーあさ本人・terao による内容確認）は未実施。</li>
 </ul>
       </div>
