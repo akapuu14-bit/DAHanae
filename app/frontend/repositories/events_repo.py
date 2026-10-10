@@ -7,7 +7,8 @@
   開催日と時刻は混ぜず、event_date（date型）だけで比較する。
 """
 
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from db.client import supabase
 
@@ -26,7 +27,7 @@ def get(event_id: int) -> dict | None:
 
 def list_upcoming_by_club(club_id: int) -> list[dict]:
     """その部活の今日以降の開催を日付順（同日はid順）で返す。過去の開催は除く。"""
-    today = date.today().isoformat()
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
     res = (
         supabase.table("events")
         .select("*")
@@ -44,7 +45,7 @@ def list_upcoming_all_with_club() -> list[dict]:
 
     各dictの "clubs" キーに該当するclubs行（1件）が入る。
     """
-    today = date.today().isoformat()
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
     res = (
         supabase.table("events")
         .select("*, clubs(*)")
