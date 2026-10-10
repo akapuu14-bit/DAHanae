@@ -6,7 +6,8 @@
   （status='申込済み' のみ対象）で防ぐ。仕様.md 8章の保留により、この層では独自の重複防止を足さない。
 """
 
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from db.client import supabase
 
@@ -79,7 +80,7 @@ def has_past_non_canceled(club_id: int, employee_id: str) -> bool:
 
     「過去」は仕様.md SP-26の「今日以降」の補集合として event_date < 今日 で判定する。
     """
-    today = date.today().isoformat()
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
     past_event_rows = (
         supabase.table("events")
         .select("id")
