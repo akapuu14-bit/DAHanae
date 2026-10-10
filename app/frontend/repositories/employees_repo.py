@@ -185,3 +185,10 @@ def list_departments() -> list[str]:
     """employees.dept の重複を除いた値を昇順（Python の sorted と同じ）で返す。社員が0人なら空リスト。"""
     res = supabase.table("employees").select("dept").execute()
     return sorted({r["dept"] for r in (res.data or []) if r.get("dept")})
+
+
+def list_all() -> list[dict]:
+    """全社員の "id" と "name" を name の昇順（同名は id の昇順）で返す。公開設定では絞らない。0人なら空リスト。"""
+    res = supabase.table("employees").select("id, name").execute()
+    rows = [{"id": r["id"], "name": r["name"]} for r in (res.data or [])]
+    return sorted(rows, key=lambda r: (r["name"], r["id"]))
