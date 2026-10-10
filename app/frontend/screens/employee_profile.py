@@ -15,10 +15,8 @@ import state
 from components import club_card
 from services.errors import AppError, NotFoundError, ValidationError
 
-# 本物ができたら、次の 1 行を
-#     from services import profile_service, search_service
-# に書き換える。ほかは変えなくてよい。
-from mocks import profile_service, search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import profile_service, search_service
 
 PRIVATE_TEXT = "非公開"
 SELF_PRIVATE_NOTE = "（他の人には非公開）"  # SP-65：本人には値と一緒に出す

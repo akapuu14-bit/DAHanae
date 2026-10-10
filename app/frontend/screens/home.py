@@ -14,10 +14,8 @@ import streamlit as st
 import state
 from components import club_card
 
-# 本物の search_service ができたら、次の 1 行を
-#     from services import search_service
-# に書き換える（関数名の確認は、だーあさ待ち）。
-from mocks import search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import search_service
 
 APP_NAME = "部活コンシェルジュ"
 WEEK_MAX = 4  # SP-16: 最大4件

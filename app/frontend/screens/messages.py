@@ -13,10 +13,8 @@ import streamlit as st
 
 from services.errors import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 
-# 本物ができたら、次の 3 行を
-#     from services import application_service, auth_service, notification_service
-# に書き換える。ただし is_organizer と send_message は I-F契約への追加待ち（依頼中）。
-from mocks import application_service, auth_service, notification_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import application_service, auth_service, notification_service
 
 _JST = timezone(timedelta(hours=9))  # Windows には時間帯DBが無いので、固定の +9時間を使う
 

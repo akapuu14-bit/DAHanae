@@ -15,10 +15,8 @@ import state
 from components import club_card, rule_notice
 from services.errors import ConflictError, NotFoundError
 
-# 本物ができたら、次の 3 行を
-#     from services import action_log_service, application_service, search_service
-# に書き換える（get_club_detail は I-F契約への追加待ち）。ほかは変えなくてよい。
-from mocks import action_log_service, application_service, search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import action_log_service, application_service, search_service
 
 MESSAGE_ALREADY_APPLIED = "すでに申し込み済みです"  # SP-31
 MESSAGE_NOT_OPEN = "この開催には申し込みできません"  # SP-31

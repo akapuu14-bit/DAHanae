@@ -16,11 +16,8 @@ import streamlit as st
 
 import state
 
-# 本物ができたら、次の 2 行を
-#     from services import search_service
-# に書き換える。search_employees は本物があるのでそのまま使える。
-# list_departments / list_activities は I-F契約への追加待ち（依頼中）。
-from mocks import search_service
+# 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
+from services import search_service
 
 NOTICE = "興味・経験と参加可能時間は、本人が公開にしたものだけが検索・表示されます"  # SP-47
 EMPTY_MESSAGE = "条件に合う人がいません。条件を減らして探してみてください"  # SP-52
