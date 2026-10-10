@@ -4,6 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>開発ハブ | 部活コンシェルジュ</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a44">
+<meta name="description" content="開発で毎日開くリンクを、1ページに集約。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="開発ハブ｜部活コンシェルジュ">
+<meta property="og:description" content="開発で毎日開くリンクを、1ページに集約。">
+<meta property="og:url" content="https://akapuu14-bit.github.io/DAHanae/hub.html">
+<meta property="og:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="開発ハブ｜部活コンシェルジュ">
+<meta name="twitter:description" content="開発で毎日開くリンクを、1ページに集約。">
+<meta name="twitter:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
   :root {
@@ -196,10 +213,10 @@
     <h2>開発の始め方</h2>
     <ol>
       <li>環境セットアップ.md を見て開発環境を整える</li>
-      <li>タスクバックログ.md を見て、自分の担当タスクを選ぶ</li>
+      <li>GitHub Issues から自分の担当 Issue を選ぶ（全体像・依存はタスクバックログ.md で確認）</li>
       <li>I-F契約.md の関数シグネチャに沿って実装する</li>
     </ol>
-    <div class="rule">共通ルール：1ファイル1担当／コミット・PRには <code>Closes #番号</code> を書く</div>
+    <div class="rule">共通ルール：1ファイル1担当／PR 本文に <code>Closes #番号</code> を書いてマージ → Issue が自動クローズ</div>
   </div>
 
   <section class="group">
@@ -220,27 +237,22 @@
         <div class="desc">担当・進捗・課題を管理する</div>
         <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span><span class="tag">はなえ</span><span class="tag">テスト</span></div>
       </a>
-      <a class="card hot" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/タスクバックログ.md" target="_blank" rel="noopener">
-        <div class="name">📋 タスクバックログ.md</div>
-        <div class="desc">次にやることを確認する</div>
-        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span><span class="tag">はなえ</span></div>
-      </a>
-      <a class="card hot" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/I-F契約.md" target="_blank" rel="noopener">
-        <div class="name">🔌 I-F契約.md</div>
-        <div class="desc">関数シグネチャ・呼び出し規約を確認する</div>
-        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span></div>
-      </a>
-      <a class="card hot" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/仕様.md" target="_blank" rel="noopener">
-        <div class="name">📐 仕様.md</div>
-        <div class="desc">画面・処理のSP番号で仕様を確認する</div>
-        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span><span class="tag">はなえ</span><span class="tag">テスト</span></div>
-      </a>
     </div>
   </section>
 
   <section class="group">
     <h2>📌 節目で開く</h2>
     <div class="grid">
+      <a class="card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/I-F契約.md" target="_blank" rel="noopener">
+        <div class="name">🔌 I-F契約.md</div>
+        <div class="desc">関数シグネチャ・呼び出し規約を確認する</div>
+        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span></div>
+      </a>
+      <a class="card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/仕様.md" target="_blank" rel="noopener">
+        <div class="name">📐 仕様.md</div>
+        <div class="desc">画面・処理のSP番号で仕様を確認する</div>
+        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span><span class="tag">はなえ</span><span class="tag">テスト</span></div>
+      </a>
       <a class="card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/設計.md" target="_blank" rel="noopener">
         <div class="name">🏗️ 設計.md</div>
         <div class="desc">層分離・データモデル・処理フローを確認する</div>
@@ -250,6 +262,11 @@
         <div class="name">📝 要件.md</div>
         <div class="desc">機能・非機能要件（F/N）を確認する</div>
         <div class="tags"><span class="tag">あかぷ</span><span class="tag">はなえ</span></div>
+      </a>
+      <a class="card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/タスクバックログ.md" target="_blank" rel="noopener">
+        <div class="name">📋 タスクバックログ.md</div>
+        <div class="desc">次にやることを確認する</div>
+        <div class="tags"><span class="tag">だーあさ</span><span class="tag">あかぷ</span><span class="tag">はなえ</span></div>
       </a>
       <a class="card" href="https://github.com/akapuu14-bit/DAHanae/blob/main/docs/進捗管理ガイド.md" target="_blank" rel="noopener">
         <div class="name">📈 進捗管理ガイド.md</div>
@@ -297,6 +314,11 @@
         <div class="name">📘 Munder Difflinチーム開発 実践ナレッジ</div>
         <div class="desc">ハイブ運用・V字・進捗基盤・ハマりどころを次のチーム向けに</div>
         <div class="tags"><span class="tag">運用知</span><span class="tag">V字</span><span class="tag">ハマりどころ</span></div>
+      </a>
+      <a class="card" href="./be-cheatsheet.html">
+        <div class="name">🧰 だーあさのBE実装チートシート</div>
+        <div class="desc">BE実装（Wave0/1/2）のコード解説と学ぶべきポイント</div>
+        <div class="tags"><span class="tag">BE</span><span class="tag">コード解説</span><span class="tag">ハマりどころ</span></div>
       </a>
     </div>
   </section>

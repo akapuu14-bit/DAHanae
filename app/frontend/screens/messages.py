@@ -135,8 +135,7 @@ def _render_cancel(application, me):
         st.rerun()
 
 
-def _render_mine(me):
-    applications = application_service.list_my_applications(me)
+def _render_mine(me, applications):
     if not applications:
         st.info(MESSAGE_EMPTY_MINE)
         return
@@ -174,8 +173,7 @@ def _render_stamp(application, me):
         st.rerun()
 
 
-def _render_received(me):
-    applications = application_service.list_received_applications(me)
+def _render_received(me, applications):
     if not applications:
         st.info(MESSAGE_EMPTY_RECEIVED)
         return
@@ -196,14 +194,20 @@ def _render_received(me):
 
 def render():
     me = st.session_state["employee_id"]
+    is_organizer = auth_service.is_organizer(me)
+
+    # 先に一覧を取ってから、既読にする（順番が大事）。
+    # 一覧は「未読の通知がある申込を先頭に」並べる作り（SP-40）。先に既読にすると、その並びが効かなくなる。
+    mine = application_service.list_my_applications(me)
+    received = application_service.list_received_applications(me) if is_organizer else []
     notification_service.mark_read_for_messages_screen(me)  # SP-36
 
     st.title("メッセージ")
-    if auth_service.is_organizer(me):
+    if is_organizer:
         tab_mine, tab_received = st.tabs([TAB_MINE, TAB_RECEIVED])
         with tab_mine:
-            _render_mine(me)
+            _render_mine(me, mine)
         with tab_received:
-            _render_received(me)
+            _render_received(me, received)
     else:
-        _render_mine(me)
+        _render_mine(me, mine)

@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Munder Difflinでチーム開発を回す実践知</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#1f2a44">
   <style>
     :root {
       --navy: #1f2a44;
@@ -418,6 +423,72 @@ gh workflow run dashboard.yml</code></pre>
         <p><strong>補足（Issue二重化）</strong>: 横断レビュー（T-013）で、タスクIssueが <code>setup_github.sh</code> と <code>create_issues.sh</code> の両方で作られる二重化（重大）と、テスト設計が確定した仕様に追随していない矛盾（重大）を検出した。前者は <code>create_issues.sh</code> に一本化、後者はテスト設計を更新して解消（T-014〜T-016）。<strong>作った文書を、別の担当（kurosu）が横断で見る</strong>工程が効いた。</p>
       </div>
       <div class="callout ok hint"><strong>次に活かす一言:</strong> 失敗の多くは「確認前に動いた」か「境界が書かれていなかった」か「書式の不一致」。この3つを先に潰す。</div>
+
+      <p><strong>2026-10-01〜10-04 の追記</strong>（記録日 2026-10-04。立ち上げ後、実装期に入ってからの失敗と学び。根拠は各項目の PR・commit と、末尾「出典」の追記分）</p>
+
+      <h3>5.8 I-F契約に関数が無く、仕様どおりの画面を作れなかった（2026-10-04）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>あかぷが画面の実装中に2件見つけた。① サイドバーの「部活の管理」は SP-01 で幹事・運営者に表示するが、<code>get_role(employee_id, club_id=None)</code> は is_admin しか見ないため、幹事を部活横断で判定できなかった。② S04 部活詳細に必要な読み取り関数 <code>get_club_detail</code> が I-F契約に無かった</dd>
+        <dt>原因</dt><dd>仕様（SP-01、S04 の SP-26〜SP-28・SP-32）にある振る舞いに対応する service 関数が、I-F契約で定義されていなかった。repository 側の材料（<code>clubs_repo.list_by_organizer</code> など）はそろっていた</dd>
+        <dt>対処</dt><dd>仕様外の補完ではなく「契約の穴埋め」と判断し、takahiro が I-F契約に関数を追加した（PR #90 <code>is_organizer</code>、PR #91 <code>get_club_detail</code>）。既存関数のシグネチャは変えない。god が実コードと突き合わせて検証した。2026-10-04 時点で、どちらもはなえの承認待ち（OPEN）</dd>
+        <dt>次に活かす一言</dt><dd>画面を作り始める前に、その画面が呼ぶ関数が I-F契約にあるかを突き合わせる</dd>
+      </dl>
+
+      <h3>5.9 契約の文言修正がマージに間に合わず、契約と実装がずれた（2026-10-03〜04）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>PR #73（I-F契約への search_service 追記）が、「今週」の定義を直す前にマージされた（2026-10-03）。実装は PM 裁定で「今日〜今週の日曜」に直った（commit 7cf0762、#78）が、main の I-F契約は旧い「月〜日全体」の文言のまま残った</dd>
+        <dt>原因</dt><dd>修正をマージ前のブランチに乗せたが、そのブランチが先にマージされた</dd>
+        <dt>対処</dt><dd>takahiro が main 向けの別 PR #79 で文言を直した（2026-10-04 時点で OPEN）。コードは正しく、実害はない（god 確認）</dd>
+        <dt>次に活かす一言</dt><dd>急ぎの文言修正は、対象ブランチがマージ済みかを確かめてから、main 向けの別 PR にする</dd>
+      </dl>
+
+      <h3>5.10 ローカルの main を基準にして、PR に関係ないコミットが混ざった（2026-10-03）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>PR #69（hub.html の2行修正）に、未 push のローカルコミット 70f703d（messages_repo）が混入した。2026-10-04 には、ローカル main が origin/main より 53 コミット遅れていることも見つかった</dd>
+        <dt>原因</dt><dd>作業ブランチをローカルの main から切っていた</dd>
+        <dt>対処</dt><dd><code>git rebase --onto origin/main</code> で混入を除いて force-push した。以後は origin/main から分岐し、PR 前に <code>git diff --stat origin/main...&lt;branch&gt;</code> で変更ファイルを確かめる（#86〜#95 で運用）</dd>
+        <dt>次に活かす一言</dt><dd>基準は常に origin/main。PR 前の差分確認を手順に固定する</dd>
+      </dl>
+
+      <h3>5.11 新しいナレッジページが GitHub Pages で 404 になった（2026-10-04）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>#87 で追加した <code>docs/be-cheatsheet.html</code> が、開発ハブのカードから開くと 404 だった</dd>
+        <dt>原因</dt><dd>Pages へのデプロイ（<code>.github/workflows/dashboard.yml</code>）が、コピーするファイルを cp 行で明示列挙しており、新しいページが入っていなかった</dd>
+        <dt>対処</dt><dd>PR #88 で cp 行に1ファイルを追加した。再デプロイ後に 200 を確認した（god）</dd>
+        <dt>次に活かす一言</dt><dd><code>docs/</code> にページを足すときは、<code>dashboard.yml</code> の cp 行も同じ PR で直す</dd>
+      </dl>
+
+      <h3>5.12 PR 上で dashboard の deploy ジョブが毎回 fail する（2026-10-04 時点）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>dashboard ワークフローは pull_request イベントでも動き、そのときの結果は毎回 failure だった。main への push では success だった。<code>gh run list --workflow dashboard.yml</code> の 2026-10-04 の12件では、pull_request 9件がすべて failure、push（main）3件がすべて success</dd>
+        <dt>原因</dt><dd>未確認。deploy ジョブが github-pages 環境へ配信する構成であることは確認したが、PR で失敗する理由までは調べていない</dd>
+        <dt>対処</dt><dd>PR 上の deploy の fail はマージ可否の判断に使わず、マージ後の main の実行結果で確かめる（mirin の記録。#95 のマージ後に build・deploy とも success）</dd>
+        <dt>次に活かす一言</dt><dd>「いつも落ちるチェック」は、理由が分かるまで記録して区別し、本物の失敗と混ぜない</dd>
+      </dl>
+
+      <h3>5.13 ダッシュボードの時刻が UTC と JST で混ざっていた（2026-10-04）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>カンバンの日付判定は JST なのに、PR の時刻とページの生成時刻だけ UTC で表示されていた</dd>
+        <dt>原因</dt><dd><code>scripts/gen_dashboard.py</code> の <code>fmt_dt()</code> と <code>generated_at</code> が UTC で整形していた</dd>
+        <dt>対処</dt><dd>PR #95 で両方を JST に統一し、変換を固定するテストを3件追加した（pytest 36 passed）。マージ（commit 6d162e9）後の Actions で build・deploy とも success。公開ページの見た目そのものは未確認</dd>
+        <dt>次に活かす一言</dt><dd>表示用の時刻の整形は1つの関数に集め、どの TZ で出すかをテストで固定する</dd>
+      </dl>
+
+      <h3>5.14 依頼文の件数が実際と違った（17 → 18 issue、2026-10-04）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>BE実装チートシートの依頼で「17 issue」とされ、記事にも 17 と書いていたが、列挙された番号（#8〜#10、#13〜#27）は18件だった</dd>
+        <dt>原因</dt><dd>件数を、列挙から数え直していなかった</dd>
+        <dt>対処</dt><dd>Issue 対応マップを作る際に行数で気づき、PR #89 で記事の表記を 18 に直して god に報告した</dd>
+        <dt>次に活かす一言</dt><dd>件数は、一覧を作ってから数える</dd>
+      </dl>
+
+      <h3>5.15 「すべてマージ完了」の Slack 文面と GitHub の状態が食い違って見えた（2026-10-03）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>はなえの Slack に「すべてマージ完了」とあったが、GitHub では #71〜#73 が OPEN だった</dd>
+        <dt>原因</dt><dd>食い違いではなく時系列だった。#71〜#73 は、その投稿の後に作られた PR だった（god が訂正）</dd>
+        <dt>対処</dt><dd>マージの状況は、Slack の文面ではなく GitHub の state で判断することにした</dd>
+        <dt>次に活かす一言</dt><dd>状態は一次情報（GitHub）で確かめ、文面は「いつ時点か」とあわせて読む</dd>
+      </dl>
     </section>
 
     <section class="sheet" id="s6">
@@ -455,6 +526,7 @@ gh workflow run dashboard.yml</code></pre>
         <li><code>hive/board.md</code>（GitHub状態・決定ログ・人間チーム）</li>
         <li><code>docs/進捗管理ガイド.md</code>、<code>docs/github-管理セットアップ.md</code></li>
         <li><code>02_プロジェクト/bukatsu_concierge/</code> の各文書と <code>実装ガイド/I-F契約.md</code></li>
+        <li>2026-10 追記分（5.8〜5.15）: <code>hive/agents/god/memory.md</code>（2026-10-03〜04）、<code>hive/agents/mirin-tech0/memory.md</code>（T-DASH-JST）、PR #69 #73 #79 #87 #88 #89 #90 #91 #95 の本文と状態（<code>gh pr view</code>）、<code>git log origin/main --since=2026-10-01</code>、<code>gh run list --workflow dashboard.yml</code></li>
       </ul>
 
       <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
@@ -463,6 +535,7 @@ gh workflow run dashboard.yml</code></pre>
           <li>実装（W3）以降の進捗・テスト結果・W4評価: 未着手または未確認。</li>
           <li><code>9a6a20f</code> 以降に5文書へ加えた変更の有無: コミットIDでは再確認していない。</li>
           <li>ダッシュボード公開URLの現在の表示状態: 今回は再確認していない（memory/tasks の記録どおり）。</li>
+          <li>5.12 で PR 上の deploy が失敗する理由（調べていない）。5.13 の公開ページの見た目（PR #95 では未確認とされている）。</li>
         </ul>
       </div>
     </section>

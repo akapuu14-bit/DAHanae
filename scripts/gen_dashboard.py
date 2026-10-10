@@ -16,6 +16,7 @@ from __future__ import annotations
 import html
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -205,7 +206,7 @@ def fmt_dt(iso: str | None) -> str:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return iso
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return dt.astimezone(JST).strftime("%Y-%m-%d %H:%M JST")
 
 
 def area_chips(entry_areas: dict) -> str:
@@ -268,6 +269,34 @@ def deadline_badge(done: bool, due_on: str | None, today: date) -> tuple[str, st
     return f"期限内(残{diff}日)", "badge-ok"
 
 
+_TITLE_TAG_RE = re.compile(r"^\s*((?:\[[^\]]*\]\s*)+)")
+_PATH_RE = re.compile(r"[\w.\-]+(?:/[\w.\-]+)+|[\w\-]+\.(?:py|md|yml|yaml|json|html|sh|ts|js|css|toml|txt)\b", re.ASCII)
+
+_DIR_PREFIX_RE = re.compile(r"^(?:(?:app|frontend|backend|screens|scripts|components|repositories|services|mocks)/)+")
+
+
+def _title_html(title: str) -> str:
+    """タイトルの先頭[タグ]を薄字、ファイル名/パスを等幅codeにする。表示用の装飾のみ。"""
+    tag = ""
+    m = _TITLE_TAG_RE.match(title)
+    if m:
+        tag = f'<span class="task-tag">{html.escape(m.group(1).rstrip())}</span> '
+        title = title[m.end():]
+    out, pos = [], 0
+    for pm in _PATH_RE.finditer(title):
+        out.append(html.escape(title[pos:pm.start()]))
+        path = pm.group(0)
+        # 先頭/空白/・直後のパスだけ、表示上ディレクトリ接頭辞を省く（文中の「mocks/」等の日本語混在は触らない）
+        if pm.start() == 0 or title[pm.start() - 1] in " \u3000・":
+            stripped = _DIR_PREFIX_RE.sub("", path)
+            if "." in stripped:
+                path = stripped
+        out.append(f"<code>{html.escape(path)}</code>")
+        pos = pm.end()
+    out.append(html.escape(title[pos:]))
+    return tag + "".join(out)
+
+
 def render_task_rows(
     tasks: list[dict],
     today: date,
@@ -277,8 +306,17 @@ def render_task_rows(
     """タスク行。担当者内訳は担当(show_assignee=False)、Milestone内訳はMilestone名を省く。"""
 
     def sort_key(t):
+        # 未完了を先に。遅延(赤)→本日締切→期限内(緑)→期限未設定の順、遅延は日数が大きい(期限が古い)順。
         due = due_date_of(t["due_on"])
-        return (t["done"], due is None, due or date.max, t["number"] or 0)
+        if due is None:
+            group = 3
+        elif due < today:
+            group = 0
+        elif due == today:
+            group = 1
+        else:
+            group = 2
+        return (t["done"], group, due or date.max, t["number"] or 0)
 
     rows = []
     for t in sorted(tasks, key=sort_key):
@@ -292,19 +330,16 @@ def render_task_rows(
         if show_milestone:
             meta.append(html.escape(t["milestone_title"] or "Milestone未設定"))
         meta.append(f"期限: {due_str}")
-        areas = "".join(
-            f'<span class="chip chip-sm" style="--chip-color:{AREA_LABELS[a]["color"]}">{html.escape(AREA_LABELS[a]["name"])}</span>'
-            for a in t["areas"]
-        )
+        meta_html = "".join(f'<span class="meta-item">{m}</span>' for m in meta)
         rows.append(
             f"""
             <li class="task {'task-done' if t['done'] else 'task-open'}">
-              <div class="task-line">
+              <div class="task-head">
                 <span class="task-no">{kind}#{t['number']}</span>
-                <a class="task-title" href="{html.escape(t['html_url'])}" target="_blank" rel="noopener">{html.escape(t['title'])}</a>
-                <span class="badge {cls}">{html.escape(label)}</span>
+                <a class="task-title" href="{html.escape(t['html_url'])}" target="_blank" rel="noopener" title="{html.escape(t['title'], quote=True)}">{_title_html(t['title'])}</a>
               </div>
-              <div class="task-meta">{" ・ ".join(meta)}{areas}</div>
+              <div class="task-state"><span class="badge {cls}">{html.escape(label)}</span></div>
+              <div class="task-meta">{meta_html}</div>
             </li>
             """
         )
@@ -426,6 +461,23 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>部活コンシェルジュ 開発ダッシュボード</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a44">
+<meta name="description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="部活コンシェルジュ 開発ダッシュボード">
+<meta property="og:description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta property="og:url" content="https://akapuu14-bit.github.io/DAHanae/index.html">
+<meta property="og:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="部活コンシェルジュ 開発ダッシュボード">
+<meta name="twitter:description" content="部活コンシェルジュの開発状況（Issue・PR・Milestone）を担当者別・Milestone別にまとめた進捗ダッシュボード。">
+<meta name="twitter:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap');
   :root {{
@@ -513,23 +565,33 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   .task-list {{ list-style: none; padding: 0; margin: 8px 0 0; }}
   .task {{ padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; line-height: 1.5; }}
   .task:last-child {{ border-bottom: none; }}
-  .task-line {{ display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 8px; align-items: baseline; }}
-  .task-no {{ font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }}
-  .task-title {{ color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }}
+  .task-head {{ display: flex; align-items: baseline; gap: 6px; min-width: 0; }}
+  .task-no {{ font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }}
+  .task-title {{
+    color: var(--accent); text-decoration: none; font-weight: 600;
+    min-width: 0; flex: 1 1 auto; overflow: hidden; overflow-wrap: break-word; line-break: strict;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  }}
   .task-title:hover {{ text-decoration: underline; }}
-  .task-done .task-title {{ color: var(--muted); text-decoration: line-through; }}
-  .task-meta {{ color: var(--muted); font-size: 0.72rem; margin-top: 3px; padding-left: 0; overflow-wrap: anywhere; }}
-  .chip-sm {{ font-size: 0.62rem; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }}
+  .task-title code {{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em;
+    background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 0 4px; border-radius: 3px;
+    display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+  }}
+  .task-tag {{ color: var(--muted); font-weight: 500; white-space: nowrap; }}
+  .task-done .task-title {{ color: var(--muted); text-decoration: line-through; font-weight: 400; }}
+  .task-state {{ margin-top: 4px; }}
+  .task-meta {{
+    display: flex; flex-wrap: wrap; gap: 0 10px; color: var(--muted); font-size: 0.7rem; margin-top: 4px; opacity: 0.85;
+    word-break: keep-all; overflow-wrap: anywhere;
+  }}
+  .meta-item {{ white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }}
   .unassigned {{ margin-top: 20px; }}
   .unassigned h3 {{ font-size: 0.9rem; margin: 0 0 2px; color: var(--muted); }}
   .unassigned-note {{ font-size: 0.75rem; color: var(--muted); margin: 0 0 8px; }}
   .card-muted {{ background: rgba(255,255,255,.55); border: 2px dashed #aeb8ad; box-shadow: none; opacity: 0.85; }}
   .card-muted::before {{ display: none; }}
   .card-muted .avatar {{ background: var(--muted); }}
-  @media (max-width: 420px) {{
-    .task-line {{ grid-template-columns: auto minmax(0, 1fr); }}
-    .task-line .badge {{ grid-column: 2; justify-self: start; }}
-  }}
   .badge {{ font-size: 0.7rem; padding: 1px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; border: 1px solid; }}
   .badge-done {{ color: #6b7280; border-color: #9ca3af; background: color-mix(in srgb, #9ca3af 18%, transparent); }}
   .badge-late {{ color: #dc2626; border-color: #dc2626; background: color-mix(in srgb, #dc2626 15%, transparent); }}
@@ -598,7 +660,7 @@ def main() -> int:
     prs = recent_merged_prs(items)
 
     html_out = PAGE_TEMPLATE.format(
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=datetime.now(JST).strftime("%Y-%m-%d %H:%M JST"),
         repo=html.escape(repo_full),
         assignee_cards=render_section(
             "担当者別 進捗",

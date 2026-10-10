@@ -58,3 +58,15 @@ def remove_member(club_id: int, employee_id: str) -> None:
         .eq("employee_id", employee_id)
         .execute()
     )
+
+
+def list_clubs_by_member(employee_id: str) -> list[int]:
+    """その社員が所属する部活の club_id を昇順で返す。所属なしは空リスト。"""
+    res = (
+        supabase.table("club_members")
+        .select("club_id")
+        .eq("employee_id", employee_id)
+        .order("club_id")
+        .execute()
+    )
+    return [r["club_id"] for r in (res.data or [])]

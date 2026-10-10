@@ -88,5 +88,7 @@ def render():
     clubs = search_service.search_clubs(conditions)
     _render_results(clubs)
 
-    # SP-23: 「前回と同じ条件か」の判断は、サービスがする（画面では判断しない）
-    action_log_service.record_search(st.session_state["employee_id"], conditions)
+    # SP-23: 検索した、を数えるため、条件が空のとき（開いただけ）は記録しない。
+    # 「前回と同じ条件か」の判断は、サービスがする（画面では判断しない）
+    if conditions:
+        action_log_service.record_search(st.session_state["employee_id"], conditions)

@@ -40,7 +40,7 @@ jobs:
         run: python scripts/gen_dashboard.py
 
       - name: Copy dev hub, overview, and knowledge-share guide into Pages output
-        run: mkdir -p site && cp docs/hub.html site/hub.html && cp docs/overview.html site/overview.html && cp docs/supabase-setup-guide.html site/supabase-setup-guide.html && cp docs/practice-knowledge.html site/practice-knowledge.html
+        run: mkdir -p site && cp docs/hub.html site/hub.html && cp docs/overview.html site/overview.html && cp docs/supabase-setup-guide.html site/supabase-setup-guide.html && cp docs/practice-knowledge.html site/practice-knowledge.html && cp docs/be-cheatsheet.html site/be-cheatsheet.html && cp -R docs/hub-assets site/hub-assets
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
