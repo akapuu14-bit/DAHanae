@@ -41,3 +41,13 @@ def is_organizer(employee_id):
     デモでは E001 だけが幹事（バスケ部）。
     """
     return (employee_id or "").strip().upper() == "E001"
+
+
+ROLE_ADMIN = "admin"
+ROLE_MEMBER = "member"
+DEMO_ADMIN_ID = "E500"  # デモ用：運営者は E500 だけ
+
+
+def get_role(employee_id, club_id=None):
+    """"admin" / "member" を返す（I-F契約 1.1。club_id を省略したときの動き）。デモでは E500 だけが運営者。"""
+    return ROLE_ADMIN if (employee_id or "").strip().upper() == DEMO_ADMIN_ID else ROLE_MEMBER

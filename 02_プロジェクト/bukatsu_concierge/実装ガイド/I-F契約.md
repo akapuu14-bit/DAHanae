@@ -77,9 +77,9 @@ search_clubs(conditions: dict) -> list[dict]
     指定しないキーは省略可（未指定＝条件にしない、仕様.md SP-20）。
     戻り値: is_active=trueの部活を、次回開催日が近い順（予定の開催がない部活は最後）に並べたdictのリスト。各dictはカード表示（SP-21）に必要な項目（部活名・拠点・活動時間・次回開催日・雰囲気タグ・費用・活動後の過ごし方・club_id等）を含む。
     各dictのキー（「部活カードdict」。下記の他の関数でも共通）:
-      "club_id"(int, = clubs.id), "name"(str), "icon"(str), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "next_event_date"(date | None)。
+      "club_id"(int, = clubs.id), "name"(str), "icon"(str | None), "location"(str), "slot"(str), "schedule_note"(str|None), "mood_tags"(clubsのmood_tagsと同じ型), "fee"(clubsのfeeと同じ型), "fee_note"(str|None), "after_activity"(str), "level"(str, clubs.level。「初心者歓迎」「レベル問わず」「経験者向け」のいずれか), "next_event_date"(date | None)。
       キー名は clubs テーブルの列名（仕様.md 3.1）に一致させる。ただし主キーのみ、「id」だと events.id・activities.id と取り違えやすいため "club_id" とする（値は clubs.id）。
-      "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。
+      "next_event_date" は events.event_date のうち、その部活の status が「予定」の開催で最も近い日付（SP-20, SP-21）。予定の開催がない部活は None。今日（日本時間）より前の開催は対象に含めない（今日の開催は含める）。
     例外: なし（条件に合わない場合は空リストを返す。0件時の文言はSP-22どおり画面側で出す）。
 
 search_employees(conditions: dict, requester_id: str, limit: int = 20, offset: int = 0) -> tuple[list[dict], int]
@@ -95,6 +95,7 @@ get_recommendations(employee_id: str) -> list[dict]
       "score"(int, 一致度スコア。自分の興味・拠点・参加可能時間と部活の活動・拠点・時間帯が一致した項目の数。SP-18, SP-75),
       "reason"(str, 一致した項目を並べた説明文。画面はそのまま表示する。SP-75「一致項目をおすすめ理由として表示」)。
     並びは "score" の降順。
+    所属済みの部活（club_members に登録がある部活）は結果に含めない。本人の所属は club_members_repo.list_clubs_by_member(employee_id) で判定する。
 
 get_this_week_clubs() -> list[dict]
     ホーム（S02）の「今週開催の部活」用（SP-16, SP-75, SP-08）。
@@ -107,6 +108,7 @@ get_this_week_clubs() -> list[dict]
 get_popular_clubs() -> list[dict]
     ホーム（S02）の「今月の人気部活」用（SP-17, SP-75）。
     今月の開催への申込のうち、is_first_time が true かつ status がキャンセル以外のものを部活ごとに数え、件数の多い順に返す。
+    集計対象は is_active=true の部活のみ。中止になった開催（events.status が「中止」）への申込は集計しない（PM裁定）。"next_event_date" の意味は search_clubs と同じ（今日（日本時間）以降の「予定」の開催で最も近い日）。
     戻り値: 部活カードdict（search_clubsと同じキー）に加えて "rank"(int, 1始まりの順位＝並び順の通し番号) を持つdictのリスト。集計対象が0件の部活は含めない。
     件数の絞り込み（SP-17の「上位3件」）は行わない。集計できた部活を順位つきですべて返し、先頭3件の切り出し（[:3]）と0件時の案内文は画面側が持つ。
     同数のときの並び：仕様に定めがないため、club_id の昇順で決める（テスト・表示を毎回同じにするためだけの決め。順位は通し番号とし同順位は作らない）。
@@ -121,7 +123,7 @@ get_club_detail(club_id: int, viewer_id: str) -> dict
       "members"(list[dict]): 所属メンバー。各dictは "id", "name", "dept"（SP-28）。club_members_repo.list_members(club_id) の employee_id ごとに employees_repo.get_by_id で名前・部署を解決する。幹事も club_members に登録される（SP-77）ため、幹事本人も含まれる。
       "member_count"(int): len(members)。
       "events"(list[dict]): 今日以降の開催を日付順（同日はid順）。events_repo.list_upcoming_by_club(club_id) の順序のまま。各dictのキー:
-        "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time), "status"("予定" | "中止"),
+        "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time | None), "status"("予定" | "中止"),
         "participant_count"(int), "first_timer_count"(int), "participants"(list[dict]), "is_applied"(bool)。
         "participants" の各dictは "id"(申込者の社員ID), "name", "is_first_time"(bool), "is_self"(bool, id == viewer_id)。applications.id 順。
         "is_applied": viewer_id 本人が、その開催に状態「申込済み」の申込を持つか（= participants のどれかが is_self）。SP-27 のボタン出し分け（予定・未申込→「申し込む」／予定・申込済み→「申込済み」／中止→「中止」でボタンなし）は、この値と "status" で画面側が決める。
@@ -179,7 +181,7 @@ send_message(application_id: int, sender_id: str, body: str) -> None
     画面側: キャンセル済みの申込には入力欄を出さない（SP-39）ため、この ConflictError は画面の表示と送信の間に状態が変わった場合の防御。
 
 list_my_applications(employee_id: str) -> list[dict]
-    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順、終わった開催・キャンセルは後ろ。
+    自分の申込一覧（メッセージ画面「自分の申込」タブ用。SP-37）。開催日が近い順。終わった開催・キャンセルは後ろに置き、後ろ側は開催日時の新しい順。
     各dictは applications の行に "events"（開催。"events"."clubs" に部活）と "messages"（やり取り）を付けたもの。これに加えて次のキーを持つ。
       "organizer"(dict): その申込の部活の幹事。キーは "id", "name"（employees の列名）。clubs.organizer_id を employees_repo.get_by_id で解決する。画面は「幹事：○○」の表示に使う（SP-37）。
     "organizer" の解決: 幹事の社員行が見つからない場合（想定外）は {"id": clubs.organizer_id, "name": None} とし、例外にしない（一覧全体を落とさない）。
@@ -187,13 +189,14 @@ list_my_applications(employee_id: str) -> list[dict]
 
 list_received_applications(organizer_id: str) -> list[dict]
     自分が幹事を務める部活への申込一覧（メッセージ画面「届いた申込」タブ用。SP-40）。未読の通知がある申込を先頭、そのあとは新しい順。
+    各dictは applications の行に "events"（開催。"events"."clubs" に部活）・"employees"（申込者）・"messages"（やり取り）を付けたもの。
 
 confirm_stamp(application_id: int, organizer_id: str) -> None
-    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。
+    「確認したよ」スタンプ処理（SP-72）。is_first_timeがtrueの申込にのみ有効。キャンセル済みの申込には押せない（SP-67「キャンセルした申込は閲覧のみ」）。
     例外:
       - NotFoundError
       - PermissionDeniedError（organizer_idがその部活の幹事でない）
-      - ConflictError（is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
+      - ConflictError（申込が「キャンセル」状態、is_first_timeがfalse、または既に確認済み＝confirmed_atがある）
 ```
 
 ### 1.4 `services/notification_service.py`（対応SP: SP-70, SP-71）

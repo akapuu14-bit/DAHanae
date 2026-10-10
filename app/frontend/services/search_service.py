@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from repositories import (
+    activities_repo,
     applications_repo,
     club_members_repo,
     clubs_repo,
@@ -31,6 +32,7 @@ _CARD_KEYS = (
     "fee",
     "fee_note",
     "after_activity",
+    "level",
 )
 
 
@@ -54,11 +56,14 @@ def _card(club: dict, next_event_date: date | None) -> dict:
 def _next_event_dates() -> dict[int, date]:
     """部活ごとの「予定」の開催のうち最も近い日付（今日以降）。予定の開催がない部活は含まない。"""
     result: dict[int, date] = {}
+    today = _today()
     for event in events_repo.list_upcoming_all_with_club():
         if event["status"] != _EVENT_OPEN:
             continue
         d = _as_date(event["event_date"])
         club_id = event["club_id"]
+        if d < today:
+            continue
         if club_id not in result or d < result[club_id]:
             result[club_id] = d
     return result
@@ -143,6 +148,7 @@ def get_recommendations(employee_id: str) -> list[dict]:
     本人の興味・拠点・参加可能時間（非公開設定に関わらず本人分を使う。裁定#19）と、
     各部活の活動・拠点・時間帯の一致数を "score" とし、1以上の部活を score 降順で返す。
     同点は次回開催日が近い順、さらに club_id 昇順。"reason" は一致した項目を並べた説明文。
+    所属済みの部活（club_members に登録がある部活）は対象から除く。
     """
     employee = employees_repo.get_by_id(employee_id)
     if employee is None:
@@ -152,10 +158,13 @@ def get_recommendations(employee_id: str) -> list[dict]:
         for i in employees_repo.get_interests(employee["id"])
     }
     slots = set(employee.get("available_slots") or [])
+    joined = set(club_members_repo.list_clubs_by_member(employee["id"]))
     next_dates = _next_event_dates()
 
     results = []
     for club in clubs_repo.search({}):
+        if club["id"] in joined:
+            continue
         matched = []
         if club["activity_id"] in interests:
             matched.append(f"興味（{interests[club['activity_id']]}）")
@@ -178,6 +187,17 @@ def get_recommendations(employee_id: str) -> list[dict]:
         )
     )
     return results
+
+
+def list_departments() -> list[str]:
+    """社員検索（S08）の部署の選択肢（SP-48）。employees.dept の重複を除いた文字列昇順のリスト。"""
+    return employees_repo.list_departments()
+
+
+def list_activities() -> list[dict]:
+    """活動マスタ（SP-48, SP-57）。[{"id", "name"}] を id 昇順で返す。0件なら空リスト。"""
+    rows = sorted(activities_repo.list_all(), key=lambda r: r["id"])
+    return [{"id": r["id"], "name": r["name"]} for r in rows]
 
 
 def _visibility(is_public: bool, is_self: bool) -> str:
