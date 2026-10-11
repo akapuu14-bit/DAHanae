@@ -9,7 +9,6 @@
 DB には繋がない。認証サービスは偽物に差し替えて「この返事が来たら画面はこうなる」だけを見る。
 """
 
-import pytest
 from streamlit.testing.v1 import AppTest
 
 from screens import login

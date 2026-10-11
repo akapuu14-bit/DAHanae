@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-8.4.2, pluggy-1.6.0 -- /usr/bin/python3
+rootdir: /sessions/rcw-01qkt3ozmtgt5muqamhxy6ik/mnt/DAHanae
+plugins: anyio-4.15.1
+collecting ... collected 13 items
+
+tests/frontend/test_club_detail.py::test_apply_button_shown_for_open_unapplied_event PASSED [  7%]
+tests/frontend/test_club_detail.py::test_applied_event_shows_applied_and_no_button PASSED [ 15%]
+tests/frontend/test_club_detail.py::test_cancelled_event_shows_cancelled_and_no_button PASSED [ 23%]
+tests/frontend/test_club_detail.py::test_view_is_recorded_when_opened PASSED [ 30%]
+tests/frontend/test_club_detail.py::test_apply_form_opens_and_can_be_closed PASSED [ 38%]
+tests/frontend/test_club_detail.py::test_apply_success_goes_to_complete_screen PASSED [ 46%]
+tests/frontend/test_club_detail.py::test_conflict_shows_message_and_does_not_leave[already_applied-\u3059\u3067\u306b\u7533\u3057\u8fbc\u307f\u6e08\u307f\u3067\u3059] PASSED [ 53%]
+tests/frontend/test_club_detail.py::test_conflict_shows_message_and_does_not_leave[not_open-\u3053\u306e\u958b\u50ac\u306b\u306f\u7533\u3057\u8fbc\u307f\u3067\u304d\u307e\u305b\u3093] PASSED [ 61%]
+tests/frontend/test_club_detail.py::test_organizer_button_goes_to_profile PASSED [ 69%]
+tests/frontend/test_login.py::test_shows_app_name_and_tagline PASSED     [ 76%]
+tests/frontend/test_login.py::test_shows_demo_note PASSED                [ 84%]
+tests/frontend/test_login.py::test_wrong_credentials_show_error_and_stay_logged_out PASSED [ 92%]
+tests/frontend/test_login.py::test_success_records_official_id_not_typed_one PASSED [100%]
+
+============================== 13 passed in 5.53s ==============================
