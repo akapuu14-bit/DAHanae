@@ -1,0 +1,1 @@
+2026-10-11 実DB読取（employees/clubs/activities のcount）を再試行 → auto-mode権限判定で拒否 [Production Reads]。接続は成立せず、書込・読取とも0件。DB依存行は『未実行(権限)』で報告。

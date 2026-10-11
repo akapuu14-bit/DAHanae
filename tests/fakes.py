@@ -22,9 +22,10 @@ _db_client = types.ModuleType("db.client")
 _db_client.supabase = None
 sys.modules["db.client"] = _db_client
 
-_st = types.ModuleType("streamlit")
-_st.secrets = {"common_password": "test-common-password"}
-sys.modules["streamlit"] = _st
+# 実物の streamlit を使う（L-C の AppTest と同居させるため）。secrets だけ差し替える。
+import streamlit as _st  # noqa: E402
+
+_st.secrets._secrets = {"common_password": "test-common-password"}
 
 from repositories import (  # noqa: E402
     action_logs_repo,
@@ -296,7 +297,8 @@ def install(w: World):
 
     def m_insert(aid, sender, body):
         mid = w.next_id("message")
-        w.messages.append({"id": mid, "application_id": aid, "sender_id": sender, "body": body})
+        w.messages.append({"id": mid, "application_id": aid, "sender_id": sender, "body": body,
+                           "sent_at": w.now.isoformat()})
         return mid
     messages_repo.insert = m_insert
 
