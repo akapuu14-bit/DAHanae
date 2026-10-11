@@ -56,7 +56,8 @@ def render(club, *, key_prefix="club"):
     next_date = format_date(club.get("next_event_date"))
     tags = " ／ ".join(club.get("mood_tags") or [])
 
-    with st.container(border=True):
+    # key は見た目（style.css）がカードの枠を狙うための目印。動作には関係しない
+    with st.container(border=True, key=f"club_card_{key_prefix}_{club['club_id']}"):
         st.markdown(f"#### {club['icon']} {club['name']}")
         st.write(f"{club['location']}・{club['slot']}")
         st.write(f"次回開催：{next_date or '予定なし'}")
