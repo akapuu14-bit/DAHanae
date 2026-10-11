@@ -1,0 +1,32 @@
+# L-B 実DB実走結果（読み取り専用・godセッション、だーあさ=運営承認下）
+日時: 2026-10-11
+対象: feature/test-lb-realdb-w3 (commit a8c2cf1) / tests/test_lb_*.py
+接続: 共有Supabase（*.supabase.co）。select のみ・書込0件。allowed_domains=["*.supabase.co"]。
+コマンド: LB_SECRETS=<repo>/.streamlit/secrets.toml python3 -m pytest tests/test_lb_*.py -v -rs
+環境: pytest-9.0.3 / Python 3.11.15 / anaconda。
+
+結果: 15 passed, 3 skipped, 52 subtests passed, 14.34s
+
+合格（実DB）14 I-xx:
+  I-022 category AND location
+  I-023 locations OR
+  I-024 no condition = all active
+  I-025 keyword matches name/activity/message
+  I-008 week switches at Sunday midnight (JST)
+  I-178 event today is not past
+  I-179 event yesterday is past
+  I-180 JST early morning & server timezone (UTC/JST/LA)
+  I-064 combined AND/OR + count
+  I-065 half-width space ignored
+  I-066 private interests hidden
+  I-067 private slots hidden
+  I-068 public interests shown
+  I-140 full-width space ignored
+  （参考: test_reference_no_duplicate_rows_in_existing_data も PASS。制約証明ではない）
+
+skip（未実行のまま・理由）:
+  I-026 is_active=false の部活が実DBに無い（読取専用では作れない→データ投入の相談が必要）
+  I-090 書込必須（重複insert拒否を見る）。READ-ONLY原則で未実行。運営承認後に別途。
+  I-091 同上（club_member重複）。
+
+注意: 秘匿値（URL/キー）は出力・記録していない。
