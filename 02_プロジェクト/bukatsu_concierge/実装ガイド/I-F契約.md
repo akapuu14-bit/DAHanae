@@ -217,6 +217,7 @@ mark_read_all(employee_id: str) -> None
 notify(recipient_id: str, type_: str, *, application_id: int | None = None, event_id: int | None = None, body: str) -> None
     通知を1件作成する内部共通関数。application_service・club_admin_service（開催中止のお知らせ。set_event_status が自動で送る）から呼ぶ。画面（screens）から直接呼ばない（二重通知を防ぐ）。
     type_ は "申込" | "キャンセル" | "メッセージ" | "スタンプ" | "中止" のいずれか（仕様.md 4.9）。
+    例外: ValidationError（type_ が上の5種以外、または body が空・空白のみ。判定の順は type_ → body。内部共通関数のため、1.7 のような reason コードは定めない）。
 ```
 
 ### 1.5 `services/action_log_service.py`（対応SP: SP-76）
@@ -230,6 +231,8 @@ record_view_club(employee_id: str, club_id: int) -> None
 
 record_apply(employee_id: str, club_id: int) -> None
     申込完了の操作履歴（apply）。application_service.apply() の成功時にこの関数を呼ぶ。
+
+例外（record_* 共通）: ValidationError（action ごとの必須項目が None のとき。record_search は conditions が None、record_view_club と record_apply は club_id が None）。事前検証はこの層で行い、DBの action_logs_shape_check は最後の砦とする。conditions が空の dict は None ではないので有効。
 ```
 
 「直前に記録した内容」の比較は、`action_logs_repo.get_last(employee_id, action)` でDBから取得した最新の記録と比較する方式に統一する（`session_state`での比較は、アプリ再起動やタブ跨ぎで壊れるため採用しない。設計.md 5.5の記述は本書で以下のとおり確定・上書きする：比較はDB参照で行う）。
@@ -258,7 +261,7 @@ update_public_settings(employee_id: str, requester_id: str, *, interests_public:
     プロフィール画面（S09）の公開・非公開の切り替え保存（SP-56。切り替えた時点で保存する）。2.1の employees_repo.update_public_settings（既出）を呼ぶservice側の入口で、新しいrepository関数は不要。
     権限: 本人のみ。requester_id が employee_id と一致しない（大文字小文字は区別しない）場合は PermissionDeniedError（運営者・幹事でも他人の公開設定は変えられない）。
     None を渡した項目は変更しない（repository と同じ）。両方 None のときは何もしない。
-    例外: PermissionDeniedError / NotFoundError（employee_id に該当する社員が存在しない）。
+    例外（判定の順）: NotFoundError（employee_id に該当する社員が存在しない）→ PermissionDeniedError。他の service（1.7 など）と同じ順にそろえる（PM裁定）。employee_id が存在しないときは、requester_id が本人かどうかにかかわらず NotFoundError。
     画面側: 画面は requester_id にログイン中の社員ID（state の employee_id）、employee_id に表示中のプロフィールの社員IDを渡す。SP-56 のとおり切り替えスイッチは本人が閲覧する場合しか出さないため、通常は両者が一致する。
 
 save_profile(employee_id: str, requester_id: str, interests: list[dict], available_slots: list[str]) -> None
@@ -270,7 +273,7 @@ save_profile(employee_id: str, requester_id: str, interests: list[dict], availab
       - interests に同じ activity_id が複数ある → ValidationError（employee_id × activity_id は重複不可。employees_repo.set_interests の「同一 activity_id は後勝ち」にはここでは頼らず、service が弾く）
       - available_slots に選択肢外の値がある、または同じ値が重複している → ValidationError
     保存: employees_repo.set_interests(employee_id, interests) と、新設の employees_repo.set_available_slots(employee_id, available_slots)（2.1）を呼ぶ。
-    例外: PermissionDeniedError / ValidationError / NotFoundError（employee_id に該当する社員が存在しない）。
+    例外（判定の順）: NotFoundError（employee_id に該当する社員が存在しない）→ PermissionDeniedError → ValidationError。update_public_settings と同じ順（PM裁定）。
     注意: 2つの保存は別テーブルへの書き込みで、まとめて1トランザクションにはしない（Supabaseクライアントの制約）。検証を先に済ませるのは、不正入力で片方だけ保存される事態を避けるため。
 ```
 
@@ -300,7 +303,7 @@ get_club(club_id: int, requester_id: str) -> dict
     部活情報タブ（SP-59）の編集用に、部活の全項目を返す読み取り専用の関数。表示用の search_service.get_club_detail（幹事・メンバー・開催をまとめて返す）とは別物。
     戻り値: clubs_repo.get(club_id) の全列（仕様.md 3.1）。organizer_id と is_active を含む。主キーのみ "id" ではなく "club_id" に読み替える（"id" キーは含めない）。
     権限: 運営者または幹事。
-    例外: NotFoundError / PermissionDeniedError。
+    例外（判定の順）: NotFoundError → PermissionDeniedError。
 
 create_club(requester_id: str, fields: dict) -> int
     部活の新規作成（SP-58, SP-59, SP-74）。戻り値は採番された club_id。
@@ -308,7 +311,7 @@ create_club(requester_id: str, fields: dict) -> int
     fields: 上の「必須14」と「任意4」のキー。is_active は受け取らず、true で作る。必須14のどれかが未入力なら ValidationError("required:<key>")（SP-59「○○を入力してください」。複数ある場合は上の列挙順で最初の1件）。
     処理: 検証 → clubs_repo.create(data) → 幹事を所属メンバーとして club_members_repo.add_member(club_id, organizer_id) に登録する（SP-77: 幹事も club_members に入る）。
     注意: clubs_repo.create の成功後に add_member が失敗した場合、メンバーのいない部活が残る（MVPではまとめて取り消す仕組みは設けない。失敗時は例外をそのまま上げ、運営者が add_club_member で補う）。
-    例外: PermissionDeniedError / ValidationError。
+    例外（判定の順）: PermissionDeniedError → ValidationError（新規作成のため NotFoundError は無い）。
 
 update_club(club_id: int, requester_id: str, fields: dict) -> None
     部活情報の保存（SP-59）。fields に含めたキーだけを更新する（含めないキーは変更しない）。
@@ -322,11 +325,11 @@ list_club_events(club_id: int, requester_id: str) -> list[dict]
     各dictのキー: "event_id"(int, = events.id), "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str), "meeting_time"(time|None), "status"("予定" | "中止"), "applicant_count"(int)。
     "applicant_count": その開催の状態「申込済み」の申込の件数（applications_repo.list_participants(event_id) の件数。キャンセルは数えない）。
     権限: 運営者または幹事。
-    例外: NotFoundError / PermissionDeniedError。
+    例外（判定の順）: NotFoundError → PermissionDeniedError。
 
 create_event(club_id: int, requester_id: str, fields: dict) -> int
     開催の追加（SP-60, SP-61）。戻り値は採番された event_id。状態は「予定」で作る。
-    fields のキー（許可キーのホワイトリスト）: 必須 "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str)。任意 "meeting_time"(time|None, 集合時刻)。この5つ以外のキー（status・id など）が含まれる場合は ValidationError("unknown:<key>")（club 側と同じ。status を混ぜて通知なしで中止にする抜け道を塞ぐ）。
+    fields のキー（許可キーのホワイトリスト）: 必須 "event_date"(date), "start_time"(time), "end_time"(time), "meeting_place"(str)。任意 "meeting_time"(time|None, 集合時刻)。meeting_time が未設定のときは None を渡す。空文字 "" は時刻ではないため ValidationError("invalid:meeting_time") になる（画面側が空入力を None に変換してから渡す前提）。この5つ以外のキー（status・id など）が含まれる場合は ValidationError("unknown:<key>")（club 側と同じ。status を混ぜて通知なしで中止にする抜け道を塞ぐ）。
     検証: 必須が未入力なら ValidationError("required:<key>")。event_date が今日（日本時間 Asia/Tokyo の日付）より前なら ValidationError("past_date")（今日は可）。end_time <= start_time なら ValidationError("end_before_start")。判定の順は unknown → required → past_date → end_before_start。
     権限: 運営者または幹事。
     例外（判定の順）: NotFoundError（club_id）→ PermissionDeniedError → ValidationError。
