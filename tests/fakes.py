@@ -107,7 +107,7 @@ class World:
         return self._seq[key]
 
     def today(self) -> date:
-        return self.now.date()
+        return self.now.astimezone(JST).date()  # サービスと同じく日本時間の日付（w.now が UTC でも JST の日）
 
     def add_employee(self, eid, **over):
         row = {
