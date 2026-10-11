@@ -105,11 +105,12 @@ def _render_editor(profile, me):
             # 活動の数にかかわらず、LEVEL_COLUMNS 個ずつの行に分けて全部出す（保存は置き換えなので、出さない活動の興味は消えてしまう）
             for start in range(0, len(activities), LEVEL_COLUMNS):
                 row = activities[start : start + LEVEL_COLUMNS]
-                for column, activity in zip(st.columns(LEVEL_COLUMNS), row):
-                    activity_id = activity["id"]
-                    levels[activity_id] = column.selectbox(activity["name"], options,
-                                                           index=options.index(current.get(activity_id, NOT_SELECTED)),
-                                                           key=f"profile_edit_level_{activity_id}")
+                with st.container(key=f"profile_level_row_{start}"):  # key は style.css が行を狙う目印（狭い画面で折り返す）
+                    for column, activity in zip(st.columns(LEVEL_COLUMNS), row):
+                        activity_id = activity["id"]
+                        levels[activity_id] = column.selectbox(activity["name"], options,
+                                                               index=options.index(current.get(activity_id, NOT_SELECTED)),
+                                                               key=f"profile_edit_level_{activity_id}")
             slots = st.multiselect("参加可能時間", SLOTS, default=profile["available_slots"] or [],
                                    key="profile_edit_slots")
             submitted = st.form_submit_button("保存する")
