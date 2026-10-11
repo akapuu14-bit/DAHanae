@@ -299,7 +299,8 @@ def install(w: World):
 
     def m_insert(aid, sender, body):
         mid = w.next_id("message")
-        w.messages.append({"id": mid, "application_id": aid, "sender_id": sender, "body": body})
+        w.messages.append({"id": mid, "application_id": aid, "sender_id": sender, "body": body,
+                           "sent_at": w.now.isoformat()})
         return mid
     messages_repo.insert = m_insert
 

@@ -154,6 +154,9 @@ def _render_action(event, detail, employee_id):
     if event["is_applied"]:  # 契約（#91）：自分がその開催に申込済みか（True / False）
         st.write("✅ 申込済み")  # キャンセルはメッセージ画面から
         return
+    if not detail["club"]["is_active"]:  # H-6：非公開は募集停止扱い（中止と同じ表示、ボタンなし）
+        st.write("中止")
+        return
     if st.button("申し込む", key=f"club_detail_apply_{event['event_id']}"):
         st.session_state[_FORM_EVENT_KEY] = event["event_id"]
     if st.session_state.get(_FORM_EVENT_KEY) == event["event_id"]:
