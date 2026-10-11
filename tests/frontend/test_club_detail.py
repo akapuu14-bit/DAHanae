@@ -32,6 +32,7 @@ def _club():
         "message": "気軽に打ち合います", "fact_adult_starters": "多数",
         "fee": "無料", "fee_note": None, "rental": "あり", "belongings_note": None,
         "join_leave": "自由", "after_activity": "任意",
+        "is_active": True,  # 本物の get_club_detail が返すキー（非公開の部活は False。I-136）
     }
 
 
@@ -44,13 +45,13 @@ def _event(event_id=10, status="予定", is_applied=False):
     }
 
 
-def _detail(events):
+def _detail(events, members=None):
     return {
         "club": _club(),
         "events": events,
         "organizer": {"id": "E002", "name": "高橋拓海", "dept": "営業", "joined_year": 2020, "entry_type": "新卒"},
-        "members": [{"id": "E002", "name": "高橋拓海", "dept": "営業"}],
-        "member_count": 1,
+        "members": members or [{"id": "E002", "name": "高橋拓海", "dept": "営業"}],
+        "member_count": len(members or [1]),
     }
 
 
@@ -58,9 +59,9 @@ def _detail(events):
 def open_screen(monkeypatch):
     """偽のサービスを入れて画面を開く関数を返す。記録した履歴の呼び出しも一緒に返す。"""
 
-    def _open(events):
+    def _open(events, members=None):
         views = []
-        monkeypatch.setattr(search_service, "get_club_detail", lambda club_id, viewer_id: _detail(events))
+        monkeypatch.setattr(search_service, "get_club_detail", lambda club_id, viewer_id: _detail(events, members))
         monkeypatch.setattr(action_log_service, "record_view_club", lambda e, c: views.append((e, c)))
         at = AppTest.from_string(SCRIPT)
         at.session_state["employee_id"] = "E001"
@@ -104,6 +105,9 @@ def test_apply_form_opens_and_can_be_closed(open_screen):  # SP-29 / I-038, SP-3
     assert "キャンセルもできます" in captions
     assert any("体験参加は入部ではありません" in c for c in captions)
     assert at.text_area  # 幹事への一言欄
+    assert at.text_area[0].placeholder in (None, "")  # 入力欄に例文を入れない（SP-29）
+    # 申し込む開催の日時・集合場所がフォームに出る（SP-29）
+    assert any("申し込む開催：" in m.value and "19:00" in m.value and "コート前" in m.value for m in at.markdown)
 
     close = next(b for b in at.button if b.label == "やめる")
     close.click().run()
@@ -154,3 +158,25 @@ def test_organizer_button_goes_to_profile(open_screen):  # SP-28 / I-037
     at.button(key="club_detail_organizer").click().run()
     assert at.session_state["current_page"] == "employee_profile"
     assert at.session_state["target_employee_id"] == "E002"
+
+
+def test_close_does_not_apply(open_screen, monkeypatch):  # SP-30 / I-040
+    calls = []
+    monkeypatch.setattr(application_service, "apply", lambda *a, **k: calls.append(a))
+    at, _ = open_screen([_event()])
+    at.button(key="club_detail_apply_10").click().run()
+    next(b for b in at.button if b.label == "やめる").click().run()
+    assert calls == []  # 申込処理は呼ばれない
+    assert at.session_state["current_page"] != "application_complete"
+
+
+def test_member_button_goes_to_profile(open_screen):  # SP-28 / I-037
+    members = [
+        {"id": "E002", "name": "高橋拓海", "dept": "営業"},  # 幹事（メンバー欄には出ない）
+        {"id": "E003", "name": "佐藤花子", "dept": "開発"},
+    ]
+    at, _ = open_screen([_event()], members=members)
+    assert "club_detail_member_E002" not in [b.key for b in at.button]
+    at.button(key="club_detail_member_E003").click().run()
+    assert at.session_state["current_page"] == "employee_profile"
+    assert at.session_state["target_employee_id"] == "E003"
