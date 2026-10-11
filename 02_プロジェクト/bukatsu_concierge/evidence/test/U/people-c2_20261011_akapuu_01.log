@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-8.4.2, pluggy-1.6.0 -- /usr/bin/python3
+rootdir: /sessions/rcw-01qkt3ozmtgt5muqamhxy6ik/mnt/DAHanae
+plugins: anyio-4.15.1
+collecting ... collected 24 items
+
+tests/frontend/test_club_detail.py::test_apply_button_shown_for_open_unapplied_event PASSED [  4%]
+tests/frontend/test_club_detail.py::test_applied_event_shows_applied_and_no_button PASSED [  8%]
+tests/frontend/test_club_detail.py::test_cancelled_event_shows_cancelled_and_no_button PASSED [ 12%]
+tests/frontend/test_club_detail.py::test_view_is_recorded_when_opened PASSED [ 16%]
+tests/frontend/test_club_detail.py::test_apply_form_opens_and_can_be_closed PASSED [ 20%]
+tests/frontend/test_club_detail.py::test_apply_success_goes_to_complete_screen PASSED [ 25%]
+tests/frontend/test_club_detail.py::test_conflict_shows_message_and_does_not_leave[already_applied-\u3059\u3067\u306b\u7533\u3057\u8fbc\u307f\u6e08\u307f\u3067\u3059] PASSED [ 29%]
+tests/frontend/test_club_detail.py::test_conflict_shows_message_and_does_not_leave[not_open-\u3053\u306e\u958b\u50ac\u306b\u306f\u7533\u3057\u8fbc\u307f\u3067\u304d\u307e\u305b\u3093] PASSED [ 33%]
+tests/frontend/test_club_detail.py::test_organizer_button_goes_to_profile PASSED [ 37%]
+tests/frontend/test_employee_search.py::test_notice_and_count_and_cards PASSED [ 41%]
+tests/frontend/test_employee_search.py::test_profile_button_goes_to_profile PASSED [ 45%]
+tests/frontend/test_employee_search.py::test_no_result_shows_guidance PASSED [ 50%]
+tests/frontend/test_home.py::test_greeting_and_two_entry_buttons PASSED  [ 54%]
+tests/frontend/test_home.py::test_club_search_button_goes_to_club_search PASSED [ 58%]
+tests/frontend/test_home.py::test_employee_search_button_goes_to_employee_search PASSED [ 62%]
+tests/frontend/test_home.py::test_empty_sections_show_guidance PASSED    [ 66%]
+tests/frontend/test_home.py::test_week_clubs_are_shown_as_cards PASSED   [ 70%]
+tests/frontend/test_login.py::test_shows_app_name_and_tagline PASSED     [ 75%]
+tests/frontend/test_login.py::test_shows_demo_note PASSED                [ 79%]
+tests/frontend/test_login.py::test_wrong_credentials_show_error_and_stay_logged_out PASSED [ 83%]
+tests/frontend/test_login.py::test_success_records_official_id_not_typed_one PASSED [ 87%]
+tests/frontend/test_theme.py::test_text_is_readable_on_backgrounds PASSED [ 91%]
+tests/frontend/test_theme.py::test_primary_button_text_is_readable PASSED [ 95%]
+tests/frontend/test_theme.py::test_reduced_motion_is_respected PASSED    [100%]
+
+============================== 24 passed in 8.24s ==============================
