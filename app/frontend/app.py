@@ -11,10 +11,11 @@ import importlib
 import streamlit as st
 
 import state
-from components import sidebar
+from components import sidebar, theme
 from services import auth_service, notification_service
 
 st.set_page_config(page_title="部活コンシェルジュ", page_icon="📌", layout="wide")
+theme.apply()  # 見た目（assets/style.css）を全画面に当てる
 
 
 def _load_screen(page):

@@ -1,0 +1,12 @@
+# 見た目（テーマ）の設定。色とフォントだけを決めていて、画面のコードには触れない。
+# 細かい見た目（ホバー・角丸・余白）は app/frontend/assets/style.css にある。
+# 配色を差し替えるときは、この [theme] と style.css 先頭の色の変数を同時に変える。
+# 現在は A 案（アイボリー × コーラル）。設計方針は「UI/UX再設計方針」ドキュメントを参照。
+
+[theme]
+base = "light"
+primaryColor = "#C9482F"
+backgroundColor = "#FBF7EE"
+secondaryBackgroundColor = "#F3ECDD"
+textColor = "#2F2A26"
+font = "sans serif"
