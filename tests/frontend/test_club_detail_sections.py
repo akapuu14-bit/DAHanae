@@ -41,6 +41,7 @@ def _detail(event_count=1):
             "message": "気軽に打ち合います", "fact_adult_starters": "多数",
             "fee": "無料", "fee_note": None, "rental": "あり", "belongings_note": None,
             "join_leave": "自由", "after_activity": "任意",
+            "is_active": True,  # 本物の get_club_detail が返すキー（I-136 の修正で画面が読む）
         },
         "events": [_event(10 + i, 14 + i) for i in range(event_count)],
         "organizer": {"id": "E002", "name": "高橋拓海", "dept": "営業", "joined_year": 2020, "entry_type": "新卒"},
