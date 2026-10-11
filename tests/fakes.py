@@ -198,7 +198,9 @@ def install(w: World):
         if slots_public is not None:
             w.employees[eid]["slots_public"] = slots_public
     employees_repo.update_public_settings = e_update_public
-    employees_repo.list_all = lambda: [dict(r) for r in sorted(w.employees.values(), key=lambda r: r["id"])]
+    # 契約 2.1: id と name のみ、name 昇順（同名は id 昇順）。公開設定では絞らない。
+    employees_repo.list_all = lambda: [
+        {"id": r["id"], "name": r["name"]} for r in sorted(w.employees.values(), key=lambda r: (r["name"], r["id"]))]
     employees_repo.list_departments = lambda: sorted({r["dept"] for r in w.employees.values()})
     # 条件絞り込みは repo の責務（L-A 対象外）。偽repoは全員を返す。
     employees_repo.search = lambda conditions, limit, offset: [
