@@ -1,7 +1,7 @@
 """社員プロフィール（S09）の参照と本人による更新（I-F契約 1.6, 仕様.md SP-53〜SP-57, SP-65）。
 
 - 「非公開なら他人には値を渡さない」判断はここで行う（画面で出し分けない）。
-- 更新は本人のみ。権限 → 社員の存在 → 入力検証 の順に判定し、検証をすべて済ませてから保存する。
+- 更新は本人のみ。社員の存在 → 権限 → 入力検証 の順に判定し、検証をすべて済ませてから保存する。
 - 社員IDの比較は大文字小文字を区別しない（employees_repo.get_by_id と同じ）。
 """
 
@@ -75,11 +75,11 @@ def update_public_settings(
 ) -> None:
     """公開・非公開の切り替え保存（SP-56）。本人のみ。None の項目は変更しない。
 
-    例外: PermissionDeniedError（本人以外）/ NotFoundError（社員が存在しない）。
+    例外（判定の順）: NotFoundError（社員が存在しない）→ PermissionDeniedError（本人以外）。
     """
+    employee = _get_employee(employee_id)
     if not _same_id(employee_id, requester_id):
         raise PermissionDeniedError("only the employee can change public settings")
-    employee = _get_employee(employee_id)
     if interests_public is None and slots_public is None:
         return
     employees_repo.update_public_settings(
@@ -118,11 +118,11 @@ def save_profile(
 
     検証（活動の存在・level の選択肢・activity_id と slot の重複・slot の選択肢）をすべて済ませてから
     保存する。1つでも不正なら何も保存しない。2つの保存は別テーブルで、1トランザクションにはしない。
-    例外: PermissionDeniedError / NotFoundError / ValidationError。
+    例外（判定の順）: NotFoundError → PermissionDeniedError → ValidationError。
     """
+    employee = _get_employee(employee_id)
     if not _same_id(employee_id, requester_id):
         raise PermissionDeniedError("only the employee can save the profile")
-    employee = _get_employee(employee_id)
     interests = list(interests or [])
     available_slots = list(available_slots or [])
     _validate_interests(interests)
