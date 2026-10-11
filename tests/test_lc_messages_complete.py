@@ -22,14 +22,14 @@ class Messages(LcTestCase):
         self.assertIn("まだ申込は届いていません。", infos)
 
     def test_I057_wording_per_spec(self):
-        """仕様 SP-42: 自分の申込0件は『まだ申込はありません。『部活を探す』から気になる部活を見つけてみてください』。"""
+        """仕様 SP-42（はなえPM裁定2026-10-11で実装に合わせ改訂）: 自分の申込0件の文言。"""
         at = self.app("E003", page="messages")
-        self.assertIn("まだ申込はありません。『部活を探す』から気になる部活を見つけてみてください", [i.value for i in at.info])
+        self.assertIn("まだ申込はありません。部活を探して、気になる開催に申し込んでみましょう。", [i.value for i in at.info])
 
     def test_I058_wording_per_spec(self):
-        """仕様 SP-42: 届いた申込0件は『まだ届いた申込はありません』。"""
+        """仕様 SP-42（同上）: 届いた申込0件は『まだ申込は届いていません。』。"""
         at = self.app("E002", page="messages")
-        self.assertIn("まだ届いた申込はありません", [i.value for i in at.info])
+        self.assertIn("まだ申込は届いていません。", [i.value for i in at.info])
 
     def test_I051_canceled_view_only(self):
         ev = self.w.add_event(1)

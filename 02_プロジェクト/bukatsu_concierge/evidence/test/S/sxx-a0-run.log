@@ -1,0 +1,67 @@
+# S-xx 黒箱 Phase2 T1 / α-0 実行ログ（AppTest＋偽repo・DB不要）
+日時: 2026-10-11 15:14 JST 実行者: Kurosu  branch: feature/test-sxx-phase2-w3
+コマンド: python3 -m pytest tests/test_sxx_appt_a0_*.py -v -rs（TZ未指定）／ TZ=UTC でも実行
+
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0 -- /opt/anaconda3/bin/python3
+rootdir: /Users/hiroki_asada/GitHub/DAHanae/hive/agents/kurosu-tech0/wt-p2
+plugins: anyio-4.12.1
+collecting ... collected 33 items
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S16_search_changes_are_recorded_with_conditions PASSED [  3%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S21_opening_club_detail_is_recorded PASSED [  6%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S30_opening_messages_marks_related_notifications_read PASSED [  9%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S34_opening_notifications_marks_all_read PASSED [ 12%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S41_both_toggles_save_immediately_and_persist PASSED [ 15%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S43_edit_interests_and_slots_are_saved PASSED [ 18%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S45_save_changes_and_required_error PASSED [ 21%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S46_add_edit_cancel_restore_event PASSED [ 24%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S48_member_list_add_remove PASSED [ 27%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S49_employee_search_is_not_recorded PASSED [ 30%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S49_search_view_apply_are_recorded_with_employee_and_target PASSED [ 33%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S50_same_conditions_and_same_club_are_not_recorded_twice PASSED [ 36%]
+tests/test_sxx_appt_a0_periphery.py::Periphery::test_S61_cancel_event_notifies_only_applied_people_and_keeps_status PASSED [ 39%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S03_back_returns_to_previous_screen PASSED [ 42%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S04_conditions_survive_detail_and_back PASSED [ 45%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S05_rule_on_detail_form_and_complete PASSED [ 48%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S06_no_solo_ok_wording_on_any_screen 
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S06_no_solo_ok_wording_on_any_screen PASSED [ 51%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S10_home_entries_have_one_line_explanations 
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S10_home_entries_have_one_line_explanations PASSED [ 54%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S20_already_applied_error_message PASSED [ 57%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S20_canceled_event_error_message PASSED [ 60%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S20_started_event_error_message PASSED [ 63%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S31_empty_messages_both_tabs PASSED [ 66%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S33_cancel_type_has_no_view_button PASSED [ 69%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S33_view_button_targets 
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S33_view_button_targets PASSED [ 72%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S38_no_employee_found_message PASSED [ 75%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S47_end_same_as_or_before_start_is_error 
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S47_end_same_as_or_before_start_is_error PASSED [ 78%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S47_past_date_is_error_but_today_is_ok PASSED [ 81%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S51_demand_without_club_visualization SKIPPED [ 84%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_application_complete_datetime_format PASSED [ 87%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_admin_events_datetime_format PASSED [ 90%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_detail_event_datetime_format PASSED [ 93%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_messages_event_datetime_format FAILED [ 96%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S56_no_reset_button_on_screens 
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S56_no_reset_button_on_screens PASSED [100%]
+=================================== FAILURES ===================================
+_____________ ScreenFlows.test_S52_messages_event_datetime_format ______________
+self = <test_sxx_appt_a0_screens.ScreenFlows testMethod=test_S52_messages_event_datetime_format>
+    def test_S52_messages_event_datetime_format(self):
+        ev = self.w.add_event(1, day_offset=2)
+        self.w.add_application(ev, "E003")
+>       self.assertDatetimeFormat(joined(self.app("E003", page="messages")), "メッセージ")
+tests/test_sxx_appt_a0_screens.py:209: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sxx_appt_a0_screens.py:200: in assertDatetimeFormat
+    self.assertRegex(text, DATETIME_RE, f"{where}: 「9/26（土）19:00」の形式の日時が無い")
+E   AssertionError: Regex didn't match: '\\d{1,2}/\\d{1,2}（[月火水木金土日]）[\\s\u3000]*\\d{1,2}:\\d{2}' not found in 'メッセージ\n⚽ 部活A\n10/16(金) 19:00〜21:00\u3000／\u3000会議室\n幹事：幹事一郎\u3000／\u3000状態：申込済み\nやり取り（0件）\nまだやり取りはありません\nメッセージ\n\n送信する\nこの申込をキャンセルする\n**一般三郎**\n営業／E003\nホーム\n部活を探す\n人を探す\nメッセージ\n通知\n自分のプロフィール\n---\nログアウト' : メッセージ: 「9/26（土）19:00」の形式の日時が無い
+----------------------------- Captured stderr call -----------------------------
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_sxx_appt_a0_screens.py:194: F-51（Could）は未実装: app/frontend に『希望者はいるが部活が存在しない活動』を見せる画面・サービスが無い。テスト結果には『未実装』を記録する
+========= 1 failed, 31 passed, 1 skipped, 28 subtests passed in 31.47s =========
+
+## TZ=UTC
+FAILED tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_messages_event_datetime_format
+1 failed, 31 passed, 1 skipped, 28 subtests passed in 28.05s
