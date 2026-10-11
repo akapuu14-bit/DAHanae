@@ -1,0 +1,24 @@
+# S-xx α-W 書込テスト 実DB実走結果（godセッション、だーあさ=運営承認下）
+日時: 2026-10-11
+対象: feature/test-sxx-aw-w3 (commit 9f3266b) / tests/test_sxx_appt_aw_apply_cancel.py
+接続: 共有Supabase（*.supabase.co）。allowed_domains=["*.supabase.co"]。
+コマンド: LB_WRITE=1 LB_SECRETS=<repo>/.streamlit/secrets.toml python3 -m pytest tests/test_sxx_appt_aw_apply_cancel.py -v -rfs --tb=short
+方式: センチネル社員E998(幹事役)/E999(申込者役)＋LB-TEST-%部活(is_active=false)＋開催を投入し、application_service.apply/cancel を実repo＋実DBで呼ぶ。addCleanupで必ず後始末。
+
+結果: 4 passed, 5 subtests passed, 19.46s
+  S-19 申込の新規書込(applications/messages/notifications/action_logs) → PASS
+  S-20(DB分) 同一開催の有効な二重申込を部分一意インデックスが拒否 → PASS  ※本番にインデックス適用済みの裏づけ
+  S-25 キャンセル更新(status・canceled_at・幹事あて通知) → PASS
+  S-26 キャンセル→再申込が別のapplication_idで通る → PASS
+
+後始末の確認(実走後にgodが別途read):
+  センチネル残: E998=0 / E999=0 / LB-TEST-%部活=0
+  全体件数: employees=500 / clubs=15 / events=58
+  action_logs の id 21〜28 が欠番(=本実走が使った8件。terao見立て『+8』と一致、行は削除済み)
+
+未確認(別途確認中):
+  基準値(applications 61/messages 12/notifications 17/action_logs 15)に対し、実走後は 62/13/18/21。
+  増加分はすべて社員E001(デモ新卒)の行(applications #62=開催10, 06:26:28, message#13, 通知#18, 操作履歴apply)。
+  センチネルE998/E999の行ではない。実機操作によるものかをユーザーに確認中(テスト側の書込漏れかは未確定)。
+
+注意: 秘匿値（URL/キー）は出力・記録していない。
