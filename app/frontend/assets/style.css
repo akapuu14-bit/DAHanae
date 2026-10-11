@@ -79,18 +79,38 @@ html, body, .stApp, .stApp button, .stApp input, .stApp textarea {
   border-color: var(--primary);
 }
 
-/* 画面が狭いとき、カードが細長くならないよう折り返す（1枚の最小幅 220px）。
-   カードの入っていない空の列は、場所をとらないよう隠す。 */
-.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) {
-  flex-wrap: wrap;
+/* 画面の幅に合わせて、カードを「入るだけ並べて、あふれたら次の段」にする（1枚の最小幅 240px）。
+   段が変わっても列の幅がそろうよう、グリッドで並べる。カードの入っていない空の列は隠す。
+   入力欄（複数選択）の並びも同じ考え方で、最小幅 200px で折り返す。 */
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]),
+.stApp [data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) {
+  display: grid !important;
+  gap: 1rem;
 }
-.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) > [data-testid="stColumn"] {
-  flex: 1 1 220px;
-  min-width: 220px;
-  max-width: 340px;
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.stApp [data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) > [data-testid="stColumn"],
+.stApp [data-testid="stHorizontalBlock"]:has([data-testid="stMultiSelect"]) > [data-testid="stColumn"] {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: none !important;
 }
 .stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) > [data-testid="stColumn"]:not(:has([class*="st-key-club_card_"])) {
   display: none;
+}
+
+/* ホームの「部活を探す／人を探す」: 説明文は上、ボタンは下に置き、左右でボタンの高さをそろえる。
+   狭い画面で縦に積まれても「説明→ボタン」の組が離れない。 */
+.stApp .st-key-home_cta [data-testid="stHorizontalBlock"] {
+  align-items: stretch;
+}
+.stApp .st-key-home_cta [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+  height: 100%;
+  justify-content: space-between;
 }
 
 /* ---- 入力欄・フォーム・メッセージ枠 ---- */

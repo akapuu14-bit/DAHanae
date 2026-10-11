@@ -54,7 +54,7 @@ def _render_popular():
         st.info(EMPTY_POPULAR)
         return
     for rank, club in enumerate(clubs, start=1):
-        name_column, button_column = st.columns([4, 1])
+        name_column, button_column = st.columns([4, 1], vertical_alignment="center")  # 名前とボタンの高さをそろえる
         name_column.write(f"{rank}位　{club['icon']} {club['name']}")
         if button_column.button("見る", key=f"home_popular_{club['club_id']}"):
             state.go(state.CLUB_DETAIL, club_id=club["club_id"])
@@ -87,18 +87,18 @@ def render():
     st.write(f"{name}さん、こんにちは。")  # SP-14
 
     # SP-15: 大きなボタン2つ
-    # 説明文の行数が違っても、説明文とボタンがそれぞれ横一列にそろうよう、
-    # 「説明文の行」と「ボタンの行」を分けて並べる。
-    club_text, people_text = st.columns(2)
-    club_text.write(EXPLAIN_CLUB)
-    people_text.write(EXPLAIN_PEOPLE)
-    club_column, people_column = st.columns(2)
-    with club_column:
-        if st.button("部活を探す", key="home_to_club_search", type="primary", width="stretch"):
-            state.go(state.CLUB_SEARCH)
-    with people_column:
-        if st.button("人を探す", key="home_to_employee_search", type="primary", width="stretch"):
-            state.go(state.EMPLOYEE_SEARCH)
+    # 「説明文＋ボタン」を1組にして、組ごとに並べる（狭い画面で縦に積まれても、説明とボタンが離れない）。
+    # 説明文の行数が違っても、ボタンの高さが左右でそろうのは style.css（key="home_cta"）の役目。
+    with st.container(key="home_cta"):
+        club_column, people_column = st.columns(2)
+        with club_column:
+            st.write(EXPLAIN_CLUB)
+            if st.button("部活を探す", key="home_to_club_search", type="primary", width="stretch"):
+                state.go(state.CLUB_SEARCH)
+        with people_column:
+            st.write(EXPLAIN_PEOPLE)
+            if st.button("人を探す", key="home_to_employee_search", type="primary", width="stretch"):
+                state.go(state.EMPLOYEE_SEARCH)
 
     _render_week()  # SP-16
     _render_popular()  # SP-17
