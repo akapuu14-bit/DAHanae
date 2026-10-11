@@ -60,11 +60,21 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(client.table("employees").select("*").eq("id", 1).execute().data, [{"id": 1}])
         for op in ("insert", "update", "delete", "upsert"):
             result = getattr(client.table("action_logs"), op)({"x": 1}).eq("id", 1).execute()
-            self.assertEqual(result.data, [])
+            self.assertEqual(result.data, [{"id": 0}] if op in ("insert", "upsert") else [])
         self.assertEqual(client.log, [("employees", "select")])  # 書込は1件も client に届いていない
         self.assertEqual([op for _, op in guard.attempts], ["insert", "update", "delete", "upsert"])
         with self.assertRaises(AssertionError):
             client.rpc("anything")
+
+    def test_insert_stub_lets_repo_read_new_id_without_reaching_client(self):
+        client = _Client()
+        guard = ReadOnlyGuard(client)
+        guard.install()
+        self.addCleanup(guard.uninstall)
+        res = client.table("action_logs").insert({"employee_id": "E001"}).execute()
+        self.assertEqual(res.data[0]["id"], 0)  # repo の res.data[0]["id"] が IndexError にならない
+        self.assertEqual(client.log, [])
+        self.assertEqual(guard.attempts, [("action_logs", "insert")])
 
     def test_not_chain_on_blocked_write_is_safe(self):
         client = _Client()

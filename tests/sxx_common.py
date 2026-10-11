@@ -51,6 +51,7 @@ def click_label(at, label: str, nth: int = 0):
 
 
 _WRITE_METHODS = {"insert", "update", "delete", "upsert"}
+_RETURNING_METHODS = {"insert", "upsert"}
 
 
 class _Blocked:
@@ -67,7 +68,10 @@ class _Blocked:
 
     def execute(self):
         self._attempts.append((self._table, self._op))
-        return SimpleNamespace(data=[], count=None)
+        # repo は insert の結果から res.data[0]["id"] を読む（action_logs/applications/events/clubs/notifications/messages）。
+        # 実DBには何も届いていないので、採番済みを装う1行のスタブを返す。update/delete は戻り値を使わないので空。
+        data = [{"id": 0}] if self._op in _RETURNING_METHODS else []
+        return SimpleNamespace(data=data, count=None)
 
 
 class _GuardedTable:
