@@ -1,0 +1,116 @@
+/* 部活コンシェルジュ 見た目の定義（B段階）。
+   ここだけを見れば、色・余白・角丸・動きが分かるようにしている。
+   ロジック・文言・ウィジェットのkeyには触れない。 */
+
+:root {
+  /* ---- 色（配色は C 案（春）で決定。別案にするときは、ここと .streamlit/config.toml の [theme] を同時に差し替える） ---- */
+  --bg: #F9F7F0;        /* 背景（アイボリー） */
+  --surface: #FFFFFF;   /* カードの面 */
+  --tint: #FBE9E7;      /* 淡い面・タグ（桜） */
+  --primary: #3B7D59;   /* 主ボタン（若葉を深くした緑。白文字 4.9:1） */
+  --primary-d: #2E6447; /* 主ボタンのホバー */
+  --text: #2F2A26;      /* 文字 */
+  --muted: #6B625A;     /* 補助文字 */
+  --line: #EADFD8;      /* 細い線 */
+  /* ---- 形・動き ---- */
+  --radius: 10px;
+  --shadow: 0 8px 20px rgba(47, 42, 38, 0.14);
+  --ease: 0.18s ease;
+}
+
+/* ---- 文字（端末にあるフォントを使う。外部フォントは読み込まない） ---- */
+html, body, .stApp, .stApp button, .stApp input, .stApp textarea {
+  font-family: "BIZ UDPGothic", "Yu Gothic UI", "Yu Gothic", "Hiragino Sans", "Meiryo", sans-serif;
+}
+.stApp [data-testid="stMarkdownContainer"] p,
+.stApp [data-testid="stMarkdownContainer"] li {
+  line-height: 1.7;
+}
+.stApp h1, .stApp h2, .stApp h3 { letter-spacing: 0.01em; }
+
+/* ---- ボタン ---- */
+.stApp [data-testid^="stBaseButton"] {
+  border-radius: var(--radius);
+  font-weight: 600;
+  transition: transform var(--ease), box-shadow var(--ease), background-color var(--ease), color var(--ease);
+}
+.stApp [data-testid="stBaseButton-primary"],
+.stApp [data-testid="stBaseButton-primaryFormSubmit"] {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.stApp [data-testid="stBaseButton-primary"]:hover,
+.stApp [data-testid="stBaseButton-primaryFormSubmit"]:hover {
+  background-color: var(--primary-d);
+  border-color: var(--primary-d);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.stApp [data-testid="stBaseButton-secondary"],
+.stApp [data-testid="stBaseButton-secondaryFormSubmit"] {
+  background-color: var(--surface);
+  border: 1.5px solid var(--primary);
+  color: var(--primary-d);
+}
+.stApp [data-testid="stBaseButton-secondary"]:hover,
+.stApp [data-testid="stBaseButton-secondaryFormSubmit"]:hover {
+  background-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(47, 42, 38, 0.18);
+}
+.stApp [data-testid^="stBaseButton"]:active { transform: translateY(0); box-shadow: none; }
+.stApp [data-testid^="stBaseButton"]:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* ---- 部活カード（components/club_card.py が container に key="club_card_..." を付ける） ---- */
+.stApp [class*="st-key-club_card_"] {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 2px);
+  transition: transform var(--ease), box-shadow var(--ease), border-color var(--ease);
+}
+.stApp [class*="st-key-club_card_"]:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: var(--primary);
+}
+
+/* 画面が狭いとき、カードが細長くならないよう折り返す（1枚の最小幅 220px）。
+   カードの入っていない空の列は、場所をとらないよう隠す。 */
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) {
+  flex-wrap: wrap;
+}
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) > [data-testid="stColumn"] {
+  flex: 1 1 220px;
+  min-width: 220px;
+  max-width: 340px;
+}
+.stApp [data-testid="stHorizontalBlock"]:has([class*="st-key-club_card_"]) > [data-testid="stColumn"]:not(:has([class*="st-key-club_card_"])) {
+  display: none;
+}
+
+/* ---- 入力欄・フォーム・メッセージ枠 ---- */
+.stApp [data-testid="stForm"] {
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 2px);
+  background-color: var(--surface);
+}
+.stApp [data-baseweb="input"], .stApp [data-baseweb="textarea"] { border-radius: var(--radius); }
+.stApp [data-testid="stAlertContainer"] { border-radius: var(--radius); }
+/* 運営ルールの一文など st.info は、水色の面＋ふつうの文字色にして、配色になじませる */
+.stApp [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {
+  background-color: var(--tint);
+  color: var(--text);
+}
+.stApp [data-testid="stAlertContentInfo"] * { color: var(--text); }
+
+/* ---- 動きを減らす設定の人には動きを止める ---- */
+@media (prefers-reduced-motion: reduce) {
+  .stApp * { transition: none !important; }
+  .stApp [class*="st-key-club_card_"]:hover,
+  .stApp [data-testid^="stBaseButton"]:hover { transform: none; }
+}

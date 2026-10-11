@@ -87,13 +87,16 @@ def render():
     st.write(f"{name}さん、こんにちは。")  # SP-14
 
     # SP-15: 大きなボタン2つ
+    # 説明文の行数が違っても、説明文とボタンがそれぞれ横一列にそろうよう、
+    # 「説明文の行」と「ボタンの行」を分けて並べる。
+    club_text, people_text = st.columns(2)
+    club_text.write(EXPLAIN_CLUB)
+    people_text.write(EXPLAIN_PEOPLE)
     club_column, people_column = st.columns(2)
     with club_column:
-        st.write(EXPLAIN_CLUB)
         if st.button("部活を探す", key="home_to_club_search", type="primary", width="stretch"):
             state.go(state.CLUB_SEARCH)
     with people_column:
-        st.write(EXPLAIN_PEOPLE)
         if st.button("人を探す", key="home_to_employee_search", type="primary", width="stretch"):
             state.go(state.EMPLOYEE_SEARCH)
 
