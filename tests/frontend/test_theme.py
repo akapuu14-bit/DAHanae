@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 CSS_PATH = Path(__file__).resolve().parents[2] / "app" / "frontend" / "assets" / "style.css"
+CONFIG_PATH = Path(__file__).resolve().parents[2] / ".streamlit" / "config.toml"
 
 
 def _variables():
@@ -31,13 +32,33 @@ def test_text_is_readable_on_backgrounds():
     v = _variables()
     for background in ("bg", "surface", "tint"):
         assert _contrast(v["text"], v[background]) >= 4.5, background
-    assert _contrast(v["muted"], v["bg"]) >= 4.5
+    # 補助文字は、背景だけでなくカードの面・淡い面の上にも載る
+    for background in ("bg", "surface", "tint"):
+        assert _contrast(v["muted"], v[background]) >= 4.5, background
 
 
 def test_primary_button_text_is_readable():
     v = _variables()
     assert _contrast("#FFFFFF", v["primary"]) >= 4.5
     assert _contrast("#FFFFFF", v["primary-d"]) >= 4.5
+
+
+def test_primary_color_text_is_readable_on_surfaces():
+    """主色は「白い枠のボタンの文字」「選択中のタブの文字」としても使う。面の上で読めるかを見る。"""
+    v = _variables()
+    for background in ("bg", "surface"):
+        assert _contrast(v["primary"], v[background]) >= 4.5, background
+        assert _contrast(v["primary-d"], v[background]) >= 4.5, background
+
+
+def test_config_toml_matches_style_css():
+    """色は .streamlit/config.toml と style.css の2か所にある。片方だけ変えて食い違うのを防ぐ。"""
+    v = _variables()
+    config = CONFIG_PATH.read_text(encoding="utf-8")
+    theme = dict(re.findall(r'^(\w+)\s*=\s*"(#[0-9A-Fa-f]{6})"', config, flags=re.MULTILINE))
+    expected = {"primaryColor": "primary", "backgroundColor": "bg", "textColor": "text"}
+    for config_key, css_name in expected.items():
+        assert theme[config_key].lower() == v[css_name].lower(), config_key
 
 
 def test_reduced_motion_is_respected():
