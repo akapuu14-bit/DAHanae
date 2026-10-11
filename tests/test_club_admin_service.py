@@ -113,7 +113,7 @@ class ClubFieldTests(LaTestCase):
         self.assertEqual((self.w.clubs[1]["organizer_id"], self.w.clubs[1]["is_active"]), ("E003", False))
 
     # ---- create_club の判定順（契約 1.7 create_club）----
-    def test_C_create_club_permission_comes_before_validation(self):
+    def test_I203_create_club_permission_comes_before_validation(self):
         with self.assertRaises(PermissionDeniedError):
             ca.create_club("E002", {})  # 幹事・入力は空
         with self.assertRaises(PermissionDeniedError):
@@ -122,7 +122,7 @@ class ClubFieldTests(LaTestCase):
         with self.assertRaises(ValidationError):
             ca.create_club("E001", {})  # 運営者なら入力エラーになる
 
-    def test_C_create_club_multiple_required_missing_reports_first_in_listed_order(self):
+    def test_I204_create_club_multiple_required_missing_reports_first_in_listed_order(self):
         # 必須が複数そろっていないとき、契約の列挙順で最初の1件だけを返す。
         for drop in (("icon", "message"), ("activity_id", "level", "organizer_id"), ("organizer_id", "after_activity")):
             fields = {k: v for k, v in CLUB_FIELDS.items() if k not in drop}
@@ -208,14 +208,14 @@ class EventTests(LaTestCase):
         self.assertEqual(reason(cm), "past_date")
 
     # ---- unknown:<key>（status 等を混ぜて通知なしで中止にする抜け道を塞ぐ。契約 1.7 create_event / update_event）----
-    def test_B_create_event_unknown_key_rejected_and_nothing_saved(self):
+    def test_I196_create_event_unknown_key_rejected_and_nothing_saved(self):
         for key in ("status", "id", "club_id", "nonexistent"):
             with self.assertRaises(ValidationError, msg=key) as cm:
                 ca.create_event(1, "E002", dict(self.VALID, **{key: "中止" if key == "status" else 1}))
             self.assertEqual(reason(cm), f"unknown:{key}")
         self.assertEqual(self.w.club_events(1), [])
 
-    def test_B_update_event_unknown_key_cannot_cancel_without_notification(self):
+    def test_I197_update_event_unknown_status_cannot_cancel_without_notification(self):
         eid = self.w.add_event(1, day_offset=2)
         self.w.add_application(eid, "E003", "申込済み")
         with self.assertRaises(ValidationError) as cm:
@@ -228,7 +228,7 @@ class EventTests(LaTestCase):
                 ca.update_event(eid, "E002", {key: 1})
             self.assertEqual(reason(cm), f"unknown:{key}")
 
-    def test_B_unknown_comes_before_required_in_create_and_update(self):
+    def test_I198_unknown_comes_before_required_in_create_and_update(self):
         # 必須（meeting_place）が欠けていても、想定外のキーがあれば unknown が先（unknown → required）
         fields = {"event_date": "2026-10-20", "start_time": "19:00", "end_time": "21:00", "status": "中止"}
         with self.assertRaises(ValidationError) as cm:
@@ -242,7 +242,7 @@ class EventTests(LaTestCase):
             ca.update_event(eid, "E002", {"meeting_place": ""})
         self.assertEqual(reason(cm), "required:meeting_place")
 
-    def test_B_unknown_is_after_permission_and_not_found(self):
+    def test_I199_unknown_is_after_not_found_and_permission(self):
         # 判定順は NotFound → Permission → Validation。権限が無い人の unknown は権限エラー。
         with self.assertRaises(PermissionDeniedError):
             ca.create_event(1, "E003", dict(self.VALID, status="中止"))
@@ -250,7 +250,7 @@ class EventTests(LaTestCase):
             ca.create_event(999, "E003", dict(self.VALID, status="中止"))
 
     # ---- update_event の end_before_start（fields に無いキーは現在値。契約 1.7 update_event）----
-    def test_C_update_event_end_before_start_uses_current_value_for_missing_key(self):
+    def test_I200_update_event_end_before_start_uses_current_value_for_missing_key(self):
         eid = self.w.add_event(1, day_offset=2)  # 現在の開始・終了は fakes の既定値
         start = self.w.events[eid]["start_time"]
         end = self.w.events[eid]["end_time"]
@@ -375,7 +375,7 @@ class MemberTests(LaTestCase):
         with self.assertRaises(NotFoundError):
             ca.remove_club_member(1, "E002", "E005")
 
-    def test_C_add_member_unknown_employee_is_not_found_before_permission(self):
+    def test_I201_add_member_unknown_employee_is_not_found_before_permission(self):
         with self.assertRaises(NotFoundError):
             ca.add_club_member(1, "E002", "E999")  # 権限あり: 社員が居ない
         with self.assertRaises(NotFoundError):
@@ -384,7 +384,7 @@ class MemberTests(LaTestCase):
             ca.add_club_member(999, "E003", "E005")  # 部活が居ない
         self.assertEqual([m["employee_id"] for m in self.w.members if m["club_id"] == 1], ["E002"])
 
-    def test_C_remove_member_permission_and_order(self):
+    def test_I202_remove_member_permission_and_order(self):
         self.w.add_member(1, "E005")
         for who in ("E003", "E004"):  # 一般社員・他部活の幹事
             with self.assertRaises(PermissionDeniedError, msg=who):
