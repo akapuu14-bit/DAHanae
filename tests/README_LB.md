@@ -1,7 +1,7 @@
 # L-B ハーネス（実repo＋実DB）実走手順
 
 対象: テスト結果.md 3章で「未実行(権限)」の I-xx 17件のうち、読取専用で確認できる15件
-（I-008, I-022〜026, I-064〜068, I-140, I-178〜180）。I-090/I-091 は書込が必要なため skip 固定（下記）。
+（I-008, I-022〜026, I-064〜068, I-140, I-178〜180）。I-026（有効データ分）は読取。I-026（センチネル）・I-090/I-091 は書込が必要なため `test_lb_writes.py`（LB_WRITE=1・下記）。
 
 ## 実行コマンド（god が実DBで回す）
 
@@ -13,7 +13,7 @@ python3 -m pytest tests/test_lb_*.py -v -rs
 - 秘匿値は リポジトリ直下 `.streamlit/secrets.toml`（`supabase_url` / `supabase_key`）。worktree で回すときは本体直下も自動で探す。別の場所は `LB_SECRETS=<path>`。
 - **L-A/L-C（偽repo）とは別プロセスで回す**。`pytest tests` のように同じプロセスで混ぜると、L-B は「偽の db.client が入っている」で自動 skip になる。
 - 接続できない・secrets が無い・キーが足りないときは、失敗にせず自動 skip（`-rs` で理由が出る）。強制 skip は `LB_SKIP=1`。
-- 書込は一切しない（select のみ）。`scripts/reset_data.py` は使わない。
+- この実行コマンドでは書込は一切しない（select のみ。`test_lb_writes.py` は LB_WRITE=1 が無いので skip）。`scripts/reset_data.py` は使わない。
 
 ## テストとI-xxの対応
 
@@ -34,7 +34,7 @@ python3 -m pytest tests/test_lb_*.py -v -rs
 | 〃 | test_I178 | I-178 | 今日の開催だけ → 過去に含まれない → 初参加 | 実データの申込から候補を探し、時刻を固定 |
 | 〃 | test_I179 | I-179 | 昨日の開催 → 過去 → 初参加でない | 同上 |
 | 〃 | test_I180 | I-180 | JST 0:00〜9:00・TZ=UTC/JST/LA でも I-178/179 と同じ | 時刻とTZを変えて繰り返す |
-| test_lb_constraints.py | test_I090 / test_I091 | I-090 / I-091 | 重複登録できない | **skip固定（書込が必要）** |
+| test_lb_writes.py | test_I026 / test_I090 / test_I091 | I-026 / I-090 / I-091 | 非公開は出ない／重複登録は拒否される | **LB_WRITE=1 のときだけ**（下の「書込テスト」）|
 
 ## 合否の読み方（god が結果を書くとき）
 
@@ -45,14 +45,43 @@ python3 -m pytest tests/test_lb_*.py -v -rs
   所属者でない候補が見つからない場合は、`has_past_non_canceled` のみの確認になり、I-178 は skip（初参加まで確認できないため）。
   「別の開催に申込む」の保存（insert）は行っていない。
 
-## I-090 / I-091 を実行するには（運営承認が必要）
+## 書込テスト（I-026 / I-090 / I-091）— 運営承認済み・LB_WRITE=1 のときだけ
 
-重複 insert が拒否されるのを見るには、実DBに同じ組を書く必要がある。一意制約が無かった場合は重複行が残る。
-書込の可否・対象テーブル・後始末（削除）の方法を運営に承認してもらってから、別手順で行う。
-参考として、既存データに重複が無いことの読取確認（`test_reference_no_duplicate_rows_in_existing_data`）は置いてあるが、制約の証明ではないので合否には使わない。
+### 実行コマンド（god が実DBで回す。`allowed_domains=["*.supabase.co"]`）
+
+```
+LB_WRITE=1 python3 -m pytest tests/test_lb_writes.py -v -rs
+```
+
+- `LB_WRITE=1` が無いと、3件とも「LB_WRITE=1 のときだけ」で skip（普段の `pytest tests/test_lb_*.py` は書かない）。接続不可・secrets無しも skip。
+- 1回の実走で書込が起きるのは、センチネル行の insert/delete だけ（下記）。`scripts/reset_data.py` は使わない。
+
+| テスト | I-xx | 投入する行（センチネル） | 検証 | 後始末 |
+| --- | --- | --- | --- | --- |
+| test_I026_inactive_sentinel_club_is_excluded_from_search | I-026 | 社員 E999、部活1件（name=`LB-TEST-I026-<6桁hex>`・is_active=false） | `clubs_repo.get` で実在確認 →`clubs_repo.search` の条件なし/部活名/拠点/カテゴリ/時間帯/レベルのどれにも出ない | 部活→E999 を削除 |
+| test_I090_duplicate_employee_interest_is_rejected | I-090 | E999 の `employee_interests` 1組（E999×最小idの活動・level=初心者） | 同じ組をもう一度 insert → unique_violation(23505)。E999 の行は1のまま・全体は +1 のまま | E999 の行→E999 を削除 |
+| test_I091_duplicate_club_member_is_rejected | I-091 | センチネル部活1件＋`club_members` 1組（その部活×E999） | 素の insert を重ねる → 23505。所属は1のまま（参考: `add_member` を重ねても1） | 所属→部活→E999 を削除 |
+
+### 設計メモ（衝突回避・後始末）
+
+- 一意制約は実スキーマ（`supabase/migrations/202609280001_create_initial_schema.sql`）どおり: `employee_interests (employee_id, activity_id)`、`club_members (club_id, employee_id)`。エラーは PostgREST の `code=23505`。
+- **センチネルの選び方**: `employees.id` は `^E[0-9]{3}$` のCHECK制約があり "LB-TEST" 形式にできない。seed（E001〜E500）の範囲外の `E999`（name=`LB-TEST-employee`、interests_public/slots_public=false）を使う。部活は名前が `LB-TEST-` で始まるものだけ（`_ % ,` は検索のエスケープ対象なので使わない）。FKの参照先に使う活動IDは**読むだけ**で変更しない。実在ユーザーの行は触らない。
+- **E999 が実社員として既にあれば**（name が `LB-TEST-employee` でない）何も書かずに skip。消さない。前回の異常終了の残り（E999＋`LB-TEST-%` 部活・その子行）があれば、最初に消してから始める。
+- **後始末**: `addCleanup` で必ず実行（テストが失敗しても）。`purge_sentinels` は **E999 と `LB-TEST-%` 部活のキーだけ**で子→親の順に delete する。一意制約が無かった場合でも、消すのはセンチネル行だけで実データは巻き込まない。
+- **件数照合**: テスト前に `employees / clubs / club_members / employee_interests` の件数を控え、後始末後に before==after とセンチネル残り0を assert。他の人が同時に書いていると件数がずれて落ちうる（その場合は再実行して確認）。
+- **残る副作用（戻せない）**: `clubs.id` は identity 採番なので、実走のたびに次の id が1つ（I-026・I-091 で計2つ）進む。行は残らないが、あとの新規部活の id に欠番ができる。
+- 一過性の見え方: 投入〜削除の間（数百ms）、E999 が社員検索の名前検索に出うる。センチネル部活は is_active=false なので部活検索には出ない。
+- 参考として、既存データに重複が無いことの読取確認（`test_lb_constraints.py::test_reference_no_duplicate_rows_in_existing_data`）は残してあるが、制約の証明ではないので I-090/I-091 の合否には使わない。
+
+### 合否の読み方
+
+- passed → 「実DBの一意制約が重複を拒否した（23505）／非公開部活は検索に出なかった」。備考に「実DB書込（センチネル行のみ・削除済み・件数 before==after 確認）」と書く。
+- failed（`Exception not raised`）→ 一意制約が効いていない＝不合格。センチネル行は後始末で消えているが、`sentinel_leftovers` の件数が0かをログで確認する。
+- skipped → 合否を付けない（理由: LB_WRITE無し／接続不可／E999が実社員）。
 
 ## ハーネス自体の確認（実DB不要）
 
 - `python3 tests/lb_dryrun.py` … 合成データ＋メモリ内clientで 18件を回す（ハーネスの書き間違い検出用。実DBの合否ではない）。
 - `python3 tests/lb_dryrun.py utc-date|ignore-public|week-end-today|or-as-and` … 意図的な不具合を入れ、該当テストが落ちることを確認する。
 - 証拠: `02_プロジェクト/bukatsu_concierge/evidence/test/I/lb-offline-verify.log`
+- `LB_WRITE=1 python3 tests/lb_writes_dryrun.py [no-unique|active-leak|real-e999|leftover]` … 書込テストをメモリ内DB（一意制約・FK・identity付き）で回し、投入→検証→後始末→件数照合を確認する。`no-unique`（一意制約なし）と `active-leak`（is_active無視）ではテストが落ちること、どの場合もセンチネルが残らないこと、`real-e999`（E999が実社員）では何も書かずskipすること、`leftover`（前回の残り）を片付けて通ること。実DBの合否ではない。
