@@ -121,10 +121,10 @@ class Notifications(LcTestCase):
         self.assertEqual(at.session_state["current_page"], "messages")
 
     def test_I061_cancel_notice_view_goes_to_club_detail(self):
-        """仕様 SP-45: 「見る」で関係する画面（メッセージ・部活詳細）へ。種類「中止」にも「見る」が出る想定。"""
+        """仕様 SP-45（はなえPM裁定2026-10-11で改訂）: 種類「中止」の通知は「見る」の対象外（MVPの範囲を絞るため）。"""
         self.w.add_notification("E003", "中止", event_id=1)
         at = self.app("E003", page="notifications")
-        self.assertEqual([b.label for b in at.button if b.label == "見る"], ["見る"])
+        self.assertEqual([b.label for b in at.button if b.label == "見る"], [])
 
     def test_empty_message(self):
         at = self.app("E003", page="notifications")
