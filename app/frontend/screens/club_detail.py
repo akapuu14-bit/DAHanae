@@ -143,6 +143,9 @@ def _render_action(event, detail, employee_id):
     if event["status"] != "予定":
         st.write("中止")  # ボタンなし
         return
+    if not detail["club"]["is_active"]:  # H-6：非公開は募集停止扱い（中止と同じ表示、ボタンなし）
+        st.write("中止")
+        return
     if event["is_applied"]:  # 契約（#91）：自分がその開催に申込済みか（True / False）
         st.write("✅ 申込済み")  # キャンセルはメッセージ画面から
         return

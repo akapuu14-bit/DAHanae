@@ -1,0 +1,30 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31mF[0m[32m.[0m[32m.[0m[31m                                                        [100%][0m
+=================================== FAILURES ===================================
+[31m[1m________ Notifications.test_I061_cancel_notice_view_goes_to_club_detail ________[0m
+
+self = <test_lc_detail_notifications.Notifications testMethod=test_I061_cancel_notice_view_goes_to_club_detail>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_I061_cancel_notice_view_goes_to_club_detail[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""仕様 SP-45: 「見る」で関係する画面（メッセージ・部活詳細）へ。種類「中止」にも「見る」が出る想定。"""[39;49;00m[90m[39;49;00m
+        [96mself[39;49;00m.w.add_notification([33m"[39;49;00m[33mE003[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m中止[39;49;00m[33m"[39;49;00m, event_id=[94m1[39;49;00m)[90m[39;49;00m
+        at = [96mself[39;49;00m.app([33m"[39;49;00m[33mE003[39;49;00m[33m"[39;49;00m, page=[33m"[39;49;00m[33mnotifications[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+>       [96mself[39;49;00m.assertEqual([b.label [94mfor[39;49;00m b [95min[39;49;00m at.button [94mif[39;49;00m b.label == [33m"[39;49;00m[33m見る[39;49;00m[33m"[39;49;00m], [[33m"[39;49;00m[33m見る[39;49;00m[33m"[39;49;00m])[90m[39;49;00m
+[1m[31mE       AssertionError: Lists differ: [] != ['見る'][0m
+[1m[31mE       [0m
+[1m[31mE       Second list contains 1 additional elements.[0m
+[1m[31mE       First extra element 0:[0m
+[1m[31mE       '見る'[0m
+[1m[31mE       [0m
+[1m[31mE       - [][0m
+[1m[31mE       + ['見る'][0m
+
+[1m[31mtests/test_lc_detail_notifications.py[0m:127: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2026-10-11 10:49:16.145 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-11 10:49:16.145 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-11 10:49:16.145 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-11 10:49:16.145 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-10-11 10:49:16.145 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/test_lc_detail_notifications.py::[1mNotifications::test_I061_cancel_notice_view_goes_to_club_detail[0m - AssertionError: Lists differ: [] != ['見る']
+[31m[31m[1m1 failed[0m, [32m16 passed[0m[31m in 7.58s[0m[0m
