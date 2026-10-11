@@ -76,28 +76,30 @@ def _render_header(club):
 
 
 def _render_about(club, member_count):
-    st.subheader("基本情報")
-    schedule = club["slot"] + (f"（{club['schedule_note']}）" if club["schedule_note"] else "")
-    for column, (label, value) in zip(
-        st.columns(4),
-        (("拠点", club["location"]), ("いつもの活動時間", schedule),
-         ("頻度", club["frequency"]), ("メンバー数", f"{member_count}名")),
-    ):
-        column.caption(label)
-        column.write(value)
+    # SP-25: 4つの見出しは、押して開く形（最初は閉じる）にして、縦に長くなりすぎないようにする。
+    # 中身の文言・並びは変えていない。
+    with st.expander("基本情報", expanded=False):
+        schedule = club["slot"] + (f"（{club['schedule_note']}）" if club["schedule_note"] else "")
+        for column, (label, value) in zip(
+            st.columns(4),
+            (("拠点", club["location"]), ("いつもの活動時間", schedule),
+             ("頻度", club["frequency"]), ("メンバー数", f"{member_count}名")),
+        ):
+            column.caption(label)
+            column.write(value)
 
-    st.subheader("どんな部活？")
-    st.write(club["message"] or "")
-    st.write(f"社会人から始めた人：{club['fact_adult_starters']}")
+    with st.expander("どんな部活？", expanded=False):
+        st.write(club["message"] or "")
+        st.write(f"社会人から始めた人：{club['fact_adult_starters']}")
 
-    st.subheader("参加の前に")
-    fee = club["fee"] + (f"（{club['fee_note']}）" if club["fee_note"] else "")
-    st.write(f"費用：{fee}")
-    st.write(f"持ち物：{_belongings(club)}")
-    st.write(f"途中参加・途中で抜ける：{club['join_leave']}")
+    with st.expander("参加の前に", expanded=False):
+        fee = club["fee"] + (f"（{club['fee_note']}）" if club["fee_note"] else "")
+        st.write(f"費用：{fee}")
+        st.write(f"持ち物：{_belongings(club)}")
+        st.write(f"途中参加・途中で抜ける：{club['join_leave']}")
 
-    st.subheader("活動後の過ごし方")
-    st.write(club["after_activity"])
+    with st.expander("活動後の過ごし方", expanded=False):
+        st.write(club["after_activity"])
 
 
 def _belongings(club):
@@ -114,8 +116,14 @@ def _render_events(detail, employee_id):
     if not events:
         st.info("これからの開催予定はまだありません")
         return
-    for event in events:
-        _render_event(event, detail, employee_id)
+    # 直近の1件は開いたまま（「申し込む」をすぐ押せるように）。2件目以降は折りたたむ。
+    _render_event(events[0], detail, employee_id)
+    others = events[1:]
+    if others:
+        # ラベルは固定の文言＋件数。表示中に変わると閉じ戻るので、開催の数が変わらない限り同じにする
+        with st.expander(f"ほかの開催（{len(others)}件）", expanded=False):
+            for event in others:
+                _render_event(event, detail, employee_id)
 
 
 def _render_event(event, detail, employee_id):
