@@ -48,6 +48,18 @@ class _Delete(_Query):
         return _Result(gone, None)
 
 
+class _Update(_Query):
+    def __init__(self, db, table, row):
+        super().__init__(db, table, "*", None)
+        self.row = row
+
+    def execute(self):
+        hit = [r for r in self.db.tables[self.table_name] if all(f(r) for f in self.filters)]
+        for r in hit:
+            r.update(self.row)
+        return _Result([dict(r) for r in hit], None)
+
+
 class _Table:
     def __init__(self, db, name):
         self.db, self.name = db, name
@@ -57,6 +69,9 @@ class _Table:
 
     def delete(self):
         return _Delete(self.db, self.name, "*", None)
+
+    def update(self, row):
+        return _Update(self.db, self.name, dict(row))
 
     def insert(self, row):
         return _Write(lambda: self.db.insert(self.name, dict(row)))
@@ -78,12 +93,29 @@ _FK = {
     "employee_interests": (("employee_id", "employees", "id"), ("activity_id", "activities", "id")),
     "club_members": (("club_id", "clubs", "id"), ("employee_id", "employees", "id")),
     "clubs": (("activity_id", "activities", "id"), ("organizer_id", "employees", "id")),
+    "events": (("club_id", "clubs", "id"),),
+    "applications": (("event_id", "events", "id"), ("applicant_id", "employees", "id")),
+    "messages": (("application_id", "applications", "id"), ("sender_id", "employees", "id")),
+    "notifications": (("recipient_id", "employees", "id"), ("application_id", "applications", "id"),
+                      ("event_id", "events", "id")),
+    "action_logs": (("employee_id", "employees", "id"), ("club_id", "clubs", "id")),
+}
+_IDENTITY = ("clubs", "events", "applications", "messages", "notifications", "action_logs")
+_DEFAULTS = {
+    "applications": {"status": "申込済み", "applied_at": "now", "canceled_at": None, "confirmed_at": None},
+    "messages": {"sent_at": "now"},
+    "notifications": {"read_at": None, "created_at": "now", "application_id": None, "event_id": None},
+    "action_logs": {"club_id": None, "conditions": None, "created_at": "now"},
+    "events": {"status": "予定", "meeting_time": None},
 }
 
 
 class MemoryDb:
-    def __init__(self, tables, unique=True):
-        self.tables, self.unique, self.next_club_id = tables, unique, max(c["id"] for c in tables["clubs"]) + 1
+    def __init__(self, tables, unique=True, active_unique=True):
+        self.tables, self.unique, self.active_unique = tables, unique, active_unique
+        for name in _IDENTITY:
+            self.tables.setdefault(name, [])
+        self.next_id = {n: max((r["id"] for r in self.tables[n]), default=0) + 1 for n in _IDENTITY}
 
     def table(self, name):
         return _Table(self, name)
@@ -102,9 +134,25 @@ class MemoryDb:
             key = tuple(row[c] for c in _UNIQUE[name])
             if any(tuple(r[c] for c in _UNIQUE[name]) == key for r in self.tables[name]):
                 raise DbError("23505", f"duplicate key value violates unique constraint {name}_key")
+        if name == "applications":
+            if row.get("status", "申込済み") == "キャンセル" and not row.get("canceled_at"):
+                raise DbError("23514", "applications_canceled_at_check")
+            if self.active_unique and row.get("status", "申込済み") == "申込済み" and any(
+                r["event_id"] == row["event_id"] and r["applicant_id"] == row["applicant_id"] and r["status"] == "申込済み"
+                for r in self.tables[name]
+            ):
+                raise DbError("23505", "duplicate key value violates unique constraint applications_one_active_per_employee_idx")
+        if name == "messages" and not row["body"].strip():
+            raise DbError("23514", "messages_body_not_blank_check")
+        row = {**_DEFAULTS.get(name, {}), **row}
+        for key, value in row.items():
+            if value == "now":
+                row[key] = "2026-10-11T00:00:00+09:00"
         if name == "clubs":
-            row = {"is_active": True, **row, "id": self.next_club_id}
-            self.next_club_id += 1
+            row = {"is_active": True, **row}
+        if name in _IDENTITY:
+            row["id"] = self.next_id[name]
+            self.next_id[name] += 1
         self.tables[name].append(row)
         return _Result([dict(row)], None)
 

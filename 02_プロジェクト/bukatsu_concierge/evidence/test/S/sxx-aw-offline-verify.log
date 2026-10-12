@@ -1,0 +1,108 @@
+# S-xx α-W 書込テスト オフライン検証（メモリ内DB。実DBには未接続）
+# 実行: 2026-10-11 15:25 / Python 3.11.15
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py 
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... ok
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... ok
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... ok
+Ran 4 tests in 0.003s
+OK
+[aw-dryrun mode=normal] 後始末後のDBは元と同一: True / センチネル残り: {'messages': 0, 'notifications': 0, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py no-unique
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... FAIL
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... ok
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。
+AssertionError: Exception not raised
+Ran 4 tests in 0.006s
+FAILED (failures=1)
+[aw-dryrun mode=no-unique] 後始末後のDBは元と同一: True / センチネル残り: {'messages': 0, 'notifications': 0, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py no-cancel-notice
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... ok
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... FAIL
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... ok
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。
+AssertionError: Items in the second set but not the first:
+Ran 4 tests in 0.004s
+FAILED (failures=1)
+[aw-dryrun mode=no-cancel-notice] 後始末後のDBは元と同一: True / センチネル残り: {'messages': 0, 'notifications': 0, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py reapply-blocked
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... ok
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... ok
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... ERROR
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。
+    raise ConflictError("already_applied")
+services.errors.ConflictError: already_applied
+Ran 4 tests in 0.005s
+FAILED (errors=1)
+[aw-dryrun mode=reapply-blocked] 後始末後のDBは元と同一: True / センチネル残り: {'messages': 0, 'notifications': 0, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py purge-miss
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... FAIL
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... FAIL
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... FAIL
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... FAIL
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。
+AssertionError: {'messages': 0, 'action_logs': 0, 'applicat[89 chars]': 0} != {'employees': 0, 'clubs': 0, 'club_members'[109 chars]': 0}
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。
+AssertionError: {'messages': 0, 'action_logs': 0, 'applicat[89 chars]': 0} != {'employees': 0, 'clubs': 0, 'club_members'[109 chars]': 0}
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。
+AssertionError: {'messages': 0, 'action_logs': 0, 'applicat[89 chars]': 0} != {'employees': 0, 'clubs': 0, 'club_members'[109 chars]': 0}
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。
+AssertionError: {'messages': 0, 'action_logs': 0, 'applicat[89 chars]': 0} != {'employees': 0, 'clubs': 0, 'club_members'[109 chars]': 0}
+Ran 4 tests in 0.005s
+FAILED (failures=4)
+[aw-dryrun mode=purge-miss] 後始末後のDBは元と同一: False / センチネル残り: {'messages': 0, 'notifications': 10, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py real-e998
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... skipped 'E998 が実社員として存在する。センチネルに使えないので何も書かない'
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... skipped 'E998 が実社員として存在する。センチネルに使えないので何も書かない'
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... skipped 'E998 が実社員として存在する。センチネルに使えないので何も書かない'
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... skipped 'E998 が実社員として存在する。センチネルに使えないので何も書かない'
+Ran 4 tests in 0.001s
+OK (skipped=4)
+[aw-dryrun mode=real-e998] 後始末後のDBは元と同一: True / センチネル残り: (E998は実社員のため対象外)
+
+## LB_WRITE=1 python3 tests/sxx_aw_dryrun.py leftover
+(期待どおりなら exit=0) exit=0
+S-19: 予定・未申込の開催に、幹事への一言つきで申込 → 申込が完了する（SP-66）。 ... ok
+S-20（DB分）: 既に申込済みの開催への重複申込は、実DBでも入らない（部分一意インデックス）。 ... ok
+S-25: 申込済みの申込をキャンセル → 状態「キャンセル」・canceled_at が入り、幹事に通知（SP-67）。 ... ok
+S-26: キャンセル後に同じ開催へ再申込できる。新しい申込として扱われる（SP-67・部分一意インデックス）。 ... ok
+Ran 4 tests in 0.004s
+OK
+[aw-dryrun mode=leftover] 後始末後のDBは元と同一: False / センチネル残り: {'messages': 0, 'notifications': 0, 'action_logs': 0, 'applications': 0, 'club_members': 0, 'employee_interests': 0, 'events': 0, 'clubs': 0, 'employees': 0}
+[aw-dryrun leftover] 前回の残りが片付いている: True
+
+## 同梱の既存確認
+lb_writes_dryrun [] exit=0 (0=期待どおり)
+lb_writes_dryrun [no-unique] exit=0 (0=期待どおり)
+lb_writes_dryrun [active-leak] exit=0 (0=期待どおり)
+lb_writes_dryrun [real-e999] exit=0 (0=期待どおり)
+lb_writes_dryrun [leftover] exit=0 (0=期待どおり)
+Ran 16 tests in 0.007s
+
+OK (skipped=1)
+
+## LB_WRITE無し
+setUpClass (test_sxx_appt_aw_apply_cancel.ApplyCancelAw) ... skipped 'L-B書込: LB_WRITE=1 のときだけ実行（共有DBへ書くため。運営承認済みの実走用）'
+Ran 0 tests in 0.000s
+OK (skipped=1)
+
+## secrets無し LB_WRITE=1 pytest
+=========================== short test summary info ============================
+SKIPPED [4] ../../../../../../../../opt/anaconda3/lib/python3.11/site-packages/_pytest/unittest.py:502: L-B skip: .streamlit/secrets.toml が見つからない
+4 skipped in 0.02s
