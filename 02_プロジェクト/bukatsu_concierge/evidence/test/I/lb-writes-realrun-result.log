@@ -1,0 +1,23 @@
+# L-B 書込/投入テスト 実DB実走結果（godセッション、だーあさ=運営承認下）
+日時: 2026-10-11
+対象: feature/test-lb-writes-w3 (commit c01e45b) / tests/test_lb_writes.py
+接続: 共有Supabase（*.supabase.co）。allowed_domains=["*.supabase.co"]。
+コマンド: LB_WRITE=1 LB_SECRETS=<repo>/.streamlit/secrets.toml python3 -m pytest tests/test_lb_writes.py -v -rs
+環境: pytest-9.0.3 / Python 3.11.15 / anaconda。
+方式: テスト専用センチネル（社員E999・名前LB-TEST-%部活）を投入→検証→addCleanupで必ず削除。
+
+結果: 3 passed, 6 subtests passed, 5.37s
+  I-026 非公開(is_active=false)のセンチネル部活が検索結果から除外される → PASS
+  I-090 employee_interests の重複登録が一意制約(23505)で拒否される → PASS
+  I-091 club_members の重複登録が一意制約で拒否される → PASS
+
+後始末の確認（実走後にgodが別途read確認）:
+  センチネル残: E999=0 / LB-TEST-%部活=0（クリーン）
+  全体件数: employees=500 / clubs=15（seed通り・before==after）
+
+既知の副作用（terao申告・許容範囲）:
+  - clubs.id は identity採番のため、実走ごとに欠番が進む（行は残らない）。
+  - 投入〜削除の数百ms間、E999が名前検索に出うる（interests/slotsは非公開、部活はis_active=falseで部活検索には出ない）。
+  - before==after は全件比較のため、他者の同時書込時はずれうる→再実行で確認。
+
+注意: 秘匿値（URL/キー）は出力・記録していない。
