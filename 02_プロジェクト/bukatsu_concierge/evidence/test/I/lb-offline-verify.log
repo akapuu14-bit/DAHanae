@@ -1,0 +1,56 @@
+# L-B ハーネス オフライン構造検証（実DBには接続していない）
+日時: 2026-10-11 14:22 JST  実行者: Kurosu  ブランチ: feature/test-lb-realdb-w3
+注意: ダミーのsecretsとローカル(127.0.0.1)だけを使用。実DBの合否は何も示さない。秘匿値は出力していない。
+
+## 1. 収集（python3 -m pytest tests/test_lb_*.py --collect-only -q）
+tests/test_lb_clubs_search.py::ClubsSearchLb::test_I022_category_and_location_are_anded
+tests/test_lb_clubs_search.py::ClubsSearchLb::test_I023_locations_are_ored
+tests/test_lb_clubs_search.py::ClubsSearchLb::test_I024_no_condition_returns_all_active
+tests/test_lb_clubs_search.py::ClubsSearchLb::test_I025_keyword_matches_name_activity_and_message
+tests/test_lb_clubs_search.py::ClubsSearchLb::test_I026_inactive_clubs_are_excluded
+tests/test_lb_constraints.py::UniqueConstraintsLb::test_I090_duplicate_employee_interest_is_rejected
+tests/test_lb_constraints.py::UniqueConstraintsLb::test_I091_duplicate_club_member_is_rejected
+tests/test_lb_constraints.py::UniqueConstraintsLb::test_reference_no_duplicate_rows_in_existing_data
+tests/test_lb_dates_jst.py::WeekBoundaryLb::test_I008_week_switches_at_sunday_midnight
+tests/test_lb_dates_jst.py::FirstTimeJstLb::test_I178_event_today_is_not_past
+tests/test_lb_dates_jst.py::FirstTimeJstLb::test_I179_event_yesterday_is_past
+tests/test_lb_dates_jst.py::FirstTimeJstLb::test_I180_jst_early_morning_and_server_timezone
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I064_combined_conditions_and_or
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I065_half_width_space_is_ignored
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I066_private_interests_are_hidden
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I067_private_slots_are_hidden
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I068_public_interests_are_shown
+tests/test_lb_employees_search.py::EmployeesSearchLb::test_I140_full_width_space_is_ignored
+
+18 tests collected in 0.04s
+
+## 2. skip分岐（LB_SECRETS=... python3 -m pytest tests/test_lb_*.py -q -rs）
+--- LB_SECRETS=secrets.toml
+SKIPPED [18] L-B skip: .streamlit/secrets.toml が見つからない
+18 skipped in 0.04s
+--- LB_SECRETS=nokeys.toml
+SKIPPED [18] L-B skip: secrets.toml にキーが無い: supabase_url, supabase_key
+18 skipped in 0.04s
+--- LB_SECRETS=refused.toml
+SKIPPED [18] L-B skip: 実DBに接続できない（ConnectError）
+18 skipped, 2 warnings in 0.93s
+
+## 3. ドライラン（合成データ＋メモリ内client。ハーネスの書き間違い検出用）: python3 tests/lb_dryrun.py
+Ran 18 tests in 0.008s
+OK (skipped=2)
+
+## 4. 検出力（意図的な不具合を入れて落ちること）: python3 tests/lb_dryrun.py <mutation>
+--- utc-date
+   9 test_I180_jst_early_morning_and_server_timezone
+--- ignore-public
+   2 test_I064_combined_conditions_and_or
+   5 test_I066_private_interests_are_hidden
+   8 test_I067_private_slots_are_hidden
+--- week-end-today
+   1 test_I008_week_switches_at_sunday_midnight
+--- or-as-and
+   1 test_I023_locations_are_ored
+
+## 5. 既存テストとの同居（別途実行・上の出力を転記）
+tests/fakes.py ほか既存テストをコピーして python3 -m unittest discover -s tests -p 'test_*.py' → Ran 158 tests, OK (skipped=5)。L-Bは「偽の db.client が入っている」でskip。
+python3 -m pytest tests -q → 158 passed, 18 skipped（L-B 18件は同上の理由でskip）。

@@ -87,7 +87,8 @@ def _interests_text(employee):
 
 
 def _render_card(employee):
-    with st.container(border=True):
+    # key は見た目（style.css）がカードを狙うための目印。動作には関係しない
+    with st.container(border=True, key=f"employee_card_{employee['id']}"):
         st.markdown(f"#### {employee['name']}")
         st.write(f"{employee['dept']}・{employee['location']}・{employee['joined_year']}年入社・{employee['entry_type']}")
         st.write(f"興味：{_interests_text(employee)}")

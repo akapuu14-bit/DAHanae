@@ -112,6 +112,30 @@ class ClubFieldTests(LaTestCase):
         ca.update_club(1, "E001", {"organizer_id": "E003", "is_active": False})
         self.assertEqual((self.w.clubs[1]["organizer_id"], self.w.clubs[1]["is_active"]), ("E003", False))
 
+    # ---- create_club の判定順（契約 1.7 create_club）----
+    def test_I203_create_club_permission_comes_before_validation(self):
+        with self.assertRaises(PermissionDeniedError):
+            ca.create_club("E002", {})  # 幹事・入力は空
+        with self.assertRaises(PermissionDeniedError):
+            ca.create_club("E003", dict(CLUB_FIELDS, name=""))  # 一般社員・必須が空
+        self.assertEqual(sorted(self.w.clubs), [1, 2])
+        with self.assertRaises(ValidationError):
+            ca.create_club("E001", {})  # 運営者なら入力エラーになる
+
+    def test_I204_create_club_multiple_required_missing_reports_first_in_listed_order(self):
+        # 必須が複数そろっていないとき、契約の列挙順で最初の1件だけを返す。
+        for drop in (("icon", "message"), ("activity_id", "level", "organizer_id"), ("organizer_id", "after_activity")):
+            fields = {k: v for k, v in CLUB_FIELDS.items() if k not in drop}
+            first = next(k for k in REQUIRED if k in drop)
+            with self.assertRaises(ValidationError, msg=str(drop)) as cm:
+                ca.create_club("E001", fields)
+            self.assertEqual(reason(cm), f"required:{first}")
+        blanks = dict(CLUB_FIELDS, slot="", fee="  ")  # 空白でも列挙順で最初（slot が fee より前）
+        with self.assertRaises(ValidationError) as cm:
+            ca.create_club("E001", blanks)
+        self.assertEqual(reason(cm), "required:slot")
+        self.assertEqual(sorted(self.w.clubs), [1, 2])
+
     def test_I161_create_club_registers_organizer_as_member(self):
         cid = ca.create_club("E001", dict(CLUB_FIELDS, organizer_id="E003"))
         self.assertTrue(self.w.clubs[cid]["is_active"])
@@ -182,6 +206,69 @@ class EventTests(LaTestCase):
         with self.assertRaises(ValidationError) as cm:
             ca.create_event(1, "E002", dict(self.VALID, event_date="2026-10-01", end_time="18:00"))
         self.assertEqual(reason(cm), "past_date")
+
+    # ---- unknown:<key>（status 等を混ぜて通知なしで中止にする抜け道を塞ぐ。契約 1.7 create_event / update_event）----
+    def test_I196_create_event_unknown_key_rejected_and_nothing_saved(self):
+        for key in ("status", "id", "club_id", "nonexistent"):
+            with self.assertRaises(ValidationError, msg=key) as cm:
+                ca.create_event(1, "E002", dict(self.VALID, **{key: "中止" if key == "status" else 1}))
+            self.assertEqual(reason(cm), f"unknown:{key}")
+        self.assertEqual(self.w.club_events(1), [])
+
+    def test_I197_update_event_unknown_status_cannot_cancel_without_notification(self):
+        eid = self.w.add_event(1, day_offset=2)
+        self.w.add_application(eid, "E003", "申込済み")
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"status": "中止"})
+        self.assertEqual(reason(cm), "unknown:status")
+        self.assertEqual(self.w.events[eid]["status"], "予定")  # 変わっていない
+        self.assertEqual(self.w.notes_for("E003", "中止"), [])
+        for key in ("id", "club_id", "nonexistent"):
+            with self.assertRaises(ValidationError, msg=key) as cm:
+                ca.update_event(eid, "E002", {key: 1})
+            self.assertEqual(reason(cm), f"unknown:{key}")
+
+    def test_I198_unknown_comes_before_required_in_create_and_update(self):
+        # 必須（meeting_place）が欠けていても、想定外のキーがあれば unknown が先（unknown → required）
+        fields = {"event_date": "2026-10-20", "start_time": "19:00", "end_time": "21:00", "status": "中止"}
+        with self.assertRaises(ValidationError) as cm:
+            ca.create_event(1, "E002", fields)
+        self.assertEqual(reason(cm), "unknown:status")
+        eid = self.w.add_event(1, day_offset=2)
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"meeting_place": "", "status": "中止"})
+        self.assertEqual(reason(cm), "unknown:status")  # 空の必須項目より先
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"meeting_place": ""})
+        self.assertEqual(reason(cm), "required:meeting_place")
+
+    def test_I199_unknown_is_after_not_found_and_permission(self):
+        # 判定順は NotFound → Permission → Validation。権限が無い人の unknown は権限エラー。
+        with self.assertRaises(PermissionDeniedError):
+            ca.create_event(1, "E003", dict(self.VALID, status="中止"))
+        with self.assertRaises(NotFoundError):
+            ca.create_event(999, "E003", dict(self.VALID, status="中止"))
+
+    # ---- update_event の end_before_start（fields に無いキーは現在値。契約 1.7 update_event）----
+    def test_I200_update_event_end_before_start_uses_current_value_for_missing_key(self):
+        eid = self.w.add_event(1, day_offset=2)  # 現在の開始・終了は fakes の既定値
+        start = self.w.events[eid]["start_time"]
+        end = self.w.events[eid]["end_time"]
+        # 終了だけ変える: 現在の開始時刻より前・同時刻は不可
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"end_time": "00:30"})
+        self.assertEqual(reason(cm), "end_before_start")
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"end_time": str(start)[:5]})
+        self.assertEqual(reason(cm), "end_before_start")
+        # 開始だけ変える: 現在の終了時刻以降は不可
+        with self.assertRaises(ValidationError) as cm:
+            ca.update_event(eid, "E002", {"start_time": "23:59"})
+        self.assertEqual(reason(cm), "end_before_start")
+        self.assertEqual((self.w.events[eid]["start_time"], self.w.events[eid]["end_time"]), (start, end))  # 保存されない
+        # 現在値より後なら通る
+        ca.update_event(eid, "E002", {"end_time": "23:30"})
+        self.assertEqual(str(self.w.events[eid]["end_time"])[:5], "23:30")
 
     def test_I165_meeting_time_optional(self):
         eid = ca.create_event(1, "E002", dict(self.VALID))
@@ -288,17 +375,53 @@ class MemberTests(LaTestCase):
         with self.assertRaises(NotFoundError):
             ca.remove_club_member(1, "E002", "E005")
 
+    def test_I201_add_member_unknown_employee_is_not_found_before_permission(self):
+        with self.assertRaises(NotFoundError):
+            ca.add_club_member(1, "E002", "E999")  # 権限あり: 社員が居ない
+        with self.assertRaises(NotFoundError):
+            ca.add_club_member(1, "E003", "E999")  # 権限なし: NotFound が先（契約の判定順）
+        with self.assertRaises(NotFoundError):
+            ca.add_club_member(999, "E003", "E005")  # 部活が居ない
+        self.assertEqual([m["employee_id"] for m in self.w.members if m["club_id"] == 1], ["E002"])
+
+    def test_I202_remove_member_permission_and_order(self):
+        self.w.add_member(1, "E005")
+        for who in ("E003", "E004"):  # 一般社員・他部活の幹事
+            with self.assertRaises(PermissionDeniedError, msg=who):
+                ca.remove_club_member(1, who, "E005")
+        self.assertIn("E005", [m["employee_id"] for m in self.w.members if m["club_id"] == 1])
+        # NotFound（所属でない）が権限より先
+        with self.assertRaises(NotFoundError):
+            ca.remove_club_member(1, "E003", "E003")
+        # 権限が先、Conflict(organizer) が後
+        with self.assertRaises(PermissionDeniedError):
+            ca.remove_club_member(1, "E003", "E002")
+        for who in ("E001", "E002"):
+            self.w.add_member(1, "E005") if not any(
+                m["club_id"] == 1 and m["employee_id"] == "E005" for m in self.w.members) else None
+            ca.remove_club_member(1, who, "E005")
+            self.assertNotIn("E005", [m["employee_id"] for m in self.w.members if m["club_id"] == 1])
+
     def test_I173_list_members_marks_organizer(self):
         self.w.add_member(1, "E005")
         got = {m["id"]: m["is_organizer"] for m in ca.list_club_members(1, "E002")}
         self.assertEqual(got, {"E002": True, "E005": False})
 
-    def test_I174_selectable_employees_all_sorted_id_name_only(self):
+    def test_I174_selectable_employees_all_sorted_by_name_then_id_with_id_name_only(self):
+        # 偽repoの並びに合わせず契約（name昇順・同名は id 昇順・列は id と name のみ）で期待値を作る。
+        # id 順と name 順が食い違い、同名が居る世界にする。
         self.w.employees["E003"].update(interests_public=False, slots_public=False)
+        self.w.add_employee("E010", name="アキラ")
+        self.w.add_employee("E009", name="アキラ")  # 同名: id 昇順なら E009 が先
+        self.w.add_employee("E011", name="ゼン")
+        expected_ids = [e["id"] for e in sorted(self.w.employees.values(), key=lambda e: (e["name"], e["id"]))]
+        self.assertNotEqual(expected_ids, sorted(expected_ids))  # 並びの検証が id 順と区別できる世界であること
         for who in ("E001", "E002"):
             got = ca.list_selectable_employees(who)
-            self.assertEqual([e["id"] for e in got], ["E001", "E002", "E003", "E004", "E005"])
+            self.assertEqual([e["id"] for e in got], expected_ids)
+            self.assertLess([e["id"] for e in got].index("E009"), [e["id"] for e in got].index("E010"))
             self.assertTrue(all(set(e) == {"id", "name"} for e in got))
+            self.assertIn("E003", [e["id"] for e in got])  # 非公開設定でも含まれる
 
     def test_I175_selectable_employees_general_denied(self):
         with self.assertRaises(PermissionDeniedError):
@@ -311,6 +434,8 @@ class PermissionMatrixTests(LaTestCase):
     def _ops(self, who):
         w = self.w
         ev = w.add_event(1, day_offset=3)
+        w.add_employee("E006", name="所属六郎")
+        w.add_member(1, "E006")  # 削除の権限確認用（所属者でないと NotFound が先になる）
         valid = {"event_date": "2026-10-25", "start_time": "19:00", "end_time": "21:00", "meeting_place": "X"}
         return [
             lambda: ca.get_club(1, who),
@@ -322,6 +447,7 @@ class PermissionMatrixTests(LaTestCase):
             lambda: ca.list_club_members(1, who),
             lambda: ca.add_club_member(1, who, "E005"),
             lambda: ca.add_club_member(1, who, "E003"),
+            lambda: ca.remove_club_member(1, who, "E006"),
         ]
 
     def test_I176_allowed_roles_can_do_everything(self):

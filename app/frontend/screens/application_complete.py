@@ -76,8 +76,9 @@ def render():
     st.caption("キャンセルは、メッセージ画面からできます")
 
     # ⑥ 次の行動
-    messages_column, search_column = st.columns(2)
-    if messages_column.button("メッセージを見る", type="primary", key="application_complete_messages"):
-        _leave(state.MESSAGES)
-    if search_column.button("ほかの部活も見る", key="application_complete_search"):
-        _leave(state.CLUB_SEARCH)
+    with st.container(key="application_complete_cta"):  # 2つのボタンを寄せて並べる（style.css）
+        messages_column, search_column = st.columns(2)
+        if messages_column.button("メッセージを見る", type="primary", key="application_complete_messages"):
+            _leave(state.MESSAGES)
+        if search_column.button("ほかの部活も見る", key="application_complete_search"):
+            _leave(state.CLUB_SEARCH)

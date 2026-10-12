@@ -20,10 +20,41 @@ class ClubDetail(LcTestCase):
         self.assertIn(RULE, [i.value for i in at.info])  # I-004の部活詳細分
 
     def test_I032_sections(self):
+        """SP-25: 基本情報・どんな部活？・参加の前に・活動後の過ごし方が規定の内容で表示され、開催一覧が続く。
+        4項目は押して開く部品（expander）にまとめられている（#144）。表示部品の種類は仕様が縛らないため、
+        合否は「4つのラベルが出る」と「各ラベルの中に規定の内容がある」で判定し、expander であること自体は判定しない。
+        （AppTest は閉じた expander の中身も描画する。開閉の状態は確認していない）"""
         at = self.detail()
-        subs = [s.value for s in at.subheader]
-        for h in ("基本情報", "どんな部活？", "参加の前に", "活動後の過ごし方", "開催一覧"):
-            self.assertIn(h, subs)
+        sections = {e.label: self.texts_in(e) for e in at.expander}
+        expected = {
+            "基本情報": ["拠点", "東京", "いつもの活動時間", "平日夜", "頻度", "毎週", "メンバー数", "1名"],
+            "どんな部活？": ["気軽に来てね", "社会人から始めた人：多い"],
+            "参加の前に": ["費用：無料", "途中参加・途中で抜ける：OK"],
+            "活動後の過ごし方": ["なし"],
+        }
+        for label, contents in expected.items():
+            self.assertIn(label, sections, list(sections))
+            for text in contents:
+                self.assertTrue(any(text in v for v in sections[label]), (label, text, sections[label]))
+        self.assertTrue(any(v.startswith("持ち物：") for v in sections["参加の前に"]), sections["参加の前に"])
+        self.assertIn("開催一覧", [s.value for s in at.subheader])
+
+    @staticmethod
+    def texts_in(element):
+        """要素（expander 等）の中に描画された文字列を、入れ子を含めてすべて集める。"""
+        found = []
+
+        def walk(node):
+            value = getattr(node, "value", None)
+            if isinstance(value, str):
+                found.append(value)
+            children = getattr(node, "children", None)
+            if children:
+                for child in children.values():
+                    walk(child)
+
+        walk(element)
+        return found
 
     def test_I033_future_only_in_date_order(self):
         e2 = self.w.add_event(1, day_offset=3)
@@ -58,6 +89,16 @@ class ClubDetail(LcTestCase):
         self.w.add_event(1)
         at = self.detail()
         self.assertFalse(at.exception)
+        self.assertNotIn("申し込む", self.buttons(at))
+
+    def test_I136_inactive_club_keeps_applied_label_when_already_applied(self):
+        """H-6裁定／SP-27: 非公開の部活でも、申込済みの開催では「✅ 申込済み」の表示は変わらない（「申し込む」は出ない）。"""
+        self.w.clubs[1]["is_active"] = False
+        ev = self.w.add_event(1)
+        self.w.add_application(ev, "E003")
+        at = self.detail()
+        self.assertFalse(at.exception)
+        self.assertIn("✅ 申込済み", [w.value for w in at.markdown])
         self.assertNotIn("申し込む", self.buttons(at))
 
     def test_I038_form_contents(self):
@@ -120,10 +161,14 @@ class Notifications(LcTestCase):
         at.button[0].click().run()
         self.assertEqual(at.session_state["current_page"], "messages")
 
-    def test_I061_cancel_notice_view_goes_to_club_detail(self):
-        """仕様 SP-45（はなえPM裁定2026-10-11で改訂）: 種類「中止」の通知は「見る」の対象外。"""
+    def test_I061_cancel_notice_has_no_view(self):
+        """仕様 SP-45（はなえPM裁定2026-10-11で改訂）: 種類「中止」の通知は画面に出るが「見る」は出ない（MVPの範囲を絞るため）。
+        通知が出ていることと「見る」が無いことの両方を確認する。「見る」での遷移は test_I061_view_navigates_to_messages で確認する。"""
         self.w.add_notification("E003", "中止", event_id=1)
         at = self.app("E003", page="notifications")
+        self.assertFalse(at.exception)
+        self.assertNotIn("通知はまだありません。", [i.value for i in at.info])
+        self.assertTrue(any("中止" in m.value for m in at.markdown), [m.value for m in at.markdown])
         self.assertEqual([b.label for b in at.button if b.label == "見る"], [])
 
     def test_empty_message(self):
