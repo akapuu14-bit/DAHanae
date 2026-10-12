@@ -1,0 +1,57 @@
+# S-xx 黒箱 Phase2 / α-R 実DB読取 実走結果ログ（修正後・全件通し）
+# 実行: god / 日時: 2026-10-12 09:00 JST / コード: 79d9939（ReadOnlyGuard 修正後）
+# 結果: 19 passed / 149 subtests passed / 227.37s
+# 範囲: 実DB読取のみ（書込は ReadOnlyGuard が握りつぶす・rpc 禁止）。運営（だーあさ）承認下。
+# 元データ: hive/agents/god/evidence-p2ar/ar-run-postfix.log（godのファイルはそのまま。下は ANSI 色コードだけ除いたコピー。1行目以降は god の出力）
+# 注記: 修正前の実走（10 failed / 18 passed / 139 subtests・S-13/17/18 が IndexError）は本ログではなく、修正後のこの実走が合否の根拠。
+# 構造検証 sxx-ar-offline-verify.log は実DBに接続しない別物（書き間違い検出用）。
+# ------------------------------------------------------------------
+α-R 修正後通し実走 / 79d9939 / 2026-10-12 09:00:56 JST / godセッション / 実DB読取のみ / だーあさ承認下
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0 -- /opt/anaconda3/bin/python3
+rootdir: /Users/hiroki_asada/GitHub/DAHanae/hive/agents/god/wt-p2ar
+plugins: anyio-4.12.1
+collecting ... collected 19 items
+
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S02_manage_menu_only_for_organizer_and_admin PASSED [  5%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S07_real_employee_logs_in_to_home PASSED [ 10%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S11_home_week_popular_and_level_toggle 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S11_home_week_popular_and_level_toggle PASSED [ 15%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S12_recommendations_have_score_reason_and_exclude_joined 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S12_recommendations_have_score_reason_and_exclude_joined PASSED [ 21%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S13_search_screen_and_or_matches_data 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S13_search_screen_and_or_matches_data PASSED [ 26%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S14_result_cards_show_required_rows 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S14_result_cards_show_required_rows PASSED [ 31%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S17_club_detail_shows_all_sections_and_facts 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S17_club_detail_shows_all_sections_and_facts PASSED [ 36%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S18_events_in_date_order_with_counts_and_canceled PASSED [ 42%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S24_received_tab_only_for_organizer PASSED [ 47%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S28_received_tab_shows_applicants_first_time_mark_and_stamp 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S28_received_tab_shows_applicants_first_time_mark_and_stamp PASSED [ 52%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S32_notifications_newest_first_and_unread_bold PASSED [ 57%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S35_employee_search_screen_matches_data 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S35_employee_search_screen_matches_data PASSED [ 63%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S36_private_slots_are_not_used_in_search PASSED [ 68%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S36_private_values_are_not_used_or_shown_in_search PASSED [ 73%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S37_result_cards_show_required_fields 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S37_result_cards_show_required_fields PASSED [ 78%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S40_other_profile_follows_public_settings 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S40_other_profile_follows_public_settings PASSED [ 84%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S44_admin_scope_and_new_button PASSED [ 89%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S58_club_detail_people_expose_only_needed_columns 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S58_club_detail_people_expose_only_needed_columns PASSED [ 94%]
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S60_action_logs_are_usable_for_kpi 
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S60_action_logs_are_usable_for_kpi PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S02_manage_menu_only_for_organizer_and_admin
+  /opt/anaconda3/lib/python3.11/site-packages/supabase/_sync/client.py:309: DeprecationWarning: The 'timeout' parameter is deprecated. Please configure it in the http client instead.
+    return SyncPostgrestClient(
+
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S02_manage_menu_only_for_organizer_and_admin
+  /opt/anaconda3/lib/python3.11/site-packages/supabase/_sync/client.py:309: DeprecationWarning: The 'verify' parameter is deprecated. Please configure it in the http client instead.
+    return SyncPostgrestClient(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======= 19 passed, 2 warnings, 149 subtests passed in 227.37s (0:03:47) ========
