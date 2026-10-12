@@ -179,14 +179,21 @@ class LbTestCase(unittest.TestCase):
 
 # ---------------------------------------------------------------------------
 # 書込テスト用（I-026 / I-090 / I-091）。READ-ONLYのL-B（上のクラス）とは分け、LB_WRITE=1 のときだけ動かす。
-# 共有DBに触るのは、下のセンチネル（社員 E999 と、名前が "LB-TEST-" で始まる部活）に紐づく行だけ。
+# 共有DBに触るのは、下のセンチネル（社員 E998/E999 と、名前が "LB-TEST-" で始まる部活）に紐づく行だけ。
 # 実在の行は読む（FKの参照先に使う活動IDなど）が、変更・削除しない。後始末は必ず purge_sentinels で行う。
 # ---------------------------------------------------------------------------
 
 SENTINEL_EMP_ID = "E999"  # employees.id は ^E[0-9]{3}$ の制約があり "LB-TEST" 形式は使えない。seed は E001〜E500。
 SENTINEL_EMP_NAME = "LB-TEST-employee"
 SENTINEL_CLUB_PREFIX = "LB-TEST-"  # '_' '%' ',' などは clubs_repo の検索で除外/エスケープされるので使わない
-WRITE_TABLES = ("employees", "clubs", "club_members", "employee_interests")
+SENTINEL_EMP_ID_2 = "E998"  # 申込のテストで「幹事」役にする2人目（幹事≠申込者でないと幹事あて通知が出ない）
+SENTINEL_EMP_IDS = (SENTINEL_EMP_ID_2, SENTINEL_EMP_ID)
+# 申込のテスト（S-19/25/26/20）が触る表まで含める。件数照合・残り確認・後始末の対象はこの全表。
+WRITE_TABLES = (
+    "employees", "clubs", "club_members", "employee_interests",
+    "events", "applications", "messages", "notifications", "action_logs",
+)
+_PK = {"club_members": ("club_id", "employee_id"), "employee_interests": ("employee_id", "activity_id")}
 
 
 def count_rows(client, table: str) -> int:
@@ -204,34 +211,64 @@ def _sentinel_club_ids(client) -> list[int]:
     return [r["id"] for r in rows]
 
 
-def sentinel_leftovers(client) -> dict[str, int]:
-    """センチネルに紐づく行の件数（全部0なら残っていない）。"""
+def _ids(client, table: str, column: str, values: list) -> list:
+    """column が values のどれかの行の id（値が空なら読まない）。"""
+    if not values:
+        return []
+    return [r["id"] for r in client.table(table).select("id").in_(column, values).execute().data]
+
+
+def _sentinel_filters(client) -> dict[str, list[tuple[str, list]]]:
+    """表ごとの『センチネルの行』の条件（子→親の削除順）。条件は E998/E999・センチネル部活・その開催・その申込だけ。
+
+    実在の行は、センチネルの社員・部活・開催・申込のどれにも紐づかないので、この条件に入らない。
+    """
+    emp = list(SENTINEL_EMP_IDS)
     club_ids = _sentinel_club_ids(client)
-    members = client.table("club_members").select("club_id").eq("employee_id", SENTINEL_EMP_ID).execute().data
-    if club_ids:
-        members += client.table("club_members").select("club_id").in_("club_id", club_ids).execute().data
-    interests = client.table("employee_interests").select("employee_id").eq("employee_id", SENTINEL_EMP_ID).execute().data
+    event_ids = _ids(client, "events", "club_id", club_ids)
+    app_ids = sorted(set(_ids(client, "applications", "applicant_id", emp) + _ids(client, "applications", "event_id", event_ids)))
     return {
-        "employees": len(client.table("employees").select("id").eq("id", SENTINEL_EMP_ID).execute().data),
-        "clubs": len(club_ids),
-        "club_members": len(members),
-        "employee_interests": len(interests),
+        "messages": [("sender_id", emp), ("application_id", app_ids)],
+        "notifications": [("recipient_id", emp), ("application_id", app_ids), ("event_id", event_ids)],
+        "action_logs": [("employee_id", emp), ("club_id", club_ids)],
+        "applications": [("applicant_id", emp), ("event_id", event_ids)],
+        "club_members": [("employee_id", emp), ("club_id", club_ids)],
+        "employee_interests": [("employee_id", emp)],
+        "events": [("club_id", club_ids)],
+        "clubs": [("id", club_ids)],
+        "employees": [("id", emp)],
     }
 
 
-def purge_sentinels(client) -> None:
-    """センチネル行だけを、FKの子から順に消す。キーは E999 / 名前prefix だけで絞る。
+def sentinel_leftovers(client) -> dict[str, int]:
+    """センチネルに紐づく行の件数（全部0なら残っていない）。表をまたいで重複する行は1件と数える。"""
+    counts = {}
+    for table, filters in _sentinel_filters(client).items():
+        pk = _PK.get(table, ("id",))
+        rows = set()
+        for column, values in filters:
+            if values:
+                data = client.table(table).select(",".join(pk)).in_(column, values).execute().data
+                rows |= {tuple(r[k] for k in pk) for r in data}
+        counts[table] = len(rows)
+    return counts
 
-    重複拒否の制約が無かった場合でも、消すのは E999 / センチネル部活の行だけなので実データは巻き込まない。
+
+def purge_sentinels(client) -> None:
+    """センチネル行だけを、FKの子から順に消す。キーは E998/E999・名前prefix・その開催/申込のidだけで絞る。
+
+    重複拒否の制約が無かった場合でも、消すのはセンチネルに紐づく行だけなので実データは巻き込まない。
+    先に全表の条件を作ってから消す（親を消した後に子を探せなくならないように）。
     """
-    club_ids = _sentinel_club_ids(client)
-    client.table("club_members").delete().eq("employee_id", SENTINEL_EMP_ID).execute()
-    if club_ids:
-        client.table("club_members").delete().in_("club_id", club_ids).execute()
-    client.table("employee_interests").delete().eq("employee_id", SENTINEL_EMP_ID).execute()
-    if club_ids:
-        client.table("clubs").delete().in_("id", club_ids).execute()
-    client.table("employees").delete().eq("id", SENTINEL_EMP_ID).execute()
+    for table, filters in _sentinel_filters(client).items():
+        for column, values in filters:
+            if values:
+                client.table(table).delete().in_(column, values).execute()
+
+
+def is_unique_violation(exc: Exception) -> bool:
+    """PostgreSQL の unique_violation（23505）か。PostgREST のエラーは code に入る。"""
+    return getattr(exc, "code", None) == "23505" or "duplicate key" in str(exc).lower()
 
 
 class LbWriteTestCase(LbTestCase):
@@ -243,15 +280,17 @@ class LbWriteTestCase(LbTestCase):
             raise unittest.SkipTest("L-B書込: LB_WRITE=1 のときだけ実行（共有DBへ書くため。運営承認済みの実走用）")
         super().setUpClass()
 
-    def start_write_test(self):
+    def start_write_test(self, *, second_employee: bool = False):
         """前提確認→件数の控え→センチネル社員の投入。終了時（成功・失敗とも）に必ず後始末して件数を照合する。
 
         self.activity_id に実在の活動ID（FKの参照だけで変更しない）を入れる。
+        second_employee=True なら E998（幹事役）も投入する（E999 は申込者役）。
         """
         db = self.db
-        existing = db.table("employees").select("id, name").eq("id", SENTINEL_EMP_ID).execute().data
-        if existing and existing[0]["name"] != SENTINEL_EMP_NAME:
-            self.skipTest(f"{SENTINEL_EMP_ID} が実社員として存在する。センチネルに使えないので何も書かない")
+        for emp_id in SENTINEL_EMP_IDS:  # どちらかが実社員なら、どちらも使わず何も書かない
+            existing = db.table("employees").select("id, name").eq("id", emp_id).execute().data
+            if existing and existing[0]["name"] != SENTINEL_EMP_NAME:
+                self.skipTest(f"{emp_id} が実社員として存在する。センチネルに使えないので何も書かない")
         if any(sentinel_leftovers(db).values()):  # 前回の異常終了の残り（センチネルだけ）。消してから始める
             purge_sentinels(db)
         activities = db.table("activities").select("id").order("id").limit(1).execute().data
@@ -261,11 +300,12 @@ class LbWriteTestCase(LbTestCase):
 
         before = snapshot_counts(db)
         self.addCleanup(self._finish_write_test, before)  # 以降に失敗しても必ず実行される
-        db.table("employees").insert({
-            "id": SENTINEL_EMP_ID, "name": SENTINEL_EMP_NAME, "dept": "LB-TEST", "location": "東京",
-            "joined_year": 2000, "entry_type": "新卒", "interests_public": False, "slots_public": False,
-            "is_admin": False,
-        }).execute()
+        for emp_id in ((SENTINEL_EMP_ID_2, SENTINEL_EMP_ID) if second_employee else (SENTINEL_EMP_ID,)):
+            db.table("employees").insert({
+                "id": emp_id, "name": SENTINEL_EMP_NAME, "dept": "LB-TEST", "location": "東京",
+                "joined_year": 2000, "entry_type": "新卒", "interests_public": False, "slots_public": False,
+                "is_admin": False,
+            }).execute()
 
     def _finish_write_test(self, before):
         purge_sentinels(self.db)
@@ -273,7 +313,19 @@ class LbWriteTestCase(LbTestCase):
         self.assertEqual(sentinel_leftovers(self.db), {t: 0 for t in WRITE_TABLES}, "センチネル行が残っている")
         self.assertEqual(after, before, "テスト前後で件数が戻っていない（他者の同時書込の可能性もある。再実行して確認）")
 
-    def insert_sentinel_club(self, tag: str) -> dict:
+    def insert_sentinel_event(self, club_id: int, *, days_ahead: int = 30) -> dict:
+        """センチネル部活の開催（予定・days_ahead 日後の 10:00〜12:00・日本時間）を events_repo.create で1件投入し、その行を返す。
+
+        開始時刻が未来でないと申込できない（SP-66）ので、既定は30日後。
+        """
+        data = {
+            "club_id": club_id, "event_date": (datetime.now(JST).date() + timedelta(days=days_ahead)).isoformat(),
+            "start_time": "10:00:00", "end_time": "12:00:00", "meeting_place": f"{SENTINEL_CLUB_PREFIX}place",
+            "status": "予定",
+        }
+        return {**data, "id": self.env.events_repo.create(data)}
+
+    def insert_sentinel_club(self, tag: str, *, organizer_id: str = SENTINEL_EMP_ID) -> dict:
         """is_active=false のセンチネル部活を repo の create で1件投入し、その行（id付き）を返す。"""
         import uuid
 
@@ -281,6 +333,6 @@ class LbWriteTestCase(LbTestCase):
             "name": f"{SENTINEL_CLUB_PREFIX}{tag}-{uuid.uuid4().hex[:6]}", "activity_id": self.activity_id,
             "location": "東京", "slot": "平日夜", "frequency": "不定期", "level": "レベル問わず",
             "fact_adult_starters": "いない", "fee": "無料", "rental": "なし", "join_leave": "要相談",
-            "after_activity": "なし", "organizer_id": SENTINEL_EMP_ID, "is_active": False,
+            "after_activity": "なし", "organizer_id": organizer_id, "is_active": False,
         }
         return {**data, "id": self.env.clubs_repo.create(data)}

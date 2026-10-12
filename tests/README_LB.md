@@ -85,3 +85,37 @@ LB_WRITE=1 python3 -m pytest tests/test_lb_writes.py -v -rs
 - `python3 tests/lb_dryrun.py utc-date|ignore-public|week-end-today|or-as-and` … 意図的な不具合を入れ、該当テストが落ちることを確認する。
 - 証拠: `02_プロジェクト/bukatsu_concierge/evidence/test/I/lb-offline-verify.log`
 - `LB_WRITE=1 python3 tests/lb_writes_dryrun.py [no-unique|active-leak|real-e999|leftover]` … 書込テストをメモリ内DB（一意制約・FK・identity付き）で回し、投入→検証→後始末→件数照合を確認する。`no-unique`（一意制約なし）と `active-leak`（is_active無視）ではテストが落ちること、どの場合もセンチネルが残らないこと、`real-e999`（E999が実社員）では何も書かずskipすること、`leftover`（前回の残り）を片付けて通ること。実DBの合否ではない。
+
+## 申込・キャンセルの書込テスト（S-19 / S-20 DB分 / S-25 / S-26）— α-W・運営承認済み・LB_WRITE=1 のときだけ
+
+層は α-W（`application_service.apply` / `cancel` を実repo＋実DBで呼ぶ。画面は通さない）。方式は上の I-026/090/091 と同じ（センチネルを投入 → 検証 → 必ず後始末）。
+
+### 実行コマンド（god が実DBで回す。`allowed_domains=["*.supabase.co"]`）
+
+```
+LB_WRITE=1 python3 -m pytest tests/test_sxx_appt_aw_apply_cancel.py -v -rs
+```
+
+- `LB_WRITE=1` が無い・secrets 無し・接続不可は、4件とも自動 skip。L-A/L-C（偽repo）とは別プロセスで回す（同居すると skip）。
+- `scripts/reset_data.py` は使わない。書くのは下のセンチネルの行だけ。
+
+| テスト | S-xx | 検証すること（期待結果の根拠: テスト設計.md S-xx・仕様.md SP-66/SP-67） |
+| --- | --- | --- |
+| test_S19_apply_writes_application_message_notification_and_log | S-19 | 申込で `applications` 1行（申込済み・初参加・canceled_at空）、一言ありなら `messages` 1行、幹事あて通知1件（種類「申込」・未読）、操作履歴 apply 1件。一言が空/空白/None なら `messages` は増えない |
+| test_S25_cancel_updates_status_and_notifies_organizer | S-25 | キャンセルで status=キャンセル・canceled_at が入り、幹事あてに種類「キャンセル」の通知。やり取り（messages）は残る |
+| test_S26_reapply_after_cancel_is_a_new_application | S-26 | キャンセル後の再申込は別の application_id。(開催, 申込者) の行は キャンセル1＋申込済み1、有効は1行。やり取りは申込ごとに別 |
+| test_S20_db_rejects_second_active_application_for_same_event | S-20（DB分） | service の再申込は `ConflictError(already_applied)`。service を通さず「申込済み」を直接 insert → unique_violation(23505)（部分一意インデックス）。有効な申込は1行のまま |
+
+### 設計メモ（センチネル・後始末）
+
+- 投入する行: 社員 `E998`（幹事役）・`E999`（申込者役）＝どちらも name=`LB-TEST-employee`（`employees.id` の CHECK `^E[0-9]{3}$` のため seed 範囲外の E998/E999）。部活（名前 `LB-TEST-<S番号>-<hex>`・is_active=false・幹事=E998）、その開催（30日後・予定・10:00〜12:00・場所 `LB-TEST-place`）。申込が副作用で書く行（applications・messages・notifications・action_logs）はサービスが作る。
+- **副作用の後始末**: 4件とも `addCleanup` で必ず実行。`purge_sentinels` は子→親の順（messages → notifications → action_logs → applications → club_members → employee_interests → events → clubs → employees）で、条件は **E998/E999・`LB-TEST-%` 部活・その部活の開催・その申込の id だけ**。先に全表の条件を作ってから消す。実在の行は、この条件のどれにも紐づかないので巻き込まない。
+- **件数照合**: 9表（employees/clubs/club_members/employee_interests/events/applications/messages/notifications/action_logs）の件数を前後で比べ、センチネル残り0を assert。**他の人が同時に操作すると（特に action_logs・notifications）件数がずれて落ちうる。** その場合は再実行し、`センチネル残り` が全表0かをログで確認する。
+- E998/E999 のどちらかが実社員として既にあれば（name が `LB-TEST-employee` でない）何も書かず skip。前回の異常終了の残り（センチネルだけ）は開始時に消す。
+- **残る副作用（戻せない）**: identity 採番が進む。1回の実走（4件・全て通った場合）の採番の進みは、メモリ内DBでの実測で clubs +4、events +7、applications +8、messages +5、notifications +10、action_logs +8。実DBでは S-20 の拒否された重複 insert でも applications の採番が1つ進む（PostgreSQL の挙動の見立て・未確認）ので applications は +9 前後。行は残らないが欠番ができる。失敗や再実行で増える。
+- 一過性の見え方: 投入〜削除の間、E998/E999 が社員検索の名前検索に出うる。部活は is_active=false なので部活検索には出ない。センチネルの開催は非公開部活の下なので、ホーム/検索の開催一覧には出ない。
+- スコープ外（足していない）: S-61（中止の通知）、幹事本人の申込、他人のキャンセル・開始後のキャンセル、画面経由の操作。
+
+### オフライン検証（実DB不要）
+
+`LB_WRITE=1 python3 tests/sxx_aw_dryrun.py [no-unique|no-cancel-notice|reapply-blocked|purge-miss|real-e998|leftover]` … メモリ内DB（FK・identity・既定値・「申込済み」の部分一意インデックス付き）に実の application_service をつなぐ。通常=4件通り・DBが元と同一、`no-unique`=S-20が落ちる、`no-cancel-notice`=S-25が落ちる、`reapply-blocked`=S-26が落ちる（いずれも残り0）、`purge-miss`（通知の消し漏らし）=残り検出で全件失敗、`real-e998`=skip、`leftover`=前回の残りを片付けて通る。実DBの合否ではない。証拠: `02_プロジェクト/bukatsu_concierge/evidence/test/S/sxx-aw-offline-verify.log`
