@@ -1,0 +1,54 @@
+# S-xx 黒箱 Phase2 T1 / α-R オフライン構造検証（実DBには接続していない）
+日時: 2026-10-11 15:15 JST 実行者: Kurosu
+注意: 合成データのドライランは書き間違い検出用で、実DBの合否は何も示さない。
+
+## 1. 収集
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S02_manage_menu_only_for_organizer_and_admin
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S07_real_employee_logs_in_to_home
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S11_home_week_popular_and_level_toggle
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S12_recommendations_have_score_reason_and_exclude_joined
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S13_search_screen_and_or_matches_data
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S14_result_cards_show_required_rows
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S17_club_detail_shows_all_sections_and_facts
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S18_events_in_date_order_with_counts_and_canceled
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S24_received_tab_only_for_organizer
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S28_received_tab_shows_applicants_first_time_mark_and_stamp
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S32_notifications_newest_first_and_unread_bold
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S35_employee_search_screen_matches_data
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S36_private_slots_are_not_used_in_search
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S36_private_values_are_not_used_or_shown_in_search
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S37_result_cards_show_required_fields
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S40_other_profile_follows_public_settings
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S44_admin_scope_and_new_button
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S58_club_detail_people_expose_only_needed_columns
+tests/test_sxx_appt_ar_real.py::SxxAR::test_S60_action_logs_are_usable_for_kpi
+tests/test_sxx_guard.py::GuardTest::test_not_chain_on_blocked_write_is_safe
+tests/test_sxx_guard.py::GuardTest::test_reads_pass_through_and_writes_never_reach_the_client
+tests/test_sxx_guard.py::GuardTest::test_uninstall_restores_client
+
+22 tests collected in 0.42s
+
+## 2. skip分岐
+SKIPPED [19] L-B skip: .streamlit/secrets.toml が見つからない
+19 skipped in 0.34s
+(偽repoと同居) L-B skip: 偽の db.client（tests/fakes.py）が入っている。L-Bは別プロセスで実行する
+
+## 3. ReadOnlyGuard（書込を実DBに届けない）
+3 passed in 0.01s
+
+## 4. ドライラン（合成データ）: python3 tests/sxx_ar_dryrun.py
+Ran 19 tests in 21.697s
+OK
+
+## 5. 検出力（意図的な不具合）: python3 tests/sxx_ar_dryrun.py --mutate <名前>
+--- week-end-today
+   1 test_S11_home_week_popular_and_level_toggle
+--- leak-private
+   1 test_S36_private_values_are_not_used_or_shown_in_search
+--- recommend-joined
+   1 test_S12_recommendations_have_score_reason_and_exclude_joined
+--- ignore-slots
+   2 test_S13_search_screen_and_or_matches_data
+--- drop-first-time-mark
+   1 test_S11_home_week_popular_and_level_toggle
+   4 test_S28_received_tab_shows_applicants_first_time_mark_and_stamp

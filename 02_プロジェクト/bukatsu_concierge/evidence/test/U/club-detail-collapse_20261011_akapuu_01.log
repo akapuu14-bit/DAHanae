@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-8.4.2, pluggy-1.6.0 -- /usr/bin/python3
+rootdir: /sessions/rcw-01qkt3ozmtgt5muqamhxy6ik/mnt/DAHanae
+plugins: anyio-4.15.1
+collecting ... collected 8 items
+
+tests/frontend/test_club_detail_sections.py::test_four_sections_are_collapsed_by_default PASSED [ 12%]
+tests/frontend/test_club_detail_sections.py::test_contents_are_unchanged_inside_collapsed_sections PASSED [ 25%]
+tests/frontend/test_club_detail_sections.py::test_one_event_is_not_collapsed PASSED [ 37%]
+tests/frontend/test_club_detail_sections.py::test_next_event_stays_open_and_others_are_collapsed PASSED [ 50%]
+tests/frontend/test_login.py::test_shows_app_name_and_tagline PASSED     [ 62%]
+tests/frontend/test_login.py::test_shows_demo_note PASSED                [ 75%]
+tests/frontend/test_login.py::test_wrong_credentials_show_error_and_stay_logged_out PASSED [ 87%]
+tests/frontend/test_login.py::test_success_records_official_id_not_typed_one PASSED [100%]
+
+============================== 8 passed in 3.72s ===============================

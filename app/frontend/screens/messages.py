@@ -50,10 +50,10 @@ def _to_date(value):
 
 
 def _format_event(event):
-    """開催の日時を「10/12(月) 19:00〜20:30」の形にする。"""
+    """開催の日時を「10/12（月）19:00〜20:30」の形にする。"""
     day = _to_date(event["event_date"])
     weekday = "月火水木金土日"[day.weekday()]
-    return f"{day.month}/{day.day}({weekday}) {_hhmm(event['start_time'])}〜{_hhmm(event['end_time'])}"
+    return f"{day.month}/{day.day}（{weekday}）{_hhmm(event['start_time'])}〜{_hhmm(event['end_time'])}"
 
 
 def _start_datetime(event):
