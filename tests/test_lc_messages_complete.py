@@ -22,7 +22,7 @@ class Messages(LcTestCase):
         self.assertIn("まだ申込は届いていません。", infos)
 
     def test_I057_wording_per_spec(self):
-        """仕様 SP-42（はなえPM裁定2026-10-11で実装に合わせ改訂）: 自分の申込0件の文言。"""
+        """仕様 SP-42（はなえPM裁定2026-10-11で実装に合わせ改訂）: 自分の申込0件は『まだ申込はありません。部活を探して、気になる開催に申し込んでみましょう。』。"""
         at = self.app("E003", page="messages")
         self.assertIn("まだ申込はありません。部活を探して、気になる開催に申し込んでみましょう。", [i.value for i in at.info])
 

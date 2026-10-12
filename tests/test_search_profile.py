@@ -301,11 +301,24 @@ class ProfileTests(LaTestCase):
         self.assertEqual(self.w.interests["E003"], [])
         self.assertEqual(self.w.employees["E003"]["available_slots"], [])
 
-    def test_I143_error_order_permission_before_not_found(self):
-        with self.assertRaises(PermissionDeniedError):
+    def test_I143_error_order_not_found_before_permission(self):
+        # 契約1.6（PM裁定）: 判定順は NotFound → 権限。存在しない社員は、本人以外が操作しても NotFound。
+        with self.assertRaises(NotFoundError):
             prof.update_public_settings("E999", "E003", interests_public=True)
         with self.assertRaises(NotFoundError):
             prof.update_public_settings("E999", "E999", interests_public=True)
+        with self.assertRaises(PermissionDeniedError):  # 存在する社員への他人の操作は権限エラー
+            prof.update_public_settings("E003", "E005", interests_public=True)
+
+    def test_I144_I145_save_profile_error_order_not_found_permission_validation(self):
+        bad = [{"activity_id": 99, "level": "達人"}]
+        with self.assertRaises(NotFoundError):
+            prof.save_profile("E999", "E003", [], [])  # 存在しない社員 × 他人 → NotFound が先
+        with self.assertRaises(PermissionDeniedError):
+            prof.save_profile("E003", "E005", bad, ["深夜"])  # 他人 × 不正入力 → 権限が先
+        with self.assertRaises(ValidationError):
+            prof.save_profile("E003", "E003", bad, ["深夜"])  # 本人 × 不正入力 → 入力エラー
+        self.assertEqual(self.w.interests["E003"], [{"activity_id": 1, "level": "初心者"}])
 
 
 if __name__ == "__main__":
