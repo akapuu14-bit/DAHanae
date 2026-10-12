@@ -12,3 +12,8 @@
 02_プロジェクト/bukatsu_concierge/inputs/*.pdf
 02_プロジェクト/bukatsu_concierge/inputs/*.docx
 .streamlit/secrets.toml
+
+# Python の実行時に自動で作られるキャッシュ・エディタ(VS Code)の個人設定
+__pycache__/
+*.pyc
+.vscode/
