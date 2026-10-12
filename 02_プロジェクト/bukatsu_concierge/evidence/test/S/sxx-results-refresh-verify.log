@@ -1,0 +1,49 @@
+# 結果反映・S-52修正後の確認（2026-10-12・Codex）
+# 検証対象: main ef498df（#153マージ後、#155の全角括弧修正を含む）。アプリ・テストコード変更なし。
+# Python 3.11.15 / pytest 9.0.3
+# 全コマンドはLB_SKIP=1 LB_WRITE=0。実DB接続・書込なし。
+# S-52はα-0の書式テストのみ。実機βの合格を意味しない。
+
+## TZ=UTC 全体テスト: python -m pytest tests -q
+........................................................................ [ 22%]
+...................................................sssssssssssssssssss.. [ 44%]
+........................................................................ [ 66%]
+................................................................................s.....sssssssssssssssssss....        [100%]
+286 passed, 39 skipped, 28 subtests passed in 99.79s (0:01:39)
+
+## TZ=UTC S-52: python -m pytest tests/test_sxx_appt_a0_screens.py -k S52 -v
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0 -- /opt/anaconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /private/tmp/dahanae-codex-results
+plugins: anyio-4.12.1
+collecting ... collected 20 items / 16 deselected / 4 selected
+
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_application_complete_datetime_format PASSED [ 25%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_admin_events_datetime_format PASSED [ 50%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_detail_event_datetime_format PASSED [ 75%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_messages_event_datetime_format PASSED [100%]
+
+======================= 4 passed, 16 deselected in 3.85s =======================
+
+## TZ=Asia/Tokyo 全体テスト: python -m pytest tests -q
+........................................................................ [ 22%]
+...................................................sssssssssssssssssss.. [ 44%]
+........................................................................ [ 66%]
+................................................................................s.....sssssssssssssssssss....        [100%]
+286 passed, 39 skipped, 28 subtests passed in 99.76s (0:01:39)
+
+## TZ=Asia/Tokyo S-52: python -m pytest tests/test_sxx_appt_a0_screens.py -k S52 -v
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0 -- /opt/anaconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /private/tmp/dahanae-codex-results
+plugins: anyio-4.12.1
+collecting ... collected 20 items / 16 deselected / 4 selected
+
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_application_complete_datetime_format PASSED [ 25%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_admin_events_datetime_format PASSED [ 50%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_club_detail_event_datetime_format PASSED [ 75%]
+tests/test_sxx_appt_a0_screens.py::ScreenFlows::test_S52_messages_event_datetime_format PASSED [100%]
+
+======================= 4 passed, 16 deselected in 3.46s =======================
