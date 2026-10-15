@@ -139,15 +139,19 @@ def _organizer_of(application: dict, cache: dict) -> dict:
     return dict(cache[organizer_id])
 
 
+def _sorted_mine(rows: list[dict]) -> list[dict]:
+    now = _now()
+    front = sorted((a for a in rows if not _is_back_group(a, now)), key=_start_key)
+    back = sorted((a for a in rows if _is_back_group(a, now)), key=_start_key, reverse=True)
+    return front + back
+
+
 def list_my_applications(employee_id: str) -> list[dict]:
     """自分の申込一覧（SP-37）。前側は開催日が近い順、後ろ側（終わった開催・キャンセル）は新しい順。
 
     各dictに "messages" と "organizer"（幹事 {"id", "name"}）を付ける。
     """
-    now = _now()
     rows = applications_repo.list_by_applicant(employee_id)
-    front = sorted((a for a in rows if not _is_back_group(a, now)), key=_start_key)
-    back = sorted((a for a in rows if _is_back_group(a, now)), key=_start_key, reverse=True)
     organizers: dict = {}
     return [
         {
@@ -155,8 +159,51 @@ def list_my_applications(employee_id: str) -> list[dict]:
             "messages": messages_repo.list_by_application(a["id"]),
             "organizer": _organizer_of(a, organizers),
         }
-        for a in front + back
+        for a in _sorted_mine(rows)
     ]
+
+
+def get_messages_page(employee_id: str) -> dict:
+    """メッセージ画面（S06）の表示に要る値を、まとめて取る（設計 D-08。申込ごと・部活ごとに取らない）。
+
+    {"is_organizer": どこかの部活の幹事か, "mine": list_my_applications と同じ,
+     "received": list_received_applications と同じ（幹事でなければ空）}。
+    やり取り（messages）と幹事の氏名は、申込の件数に関係なく1回ずつ取る。
+    既読化（SP-36）は含まない。呼び出し側が、一覧を取ったあとに行う。
+    """
+    clubs = clubs_repo.list_by_organizer(employee_id.strip().upper())
+    is_organizer = bool(clubs)
+    mine_rows = _sorted_mine(applications_repo.list_by_applicant(employee_id))
+
+    received_rows: list[dict] = []
+    if is_organizer:
+        unread_application_ids = {
+            n["application_id"]
+            for n in notification_service.list_notifications(employee_id)
+            if n["is_unread"] and n.get("application_id") is not None
+        }
+        received_rows = applications_repo.list_by_organizer_clubs([c["id"] for c in clubs])
+        received_rows.sort(key=lambda a: (a["applied_at"], a["id"]), reverse=True)
+        received_rows.sort(key=lambda a: 0 if a["id"] in unread_application_ids else 1)
+
+    application_ids = [a["id"] for a in mine_rows] + [a["id"] for a in received_rows]
+    messages = messages_repo.list_by_applications(application_ids) if application_ids else {}
+    organizer_ids = [a["events"]["clubs"]["organizer_id"] for a in mine_rows]
+    employees = employees_repo.get_by_ids(organizer_ids) if organizer_ids else {}
+    organizers = {
+        oid: {"id": employees[oid]["id"], "name": employees[oid]["name"]} if oid in employees
+        else {"id": oid, "name": None}
+        for oid in organizer_ids
+    }
+    return {
+        "is_organizer": is_organizer,
+        "mine": [
+            {**a, "messages": messages.get(a["id"], []),
+             "organizer": dict(organizers[a["events"]["clubs"]["organizer_id"]])}
+            for a in mine_rows
+        ],
+        "received": [{**a, "messages": messages.get(a["id"], [])} for a in received_rows],
+    }
 
 
 def list_received_applications(organizer_id: str) -> list[dict]:

@@ -193,12 +193,12 @@ def _render_received(me, applications):
 
 def render():
     me = st.session_state["employee_id"]
-    is_organizer = auth_service.is_organizer(me)
 
     # 先に一覧を取ってから、既読にする（順番が大事）。
     # 一覧は「未読の通知がある申込を先頭に」並べる作り（SP-40）。先に既読にすると、その並びが効かなくなる。
-    mine = application_service.list_my_applications(me)
-    received = application_service.list_received_applications(me) if is_organizer else []
+    # 幹事かどうか・自分の申込・届いた申込は、まとめて1回で取る（D-08）。
+    page = application_service.get_messages_page(me)
+    is_organizer, mine, received = page["is_organizer"], page["mine"], page["received"]
     notification_service.mark_read_for_messages_screen(me)  # SP-36
     state.invalidate_unread()  # 既読化の直後：サイドバーの未読件数を次の描画で取り直す（SP-84①）
 
