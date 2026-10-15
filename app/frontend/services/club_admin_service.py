@@ -18,7 +18,7 @@ from repositories import (
     employees_repo,
     events_repo,
 )
-from services import auth_service, notification_service
+from services import auth_service, cache_service, notification_service
 from services.errors import (
     ConflictError,
     NotFoundError,
@@ -271,8 +271,11 @@ def create_club(requester_id: str, fields: dict) -> int:
             raise ValidationError(f"required:{key}")
     data = _club_data(fields)
     data["is_active"] = True
-    club_id = clubs_repo.create(data)
-    club_members_repo.add_member(club_id, data["organizer_id"])
+    try:
+        club_id = clubs_repo.create(data)
+        club_members_repo.add_member(club_id, data["organizer_id"])
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # 登録の直後（SP-84②）
     return club_id
 
 
@@ -307,11 +310,14 @@ def update_club(club_id: int, requester_id: str, fields: dict) -> None:
     data = _club_data(fields)
     if not data:
         return
-    clubs_repo.update(club_id, data)
-    new_organizer = data.get("organizer_id")
-    if new_organizer is not None and new_organizer != club["organizer_id"]:
-        if not club_members_repo.is_member(club_id, new_organizer):
-            club_members_repo.add_member(club_id, new_organizer)
+    try:
+        clubs_repo.update(club_id, data)
+        new_organizer = data.get("organizer_id")
+        if new_organizer is not None and new_organizer != club["organizer_id"]:
+            if not club_members_repo.is_member(club_id, new_organizer):
+                club_members_repo.add_member(club_id, new_organizer)
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # 編集の直後（SP-84②）
 
 
 # --- 開催 -------------------------------------------------------------------
@@ -362,7 +368,10 @@ def create_event(club_id: int, requester_id: str, fields: dict) -> int:
     row = _event_row(parsed)
     row["club_id"] = club_id
     row["status"] = "予定"
-    return events_repo.create(row)
+    try:
+        return events_repo.create(row)
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # 開催の追加の直後（SP-84②）
 
 
 def update_event(event_id: int, requester_id: str, fields: dict) -> None:
@@ -383,7 +392,10 @@ def update_event(event_id: int, requester_id: str, fields: dict) -> None:
         raise ValidationError("end_before_start")
     if not parsed:
         return
-    events_repo.update(event_id, _event_row(parsed))
+    try:
+        events_repo.update(event_id, _event_row(parsed))
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # 開催の編集の直後（SP-84②）
 
 
 def set_event_status(event_id: int, requester_id: str, status: str) -> None:
@@ -399,7 +411,10 @@ def set_event_status(event_id: int, requester_id: str, status: str) -> None:
         raise ValidationError("invalid:status")
     if event["status"] == status:
         raise ConflictError("same_status")
-    events_repo.set_status(event_id, status)
+    try:
+        events_repo.set_status(event_id, status)
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # 中止・予定に戻すの直後（SP-84②）
     if status == "中止":
         for application in applications_repo.list_participants(event_id):
             notification_service.notify(
@@ -412,6 +427,19 @@ def set_event_status(event_id: int, requester_id: str, status: str) -> None:
 
 
 def get_club_admin_page(requester_id: str, club_id: int | None = None, *, with_detail: bool = True) -> dict:
+    """管理画面（キャッシュあり。社員ごと・部活ごと・日ごと）。中身は _get_club_admin_page。
+
+    登録・編集・中止・メンバー変更の直後に無効化（SP-84②）。
+    """
+    return _get_club_admin_page_cached(requester_id, club_id, with_detail, _today().isoformat())
+
+
+@cache_service.cached(cache_service.CLUB_ADMIN)
+def _get_club_admin_page_cached(requester_id: str, club_id, with_detail: bool, day: str) -> dict:
+    return _get_club_admin_page(requester_id, club_id, with_detail=with_detail)
+
+
+def _get_club_admin_page(requester_id: str, club_id: int | None = None, *, with_detail: bool = True) -> dict:
     """管理画面（S10）の表示に要る値を、まとめて取る（設計 D-08。画面を開いたときの往復を減らす）。
 
     返す dict：
@@ -548,7 +576,10 @@ def add_club_member(club_id: int, requester_id: str, employee_id: str) -> None:
         raise PermissionDeniedError()
     if club_members_repo.is_member(club_id, employee["id"]):
         raise ConflictError("already_member")
-    club_members_repo.add_member(club_id, employee["id"])
+    try:
+        club_members_repo.add_member(club_id, employee["id"])
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # メンバー追加の直後（SP-84②）
 
 
 def remove_club_member(club_id: int, requester_id: str, employee_id: str) -> None:
@@ -567,7 +598,10 @@ def remove_club_member(club_id: int, requester_id: str, employee_id: str) -> Non
         raise NotFoundError(f"club {club_id}")
     if _same_id(employee["id"], club["organizer_id"]):
         raise ConflictError("organizer")
-    club_members_repo.remove_member(club_id, employee["id"])
+    try:
+        club_members_repo.remove_member(club_id, employee["id"])
+    finally:
+        cache_service.invalidate(cache_service.CLUB)  # メンバー削除の直後（SP-84②）
 
 
 def list_selectable_employees(requester_id: str) -> list[dict]:

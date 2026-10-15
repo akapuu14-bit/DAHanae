@@ -15,6 +15,7 @@
 実行（リポジトリ直下。DB・ネットワーク・secrets を使わない）:
     python3 tests/count_profile.py            # Markdown の表を出す
     python3 tests/count_profile.py --json     # JSON を出す
+    python3 tests/count_profile.py --warm     # 2回目以降（D-07 のキャッシュあり）の値を出す。判定には使わない
 """
 
 import json
@@ -30,6 +31,11 @@ import fakes  # noqa: E402  (db.client をダミー化し、app/frontend を sys
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 import state  # noqa: E402
+from services import cache_service  # noqa: E402
+
+# 既定は D-07 のキャッシュを切る（判定は D-06＋D-08 の初回＝キャッシュなし。S-64・I-211）。--warm のときだけ入れる。
+WARM = "--warm" in sys.argv
+cache_service.ENABLED = WARM
 
 APP = str(ROOT / "app" / "frontend" / "app.py")
 WRITE_PREFIX = ("insert", "update", "set_", "add_member", "remove_member", "mark_read", "create", "delete", "upsert")
@@ -186,13 +192,23 @@ def by_key_prefix(prefix):
 def measure(rows, tid, label, role, scale_name, emp, start, prep, action, note=""):
     """起点の画面を開き、準備の操作を行ってから、測る操作を1回行って集計する。"""
     row = {"id": tid, "transition": label, "role": role, "scale": scale_name, "note": note}
-    try:
+
+    def flow():
         at = new_app(emp, start)
         at.run()
         for p in prep:
             p(at)
         reset()
         action(at)
+        return at
+
+    try:
+        if WARM:
+            # 2回目以降（D-07 のキャッシュが温まった状態）：同じ操作を1回行って（数えない）、もう1回測る。
+            # 判定（S-64・I-211）には使わない。既読化などの書込みは1回目で済むため、2回目には残らない（備考）。
+            cache_service.clear_all()
+            flow()
+        at = flow()
         row.update(tally(at))
     except LookupError as e:
         row.update({"skipped": str(e)})

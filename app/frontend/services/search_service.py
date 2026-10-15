@@ -16,6 +16,7 @@ from repositories import (
     employees_repo,
     events_repo,
 )
+from services import cache_service
 from services.errors import NotFoundError
 
 _JST = ZoneInfo("Asia/Tokyo")
@@ -96,7 +97,19 @@ def _sorted_by_next_event(cards: list[dict]) -> list[dict]:
 
 
 def search_clubs(conditions: dict) -> list[dict]:
-    """部活検索（SP-64）。is_active の部活を次回開催日が近い順（予定なしは最後）で返す。"""
+    """部活検索（SP-64）。is_active の部活を次回開催日が近い順（予定なしは最後）で返す。
+
+    条件ごと・日ごとにキャッシュする。自分の申込・キャンセル、部活・開催の変更の直後に無効化（SP-84②）。
+    """
+    return _search_clubs_cached(conditions or {}, _today().isoformat())
+
+
+@cache_service.cached(cache_service.CLUB_SEARCH)
+def _search_clubs_cached(conditions: dict, day: str) -> list[dict]:
+    return _search_clubs(conditions)
+
+
+def _search_clubs(conditions: dict) -> list[dict]:
     next_dates = _next_event_dates()
     cards = [_card(c, next_dates.get(c["id"])) for c in clubs_repo.search(conditions or {})]
     return _sorted_by_next_event(cards)
@@ -166,6 +179,19 @@ def get_popular_clubs() -> list[dict]:
 
 
 def get_home_page(employee_id: str) -> dict:
+    """ホームの今週・人気・おすすめ（キャッシュあり。社員ごと・日ごと）。中身は _get_home_page。
+
+    自分の申込・キャンセル、開催の追加・中止、自分のプロフィール保存の直後に無効化（SP-84②）。
+    """
+    return _get_home_page_cached(employee_id, _today().isoformat())
+
+
+@cache_service.cached(cache_service.HOME)
+def _get_home_page_cached(employee_id: str, day: str) -> dict:
+    return _get_home_page(employee_id)
+
+
+def _get_home_page(employee_id: str) -> dict:
     """ホーム（S02）の表示に要る値を、まとめて取る（設計 D-08。部活・開催・申込を部活ごとに取らない）。
 
     {"week": get_this_week_clubs と同じ, "popular": get_popular_clubs と同じ,
@@ -251,12 +277,22 @@ def _recommend(employee: dict, interests: dict, joined: set, clubs: list[dict], 
 
 
 def list_departments() -> list[str]:
-    """社員検索（S08）の部署の選択肢（SP-48）。employees.dept の重複を除いた文字列昇順のリスト。"""
+    """社員検索（S08）の部署の選択肢（SP-48）。employees.dept の重複を除いた文字列昇順のリスト。（キャッシュあり）"""
+    return _list_departments_cached()
+
+
+@cache_service.cached(cache_service.CHOICES)
+def _list_departments_cached() -> list[str]:
     return employees_repo.list_departments()
 
 
 def list_activities() -> list[dict]:
-    """活動マスタ（SP-48, SP-57）。[{"id", "name"}] を id 昇順で返す。0件なら空リスト。"""
+    """活動マスタ（SP-48, SP-57）。[{"id", "name"}] を id 昇順で返す。0件なら空リスト。（キャッシュあり）"""
+    return _list_activities_cached()
+
+
+@cache_service.cached(cache_service.CHOICES)
+def _list_activities_cached() -> list[dict]:
     rows = sorted(activities_repo.list_all(), key=lambda r: r["id"])
     return [{"id": r["id"], "name": r["name"]} for r in rows]
 
@@ -269,6 +305,21 @@ def _visibility(is_public: bool, is_self: bool) -> str:
 
 
 def search_employees(
+    conditions: dict, requester_id: str, limit: int = 20, offset: int = 0
+) -> tuple[list[dict], int]:
+    """社員検索（キャッシュあり。条件・閲覧者・ページごと）。中身は _search_employees。
+
+    自分のプロフィール保存、部活のメンバー変更の直後に無効化（SP-84②）。
+    """
+    return _search_employees_cached(conditions or {}, requester_id, limit, offset)
+
+
+@cache_service.cached(cache_service.EMPLOYEE_SEARCH)
+def _search_employees_cached(conditions: dict, requester_id: str, limit: int, offset: int):
+    return _search_employees(conditions, requester_id, limit, offset)
+
+
+def _search_employees(
     conditions: dict, requester_id: str, limit: int = 20, offset: int = 0
 ) -> tuple[list[dict], int]:
     """社員検索（SP-65）。(ページ分の社員dictリスト, 全該当件数) を返す。
@@ -332,6 +383,19 @@ _EVENT_KEYS = (
 
 
 def get_club_detail(club_id: int, viewer_id: str) -> dict:
+    """部活詳細（キャッシュあり。部活ごと・閲覧者ごと・日ごと）。中身は _get_club_detail。
+
+    自分の申込・キャンセル・スタンプの直後に即時に無効化（SP-84②）。NotFoundError はキャッシュされない。
+    """
+    return _get_club_detail_cached(club_id, viewer_id, _today().isoformat())
+
+
+@cache_service.cached(cache_service.CLUB_DETAIL)
+def _get_club_detail_cached(club_id: int, viewer_id: str, day: str) -> dict:
+    return _get_club_detail(club_id, viewer_id)
+
+
+def _get_club_detail(club_id: int, viewer_id: str) -> dict:
     """部活詳細（S04）の表示に必要な情報をまとめて返す読み取り専用の関数（SP-26, SP-27, SP-28, I-F契約 1.2）。
 
     書き込みや操作履歴の記録はしない（view_club は画面が record_view_club を別に呼ぶ）。
