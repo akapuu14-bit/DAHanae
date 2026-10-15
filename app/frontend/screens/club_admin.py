@@ -92,13 +92,13 @@ def _option(label, options, current, key, *, disabled=False):
     return st.selectbox(label, options, index=index, key=key, placeholder="選んでください", disabled=disabled)
 
 
-def _render_club_form(club, is_admin, me, key_prefix):
+def _render_club_form(club, is_admin, me, key_prefix, employees):
     """部活情報のフォーム。club が None なら新規作成。"""
     club = club or {}
     k = lambda name: f"{key_prefix}_{name}"
     activities = search_service.list_activities()
     activity_names = {a["id"]: a["name"] for a in activities}
-    employee_names = _employee_labels(club_admin_service.list_selectable_employees(me))
+    employee_names = _employee_labels(employees)
 
     with st.form(k("form")):
         name = st.text_input("部活名", value=club.get("name", ""), key=k("name"))
@@ -209,8 +209,7 @@ def _event_error(error):
     return _validation_text(error)
 
 
-def _render_events(club_id, me):
-    events = club_admin_service.list_club_events(club_id, me)
+def _render_events(club_id, me, events, default_place):
     if not events:
         st.info(MESSAGE_NO_EVENTS)
     for event in events:
@@ -222,7 +221,7 @@ def _render_events(club_id, me):
             _render_event_actions(event, club_id, me)
 
     st.subheader("開催を追加")
-    default_place = club_admin_service.get_last_meeting_place(club_id)  # 前回の開催を初期値に（SP-60）
+    # default_place：前回の開催を初期値に（SP-60）
     with st.form(f"club_admin_{club_id}_add_event"):
         data = _event_fields(f"club_admin_{club_id}_add", None, default_place)
         submitted = st.form_submit_button("追加する")
@@ -293,8 +292,7 @@ def _set_status(event_id, me, status):
 
 # ---- メンバータブ（Should）-------------------------------------------------------
 
-def _render_members(club, me):
-    members = club_admin_service.list_club_members(club["club_id"], me)
+def _render_members(club, me, members, everyone):
     for member in members:
         left, right = st.columns([4, 1])
         is_organizer = member["id"] == club["organizer_id"]
@@ -313,7 +311,6 @@ def _render_members(club, me):
 
     st.subheader("メンバーを追加")
     member_ids = {m["id"] for m in members}
-    everyone = club_admin_service.list_selectable_employees(me)
     labels = _employee_labels(everyone)
     candidates = {e["id"]: labels[e["id"]] for e in everyone if e["id"] not in member_ids}
     with st.form(f"club_admin_{club['club_id']}_add_member"):
@@ -337,8 +334,11 @@ def _render_members(club, me):
 
 def render():
     me = st.session_state["employee_id"]
-    is_admin = auth_service.get_role(me) == auth_service.ROLE_ADMIN
-    clubs = club_admin_service.list_manageable_clubs(me)
+    # 画面に要る値（部活一覧・選択中の部活・開催・メンバー・社員の選択肢）を、種類ごとに1回でまとめて取る（D-08）
+    wanted = st.session_state.get(_SELECTED_KEY)
+    page = club_admin_service.get_club_admin_page(me, wanted if wanted != NEW else None, with_detail=wanted != NEW)
+    is_admin = page["is_admin"]
+    clubs = page["clubs"]
 
     st.title("部活の管理")
     if not clubs and not is_admin:
@@ -358,7 +358,7 @@ def render():
         if top_right.button("← 戻る", key="club_admin_new_back") and ids:
             st.session_state[_SELECTED_KEY] = ids[0]
             st.rerun()
-        _render_club_form(None, is_admin, me, "club_admin_new")
+        _render_club_form(None, is_admin, me, "club_admin_new", page["employees"])
         return
 
     chosen = top_left.selectbox("管理する部活", ids, index=ids.index(selected), format_func=lambda i: names[i],
@@ -372,11 +372,11 @@ def render():
         st.session_state[_SELECTED_KEY] = NEW
         st.rerun()
 
-    club = club_admin_service.get_club(chosen, me)
+    club = page["club"]
     tab_info, tab_events, tab_members = st.tabs(["部活情報", "開催", "メンバー"])
     with tab_info:
-        _render_club_form(club, is_admin, me, f"club_admin_{chosen}")
+        _render_club_form(club, is_admin, me, f"club_admin_{chosen}", page["employees"])
     with tab_events:
-        _render_events(chosen, me)
+        _render_events(chosen, me, page["events"], page["default_place"])
     with tab_members:
-        _render_members(club, me)
+        _render_members(club, me, page["members"], page["employees"])

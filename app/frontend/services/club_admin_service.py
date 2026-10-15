@@ -411,6 +411,96 @@ def set_event_status(event_id: int, requester_id: str, status: str) -> None:
             )
 
 
+def get_club_admin_page(requester_id: str, club_id: int | None = None, *, with_detail: bool = True) -> dict:
+    """管理画面（S10）の表示に要る値を、まとめて取る（設計 D-08。画面を開いたときの往復を減らす）。
+
+    返す dict：
+      "is_admin" / "clubs"（list_manageable_clubs と同じ形）/ "employees"（list_selectable_employees と同じ形。
+      運営者でも幹事でもなければ空）
+      with_detail=True で管理できる部活があるとき："club_id"（club_id が管理できる部活でなければ先頭）・
+      "club"（get_club と同じ形）・"events"（list_club_events と同じ形）・"members"（list_club_members と同じ形）・
+      "default_place"（get_last_meeting_place と同じ値）
+    権限は、運営者は全部活、幹事は自分が担当する部活だけ（個別の関数と同じ判定を、社員の取得1回・部活の取得1回で行う）。
+    """
+    is_admin = auth_service.get_role(requester_id) == auth_service.ROLE_ADMIN
+    if is_admin:
+        rows = clubs_repo.list_all_for_admin()
+    else:
+        rows = clubs_repo.list_by_organizer(requester_id.strip().upper())
+    rows = sorted(rows, key=lambda c: c["id"])
+    page = {
+        "is_admin": is_admin,
+        "clubs": [
+            {
+                "club_id": c["id"],
+                "name": c["name"],
+                "icon": c.get("icon"),
+                "location": c["location"],
+                "slot": c["slot"],
+                "organizer_id": c["organizer_id"],
+                "is_active": c["is_active"],
+            }
+            for c in rows
+        ],
+        "employees": [],
+        "club_id": None,
+        "club": None,
+        "events": [],
+        "members": [],
+        "default_place": None,
+    }
+    if not rows and not is_admin:
+        return page
+    page["employees"] = [{"id": e["id"], "name": e["name"]} for e in employees_repo.list_all()]
+    if not with_detail or not rows:
+        return page
+
+    chosen = next((c for c in rows if c["id"] == club_id), rows[0])
+    page["club_id"] = chosen["id"]
+    page["club"] = {("club_id" if k == "id" else k): v for k, v in chosen.items()}
+
+    today = _today()
+    events = []
+    for event in events_repo.list_upcoming_by_club_with_applicants(chosen["id"]):
+        event_date = _to_date(event["event_date"])
+        if event_date < today:
+            continue
+        events.append(
+            {
+                "event_id": event["id"],
+                "event_date": event_date,
+                "start_time": _to_time(event["start_time"]),
+                "end_time": _to_time(event["end_time"]),
+                "meeting_place": event["meeting_place"],
+                "meeting_time": _to_time_or_none(event.get("meeting_time")),
+                "status": event["status"],
+                "applicant_count": event["applicant_count"],
+            }
+        )
+    page["events"] = events
+    # 直近の開催（日付・id の最大）は、今日以降の開催の末尾。無いときだけ過去の開催を引く
+    page["default_place"] = (
+        events[-1]["meeting_place"] if events else events_repo.get_last_meeting_place(chosen["id"])
+    )
+
+    members = []
+    for member in club_members_repo.list_members_with_employees(chosen["id"]):
+        employee = member.get("employees")
+        if not employee:
+            continue
+        members.append(
+            {
+                "id": employee["id"],
+                "name": employee["name"],
+                "dept": employee["dept"],
+                "joined_at": member.get("joined_at"),
+                "is_organizer": _same_id(employee["id"], chosen["organizer_id"]),
+            }
+        )
+    page["members"] = members
+    return page
+
+
 def get_last_meeting_place(club_id: int) -> str | None:
     """開催追加フォームの集合場所の初期値。開催が無い・部活が無いときは None。権限は判定しない。"""
     return events_repo.get_last_meeting_place(club_id)

@@ -147,6 +147,34 @@ def get_interests(employee_id: str) -> list[dict]:
     ]
 
 
+def get_interests_for(employee_ids: list[str]) -> dict[str, list[dict]]:
+    """複数の社員の興味をまとめて1回で取る（get_interests の一括版）。
+
+    {employee_id: [{"activity_id", "activity_name", "level"}, ...]}（activity_id 順）。
+    興味のない社員もキーを持ち、値は空リスト。employee_ids が空なら問い合わせず空dictを返す。
+    """
+    ids = list(dict.fromkeys(employee_ids))
+    if not ids:
+        return {}
+    res = (
+        supabase.table("employee_interests")
+        .select("employee_id, activity_id, level, activities(name)")
+        .in_("employee_id", ids)
+        .order("activity_id")
+        .execute()
+    )
+    result: dict[str, list[dict]] = {i: [] for i in ids}
+    for r in res.data or []:
+        result[r["employee_id"]].append(
+            {
+                "activity_id": r["activity_id"],
+                "activity_name": (r.get("activities") or {}).get("name"),
+                "level": r["level"],
+            }
+        )
+    return result
+
+
 def set_interests(employee_id: str, interests: list[dict]) -> None:
     """興味・経験を置き換え保存する。interests: [{"activity_id", "level"}, ...]。
 
