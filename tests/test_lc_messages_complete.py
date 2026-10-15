@@ -2,11 +2,22 @@
 import unittest
 
 from lc_base import LcTestCase
+import fakes
+from screens import messages as messages_screen
 
 RULE = "体験参加は入部ではありません／参加は毎回でなくてOK／活動後の集まりは任意です／キャンセルもできます"
 
 
 class Messages(LcTestCase):
+    def setUp(self):
+        super().setUp()
+        # 画面（screens/messages.py の _can_cancel）は datetime.now を直接使う。fakes.install は
+        # service 側の datetime しか固定しないため、実時刻が偽DBの開催日を過ぎるとキャンセルボタンが消える。
+        # 画面側の datetime も偽DBの現在時刻に固定する（テストのみの対処。アプリのコードは変えない）。
+        original = messages_screen.datetime
+        messages_screen.datetime = fakes._frozen_datetime(self.w)
+        self.addCleanup(setattr, messages_screen, "datetime", original)
+
     def labels(self, at):
         return [b.label for b in at.button]
 
