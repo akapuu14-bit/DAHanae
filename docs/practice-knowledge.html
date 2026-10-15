@@ -489,6 +489,38 @@ gh workflow run dashboard.yml</code></pre>
         <dt>対処</dt><dd>マージの状況は、Slack の文面ではなく GitHub の state で判断することにした</dd>
         <dt>次に活かす一言</dt><dd>状態は一次情報（GitHub）で確かめ、文面は「いつ時点か」とあわせて読む</dd>
       </dl>
+
+      <h3>5.16 疎な worktree で変更が116ファイルの「削除」として巻き込まれた（2026-10-11）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>#140 のブランチで、画面修正（<code>club_detail.py</code> の1ファイル）のコミット <code>36fb4a6</code> に、手元に無い116ファイルの削除が入った（<code>git show --stat</code> で 117 files changed、3 insertions、18377 deletions）。レビューで見つかり、<code>93c02d5</code> で <code>c362af2</code> から復元した（復元後の差分に削除なし、pytest 250 passed。god の記録）</dd>
+        <dt>原因</dt><dd>疎（sparse）な worktree で、対象ファイルを指定せずに add した可能性が高い（god の見立て。実際に打ったコマンドは確認していない）。手元に無いファイルは「削除された」と見えるため、そのまま巻き込まれる</dd>
+        <dt>対処</dt><dd><code>hive/git-safety-rules.md</code> を制定し、全スタッフに周知した。(1) 疎な worktree で <code>git add -A</code> / <code>git add .</code> を使わず、対象ファイルだけを明示して add する (2) commit 前に <code>git status</code> と <code>git diff --cached --stat</code> で意図しない <code>deleted:</code> が無いか見る (3) push 前に <code>git diff --name-status &lt;親&gt; HEAD</code> で D（削除）を確認する (4) worktree を作ったら <code>git ls-files | wc -l</code> でファイルが揃っているか確かめる (5) force push しない。迷ったら push 前に止まって god に聞く。以降の PR で同種の削除が出たという記録は見当たらない（再発しないことの検証ではない）</dd>
+        <dt>次に活かす一言</dt><dd>add は対象ファイルを名指しし、push 前に「D が出ていないか」を必ず見る</dd>
+      </dl>
+
+      <h3>5.17 テスト証拠を「修正前＋修正後の一部」の継ぎ合わせで作ろうとした（2026-10-12）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>S-xx の α-R（実DB読取）の実走結果が、リポジトリに通しの1本として無かった。残っていたのは、修正前の全件実走（10 failed / 18 passed。落ちたのは S-13・S-17・S-18）と、修正後にその3件だけ再実走した記録（3 passed）の2本だった</dd>
+        <dt>原因</dt><dd>ReadOnlyGuard の空応答（<code>IndexError</code>）を直した後に、全件を取り直していなかった。2本を足せば19件ぶんに見えるが、修正後のコードで全件が同時に通った証拠にはならない</dd>
+        <dt>対処</dt><dd>継ぎ合わせず、修正後（<code>79d9939</code>）で α-R 19件を通しで再実走して1本のログにした（19 passed / 149 subtests passed / 227.37s、2026-10-12、実DB読取のみ、運営承認下）。ログは <code>evidence/test/S/sxx-ar-realrun-postfix.log</code>（PR #154）</dd>
+        <dt>次に活かす一言</dt><dd>テスト側・ハーネス側を直したら、証拠は全件を通しで取り直した1本にする</dd>
+      </dl>
+
+      <h3>5.18 「全件合格でないとクローズできない」と受け取りかけた（#42/#43/#44、2026-10-12）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>W3 の #42（通し＋単体）・#43（結合）・#44（システム）には未実行のテストが残っていた（結果.md の2026-10-12時点: 結合は合格167／未実行37、システムは合格44／対象外2／未実行16）。全件合格でなければクローズできないのでは、という見方が出かけた</dd>
+        <dt>原因</dt><dd>受入基準の読み違い。この3課題の基準は「全件合格」ではなく「合否と実行ログが記録・添付されること」だった</dd>
+        <dt>対処</dt><dd>未実行を合格に数えず、未実行の分は理由を書いたうえで基準を満たしたと整理した（L-C に送ったもの、実DBでの通し待ち、β の見た目待ちなど。中核フローは実DBで確認済みという god の記録）。#43・#44 には根拠コメントを付け、2026-10-12 03:02Z に CLOSED（はなえ操作）。#42 も 2026-10-15 に CLOSED を god が確認した（私は gh で再確認できていない）</dd>
+        <dt>次に活かす一言</dt><dd>クローズ条件は課題の受入基準の文面で確かめる。未実行は合格と混ぜず、残す理由をその場で明文化する</dd>
+      </dl>
+
+      <h3>5.19 GitHub の issue 割当を「実装者」と取り違えかけた（U-xx、2026-10-12）</h3>
+      <dl>
+        <dt>何が起きた</dt><dd>単体確認 U-001〜U-013 を担当タスクへ対応させる表に、GitHub の課題の割当者としてはなえが載り、実装者のように読めた。はなえは U-xx の実装担当ではなかった</dd>
+        <dt>原因</dt><dd>課題の assignee は「その課題の担当」であって、そのコードを書いた人とは限らない。ファイル単位の担当確認をしていなかった</dd>
+        <dt>対処</dt><dd>実装者を git の初出コミット（author）で確定した。画面 U-001〜006 はあかぷ、サービス U-007〜013 はだーあさ（例: <code>club_admin_service.py</code> は <code>dbf3264</code>、2026-10-10、Hiroki Asada）。U の採番はファイル／モジュール単位の13組（画面・配色6＋サービス7）。#42 の集約コメントを「確認する人」列つきに作り直した。なお U の担当確認（あかぷの U-001〜006）が済んだかは、この記録時点で未確認</dd>
+        <dt>次に活かす一言</dt><dd>「誰が書いたか」は assignee でなく <code>git log --diff-filter=A -- &lt;file&gt;</code> で確かめる</dd>
+      </dl>
     </section>
 
     <section class="sheet" id="s6">
@@ -527,12 +559,13 @@ gh workflow run dashboard.yml</code></pre>
         <li><code>docs/進捗管理ガイド.md</code>、<code>docs/github-管理セットアップ.md</code></li>
         <li><code>02_プロジェクト/bukatsu_concierge/</code> の各文書と <code>実装ガイド/I-F契約.md</code></li>
         <li>2026-10 追記分（5.8〜5.15）: <code>hive/agents/god/memory.md</code>（2026-10-03〜04）、<code>hive/agents/mirin-tech0/memory.md</code>（T-DASH-JST）、PR #69 #73 #79 #87 #88 #89 #90 #91 #95 の本文と状態（<code>gh pr view</code>）、<code>git log origin/main --since=2026-10-01</code>、<code>gh run list --workflow dashboard.yml</code></li>
+        <li>2026-10-11〜15 追記分（5.16〜5.19）: <code>hive/git-safety-rules.md</code>、<code>hive/agents/god/memory.md</code>（2026-10-11〜15）、<code>git show --stat 36fb4a6 93c02d5</code>、<code>02_プロジェクト/bukatsu_concierge/テスト結果.md</code>、<code>evidence/test/S/sxx-ar-realrun-postfix.log</code>、<code>evidence/test/U/u-task-evidence-map-20261012.md</code>、<code>git log --diff-filter=A</code></li>
       </ul>
 
       <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
       <div class="callout">
         <ul style="margin:0">
-          <li>実装（W3）以降の進捗・テスト結果・W4評価: 未着手または未確認。</li>
+          <li>W4 評価・受入: 未確認。W3 のテストは 5.16〜5.19 に書いた範囲だけを記録している（網羅していない）。</li>
           <li><code>9a6a20f</code> 以降に5文書へ加えた変更の有無: コミットIDでは再確認していない。</li>
           <li>ダッシュボード公開URLの現在の表示状態: 今回は再確認していない（memory/tasks の記録どおり）。</li>
           <li>5.12 で PR 上の deploy が失敗する理由（調べていない）。5.13 の公開ページの見た目（PR #95 では未確認とされている）。</li>
