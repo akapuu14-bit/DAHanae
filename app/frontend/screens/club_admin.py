@@ -166,6 +166,7 @@ def _render_club_form(club, is_admin, me, key_prefix):
     except AppError:
         st.error(MESSAGE_SAVE_FAILED)
         return
+    state.invalidate_role()  # 幹事の変更の直後：サイドバーの「部活の管理」を取り直す（SP-84）
     st.session_state[_FLASH_KEY] = MESSAGE_SAVED
     st.rerun()
 
@@ -307,6 +308,7 @@ def _render_members(club, me):
             except AppError:
                 st.error(MESSAGE_SAVE_FAILED)
                 return
+            state.invalidate_role()  # メンバー変更の直後（SP-84）
             st.rerun()
 
     st.subheader("メンバーを追加")
@@ -327,6 +329,7 @@ def _render_members(club, me):
         except AppError:
             st.error(MESSAGE_SAVE_FAILED)
             return
+        state.invalidate_role()  # メンバー変更の直後（SP-84）
         st.rerun()
 
 

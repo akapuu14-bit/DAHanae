@@ -48,7 +48,9 @@ _DEFAULTS = {
     "target_event_id": lambda: None,
     "target_application_id": lambda: None,
     "target_employee_id": lambda: None,  # 社員プロフィール(S09)で開く社員
-    "unread_count": lambda: 0,  # サイドバーに出す未読件数
+    # サイドバーの保持値（D-06・SP-84）。None は「まだ取っていない」。再実行のたびには取り直さない。
+    "unread_count": lambda: None,  # サイドバーに出す未読件数
+    "can_manage": lambda: None,  # 「部活の管理」を出すか（運営者または幹事）
     "pending_application_context": lambda: None,  # 申込完了画面(S05)に渡す直前の申込内容
 }
 
@@ -77,6 +79,18 @@ def login(employee_id, employee=None):
     st.session_state["employee"] = employee
     st.session_state["current_page"] = HOME
     st.session_state["page_history"] = []
+    invalidate_unread()  # 前の人の保持値を引き継がない。最初のサイドバー描画で取る
+    invalidate_role()
+
+
+def invalidate_unread():
+    """未読件数の保持値を捨てる。次のサイドバー描画で1回だけ取り直す（SP-84①：既読化の直後）。"""
+    st.session_state["unread_count"] = None
+
+
+def invalidate_role():
+    """権限（「部活の管理」を出すか）の保持値を捨てる。幹事・メンバーの変更の直後に呼ぶ（SP-84）。"""
+    st.session_state["can_manage"] = None
 
 
 def current_employee():

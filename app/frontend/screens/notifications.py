@@ -53,6 +53,7 @@ def render():
     notifications = notification_service.list_notifications(me)
     if any(n["is_unread"] for n in notifications):  # 未読があるときだけ書き込む（再描画のたびに書かない）
         notification_service.mark_read_all(me)  # SP-46
+        state.invalidate_unread()  # 既読化の直後：サイドバーの未読件数を次の描画で取り直す（SP-84①）
 
     st.title("通知")
     if not notifications:
