@@ -26,3 +26,20 @@ _fake_client.supabase = MagicMock(name="fake_supabase")
 _fake_db.client = _fake_client
 sys.modules["db"] = _fake_db
 sys.modules["db.client"] = _fake_client
+
+
+# ---- 読み取りキャッシュ（services/cache_service.py。設計 D-07）----------------------------------
+# 既存のテストは「1テストの中で偽DBを書き換えて同じ関数を呼び直す」作りなので、キャッシュは既定で切る。
+# キャッシュ自体を確かめるテスト（test_perf_t3_*）は、setUp で ENABLED を True に戻す。
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _cache_off(monkeypatch):
+    from services import cache_service
+
+    monkeypatch.setattr(cache_service, "ENABLED", False)
+    cache_service.clear_all()
+    yield
+    cache_service.clear_all()
