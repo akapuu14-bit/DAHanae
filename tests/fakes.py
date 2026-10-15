@@ -247,6 +247,12 @@ def install(w: World):
         {**m, "employees": {k: w.employees[m["employee_id"]][k] for k in ("id", "name", "dept")}}
         for m in sorted((m for m in w.members if m["club_id"] == cid), key=lambda m: m["employee_id"])
         if m["employee_id"] in w.employees]
+    club_members_repo.list_active_clubs_by_member = lambda eid: sorted(
+        ({**w.clubs[m["club_id"]],
+          "events": [{"event_date": e["event_date"], "status": e["status"]} for e in w.club_events(m["club_id"])]}
+         for m in w.members
+         if _norm(m["employee_id"]) == _norm(eid) and m["club_id"] in w.clubs and w.clubs[m["club_id"]]["is_active"]),
+        key=lambda c: c["id"])
     club_members_repo.add_member = lambda cid, eid, joined_at=None: w.members.append({"club_id": cid, "employee_id": eid, "joined_at": joined_at})
     club_members_repo.remove_member = lambda cid, eid: w.members.__setitem__(slice(None), [m for m in w.members if not (m["club_id"] == cid and m["employee_id"] == eid)])
     club_members_repo.list_clubs_by_member = lambda eid: sorted(m["club_id"] for m in w.members if _norm(m["employee_id"]) == _norm(eid))
