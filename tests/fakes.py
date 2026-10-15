@@ -190,6 +190,7 @@ def install(w: World):
          "activity_name": next(a["name"] for a in w.activities if a["id"] == i["activity_id"]),
          "level": i["level"]}
         for i in sorted(w.interests.get(eid, []), key=lambda i: i["activity_id"])]
+    employees_repo.get_by_ids = lambda ids: {i: dict(w.employees[i]) for i in dict.fromkeys(ids) if i in w.employees} if ids else {}
     employees_repo.get_interests_for = lambda eids: {
         eid: [{"activity_id": i["activity_id"],
                "activity_name": next(a["name"] for a in w.activities if a["id"] == i["activity_id"]),
@@ -310,6 +311,8 @@ def install(w: World):
         return [{**_with_event(a), "employees": dict(w.employees[a["applicant_id"]])}
                 for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] in ev_ids]
     applications_repo.list_by_organizer_club = a_by_club
+    applications_repo.list_by_organizer_clubs = lambda cids: sorted(
+        (r for cid in dict.fromkeys(cids) for r in a_by_club(cid)), key=lambda r: r["id"]) if cids else []
     def a_count_first_time(start, end):
         counts = {}
         for a in w.applications.values():
@@ -324,6 +327,8 @@ def install(w: World):
         for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] == eid and a["status"] == "申込済み"]
 
     # messages
+    messages_repo.list_by_applications = lambda aids: {
+        aid: [dict(m) for m in w.messages if m["application_id"] == aid] for aid in dict.fromkeys(aids)} if aids else {}
     messages_repo.list_by_application = lambda aid: [dict(m) for m in w.messages if m["application_id"] == aid]
 
     def m_insert(aid, sender, body):

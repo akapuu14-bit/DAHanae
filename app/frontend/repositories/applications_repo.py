@@ -168,6 +168,25 @@ def count_first_time_by_club_in_month(month_start: str, next_month_start: str) -
     return counts
 
 
+def list_by_organizer_clubs(club_ids: list[int]) -> list[dict]:
+    """複数の部活の全開催に対する申込一覧を、1回で id 順に返す（list_by_organizer_club の一括版。キャンセル行も含む）。
+
+    各dictの形は list_by_organizer_club と同じ（"events"."clubs" に部活、"employees" に申込者）。
+    club_ids が空なら問い合わせず空リスト。
+    """
+    ids = list(dict.fromkeys(club_ids))
+    if not ids:
+        return []
+    res = (
+        supabase.table("applications")
+        .select("*, events!inner(*, clubs(*)), employees(*)")
+        .in_("events.club_id", ids)
+        .order("id")
+        .execute()
+    )
+    return res.data or []
+
+
 def list_participants(event_id: int) -> list[dict]:
     """開催の参加者（状態「申込済み」の申込）を id 順で返す。初参加かどうかは各dictの is_first_time。
 
