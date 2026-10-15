@@ -44,15 +44,12 @@ def get_profile(employee_id: str, viewer_id: str) -> dict:
     show_interests = is_self or bool(employee["interests_public"])
     show_slots = is_self or bool(employee["slots_public"])
 
-    clubs = []
-    next_dates = None
-    for club_id in club_members_repo.list_clubs_by_member(employee["id"]):
-        club = clubs_repo.get(club_id)
-        if club is None or not club.get("is_active"):
-            continue
-        if next_dates is None:
-            next_dates = search_service._next_event_dates()
-        clubs.append(search_service._card(club, next_dates.get(club["id"])))
+    # 所属部活は部活ごとに取らず、所属の取得と一緒に1回で取る（所属部活の数に関係なく。設計 D-08）
+    # 次回開催日も、部活と一緒に取った開催から求める（開催だけを別に取らない）
+    clubs = [
+        search_service._card(club, search_service._next_event_date_of(club.get("events") or []))
+        for club in club_members_repo.list_active_clubs_by_member(employee["id"])
+    ]
     clubs.sort(key=lambda c: c["club_id"])
 
     return {

@@ -45,6 +45,23 @@ def list_members_with_employees(club_id: int) -> list[dict]:
     return res.data or []
 
 
+def list_active_clubs_by_member(employee_id: str) -> list[dict]:
+    """その社員が所属する部活（is_active の部活のみ）の行を、club_id 昇順で1回で返す。
+
+    list_clubs_by_member で club_id を取り、部活ごとに clubs_repo.get を呼ぶ代わりに、clubs を埋め込み select で一緒に取る。
+    各部活の行には "events"（その部活の開催の event_date・status。次回開催日の計算用）も入る。
+    所属なし・非公開の部活のみなら空リスト。
+    """
+    res = (
+        supabase.table("club_members")
+        .select("club_id, clubs(*, events(event_date, status))")
+        .eq("employee_id", employee_id)
+        .execute()
+    )
+    clubs = [r["clubs"] for r in (res.data or []) if r.get("clubs") and r["clubs"].get("is_active")]
+    return sorted(clubs, key=lambda c: c["id"])
+
+
 def list_active_clubs_for_employees(employee_ids: list[str]) -> list[dict]:
     """複数の社員の所属部活（is_active の部活のみ）をまとめて1回で取る。
 

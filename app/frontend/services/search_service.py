@@ -74,6 +74,20 @@ def _next_event_dates(upcoming_events: list[dict] | None = None) -> dict[int, da
     return result
 
 
+def _next_event_date_of(events: list[dict]) -> date | None:
+    """1つの部活の開催（event_date・status を持つdictのリスト）から、「予定」で今日以降の最も近い日付。無ければ None。
+
+    _next_event_dates（全部活）と同じ判定を、埋め込みで取った1部活ぶんの開催に使う。
+    """
+    today = _today()
+    dates = [
+        d
+        for d in (_as_date(e["event_date"]) for e in events if e["status"] == _EVENT_OPEN)
+        if d >= today
+    ]
+    return min(dates) if dates else None
+
+
 def _sorted_by_next_event(cards: list[dict]) -> list[dict]:
     return sorted(
         cards,
