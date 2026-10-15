@@ -310,6 +310,15 @@ def install(w: World):
         return [{**_with_event(a), "employees": dict(w.employees[a["applicant_id"]])}
                 for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] in ev_ids]
     applications_repo.list_by_organizer_club = a_by_club
+    def a_count_first_time(start, end):
+        counts = {}
+        for a in w.applications.values():
+            e = w.events.get(a["event_id"])
+            if (e and a["is_first_time"] and a["status"] != "キャンセル" and e["status"] == "予定"
+                    and start <= str(e["event_date"]) < end):
+                counts[e["club_id"]] = counts.get(e["club_id"], 0) + 1
+        return counts
+    applications_repo.count_first_time_by_club_in_month = a_count_first_time
     applications_repo.list_participants = lambda eid: [
         {**a, "employees": dict(w.employees[a["applicant_id"]])}
         for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] == eid and a["status"] == "申込済み"]

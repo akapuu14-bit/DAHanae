@@ -53,11 +53,16 @@ def _card(club: dict, next_event_date: date | None) -> dict:
     return card
 
 
-def _next_event_dates() -> dict[int, date]:
-    """部活ごとの「予定」の開催のうち最も近い日付（今日以降）。予定の開催がない部活は含まない。"""
+def _next_event_dates(upcoming_events: list[dict] | None = None) -> dict[int, date]:
+    """部活ごとの「予定」の開催のうち最も近い日付（今日以降）。予定の開催がない部活は含まない。
+
+    upcoming_events を渡すと、それを使う（問い合わせを増やさない）。
+    """
     result: dict[int, date] = {}
     today = _today()
-    for event in events_repo.list_upcoming_all_with_club():
+    if upcoming_events is None:
+        upcoming_events = events_repo.list_upcoming_all_with_club()
+    for event in upcoming_events:
         if event["status"] != _EVENT_OPEN:
             continue
         d = _as_date(event["event_date"])
@@ -89,11 +94,15 @@ def get_this_week_clubs() -> list[dict]:
     週は月曜〜日曜（SP-08）。範囲は PM 裁定で [今日, 今週の日曜]。"next_event_date" はその範囲の
     予定の開催のうち最も近い日。件数の絞り込みはしない。
     """
+    return _week_clubs(events_repo.list_upcoming_all_with_club())
+
+
+def _week_clubs(upcoming_events: list[dict]) -> list[dict]:
     today = _today()
     sunday = today + timedelta(days=6 - today.weekday())
     first_dates: dict[int, date] = {}
     clubs: dict[int, dict] = {}
-    for event in events_repo.list_upcoming_all_with_club():
+    for event in upcoming_events:
         club = event.get("clubs")
         if event["status"] != _EVENT_OPEN or not club or not club.get("is_active"):
             continue
@@ -142,6 +151,42 @@ def get_popular_clubs() -> list[dict]:
     ]
 
 
+def get_home_page(employee_id: str) -> dict:
+    """ホーム（S02）の表示に要る値を、まとめて取る（設計 D-08。部活・開催・申込を部活ごとに取らない）。
+
+    {"week": get_this_week_clubs と同じ, "popular": get_popular_clubs と同じ,
+     "recommendations": get_recommendations と同じ}。件数の絞り込み（4件・3件）や初心者向け/経験者向けの
+    切り替えは、従来どおり画面側。社員の取得・興味・所属、開催（今日以降）、部活、今月の申込の集計を1回ずつ取る。
+    """
+    upcoming = events_repo.list_upcoming_all_with_club()
+    clubs = clubs_repo.search({})
+    next_dates = _next_event_dates(upcoming)
+
+    today = _today()
+    month_start = today.replace(day=1)
+    next_month_start = (month_start + timedelta(days=32)).replace(day=1)
+    counts = applications_repo.count_first_time_by_club_in_month(
+        month_start.isoformat(), next_month_start.isoformat()
+    )
+    counted = [(counts[c["id"]], c) for c in clubs if counts.get(c["id"])]
+    counted.sort(key=lambda t: (-t[0], t[1]["id"]))
+    popular = [
+        {**_card(club, next_dates.get(club["id"])), "rank": rank}
+        for rank, (_, club) in enumerate(counted, start=1)
+    ]
+
+    recommendations: list[dict] = []
+    employee = employees_repo.get_by_id(employee_id)
+    if employee is not None:
+        interests = {
+            i["activity_id"]: i.get("activity_name")
+            for i in employees_repo.get_interests(employee["id"])
+        }
+        joined = set(club_members_repo.list_clubs_by_member(employee["id"]))
+        recommendations = _recommend(employee, interests, joined, clubs, next_dates)
+    return {"week": _week_clubs(upcoming), "popular": popular, "recommendations": recommendations}
+
+
 def get_recommendations(employee_id: str) -> list[dict]:
     """おすすめ部活（SP-18, SP-75）。
 
@@ -157,12 +202,14 @@ def get_recommendations(employee_id: str) -> list[dict]:
         i["activity_id"]: i.get("activity_name")
         for i in employees_repo.get_interests(employee["id"])
     }
-    slots = set(employee.get("available_slots") or [])
     joined = set(club_members_repo.list_clubs_by_member(employee["id"]))
-    next_dates = _next_event_dates()
+    return _recommend(employee, interests, joined, clubs_repo.search({}), _next_event_dates())
 
+
+def _recommend(employee: dict, interests: dict, joined: set, clubs: list[dict], next_dates: dict) -> list[dict]:
+    slots = set(employee.get("available_slots") or [])
     results = []
-    for club in clubs_repo.search({}):
+    for club in clubs:
         if club["id"] in joined:
             continue
         matched = []
