@@ -33,6 +33,28 @@ def list_members(club_id: int) -> list[dict]:
     return res.data or []
 
 
+def list_active_clubs_for_employees(employee_ids: list[str]) -> list[dict]:
+    """複数の社員の所属部活（is_active の部活のみ）をまとめて1回で取る。
+
+    [{"employee_id", "club_id", "name"}] を club_id 順で返す。employee_ids が空なら問い合わせず空リスト。
+    """
+    ids = list(dict.fromkeys(employee_ids))
+    if not ids:
+        return []
+    res = (
+        supabase.table("club_members")
+        .select("employee_id, club_id, clubs(name, is_active)")
+        .in_("employee_id", ids)
+        .execute()
+    )
+    rows = [
+        {"employee_id": r["employee_id"], "club_id": r["club_id"], "name": r["clubs"]["name"]}
+        for r in (res.data or [])
+        if r.get("clubs") and r["clubs"].get("is_active")
+    ]
+    return sorted(rows, key=lambda r: (r["club_id"], r["employee_id"]))
+
+
 def add_member(club_id: int, employee_id: str, joined_at=None) -> None:
     """所属を追加する。既に所属済みなら何もしない（二重呼び出し安全）。
 
