@@ -259,6 +259,13 @@ def install(w: World):
                                      if a["event_id"] == e["id"] and a["status"] == "申込済み")}
         for e in (dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"]))
                   if e["event_date"] >= w.today().isoformat())]
+    events_repo.list_upcoming_by_club_with_participants = lambda cid: [
+        {**e, "participants": [
+            {**a, "employees": {"name": w.employees[a["applicant_id"]]["name"]}}
+            for a in sorted(w.applications.values(), key=lambda a: a["id"])
+            if a["event_id"] == e["id"] and a["status"] == "申込済み"]}
+        for e in (dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"]))
+                  if e["event_date"] >= w.today().isoformat())]
     events_repo.list_upcoming_all_with_club = lambda: [
         {**e, "clubs": dict(w.clubs[e["club_id"]])}
         for e in sorted(w.events.values(), key=lambda e: (e["event_date"], e["id"]))

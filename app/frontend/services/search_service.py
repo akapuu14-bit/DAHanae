@@ -336,14 +336,15 @@ def get_club_detail(club_id: int, viewer_id: str) -> dict:
         {key: organizer_row.get(key) for key in _ORGANIZER_KEYS} if organizer_row else None
     )
 
+    # メンバーの氏名・部署は所属の取得と一緒に、参加者は開催の取得と一緒に取る（人数・開催数に関係なく1回ずつ。D-08）
     members = []
-    for member in club_members_repo.list_members(club_id):
-        row = employees_repo.get_by_id(member["employee_id"])
-        if row is not None:
+    for member in club_members_repo.list_members_with_employees(club_id):
+        row = member.get("employees")
+        if row:
             members.append({"id": row["id"], "name": row["name"], "dept": row["dept"]})
 
     events = []
-    for event in events_repo.list_upcoming_by_club(club_id):
+    for event in events_repo.list_upcoming_by_club_with_participants(club_id):
         participants = [
             {
                 "id": a["applicant_id"],
@@ -351,7 +352,7 @@ def get_club_detail(club_id: int, viewer_id: str) -> dict:
                 "is_first_time": bool(a["is_first_time"]),
                 "is_self": a["applicant_id"].upper() == viewer,
             }
-            for a in applications_repo.list_participants(event["id"])
+            for a in event["participants"]
         ]
         events.append(
             {
