@@ -63,6 +63,32 @@ def list_upcoming_by_club_with_applicants(club_id: int) -> list[dict]:
     return rows
 
 
+def list_upcoming_by_club_with_participants(club_id: int) -> list[dict]:
+    """list_upcoming_by_club に、開催ごとの参加者 "participants" を付けて1回で返す。
+
+    参加者は list_participants と同じ：状態「申込済み」の申込を id 順で、各dictの "employees" に申込者の名前を持つ。
+    開催ごとに list_participants を呼ぶ代わりに、applications を埋め込み select で一緒に取る。
+    """
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
+    res = (
+        supabase.table("events")
+        .select("*, applications(id, applicant_id, is_first_time, status, employees(name))")
+        .eq("club_id", club_id)
+        .gte("event_date", today)
+        .order("event_date")
+        .order("id")
+        .execute()
+    )
+    rows = []
+    for row in res.data or []:
+        applications = row.pop("applications", None) or []
+        row["participants"] = sorted(
+            (a for a in applications if a.get("status") == "申込済み"), key=lambda a: a["id"]
+        )
+        rows.append(row)
+    return rows
+
+
 def list_upcoming_all_with_club() -> list[dict]:
     """全部活の今日以降の開催を日付順で、clubsをjoinして返す（ホーム「今週開催の部活」集計用）。
 
