@@ -145,6 +145,29 @@ def list_by_organizer_club(club_id: int) -> list[dict]:
     return res.data or []
 
 
+def count_first_time_by_club_in_month(month_start: str, next_month_start: str) -> dict[int, int]:
+    """開催日が [month_start, next_month_start) で、開催の状態が「予定」の開催への、初参加・キャンセル以外の申込を、部活ごとに数える。
+
+    {club_id: 件数}（0件の部活は含まない）。ホームの今月の人気部活（SP-17）の集計を、部活ごとに申込を取らず1回で行う。
+    日付は "YYYY-MM-DD"。
+    """
+    res = (
+        supabase.table("applications")
+        .select("id, events!inner(club_id, event_date, status)")
+        .eq("is_first_time", True)
+        .neq("status", "キャンセル")
+        .eq("events.status", "予定")
+        .gte("events.event_date", month_start)
+        .lt("events.event_date", next_month_start)
+        .execute()
+    )
+    counts: dict[int, int] = {}
+    for row in res.data or []:
+        club_id = row["events"]["club_id"]
+        counts[club_id] = counts.get(club_id, 0) + 1
+    return counts
+
+
 def list_participants(event_id: int) -> list[dict]:
     """開催の参加者（状態「申込済み」の申込）を id 順で返す。初参加かどうかは各dictの is_first_time。
 
