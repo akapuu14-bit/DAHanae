@@ -190,6 +190,12 @@ def install(w: World):
          "activity_name": next(a["name"] for a in w.activities if a["id"] == i["activity_id"]),
          "level": i["level"]}
         for i in sorted(w.interests.get(eid, []), key=lambda i: i["activity_id"])]
+    employees_repo.get_interests_for = lambda eids: {
+        eid: [{"activity_id": i["activity_id"],
+               "activity_name": next(a["name"] for a in w.activities if a["id"] == i["activity_id"]),
+               "level": i["level"]}
+              for i in sorted(w.interests.get(eid, []), key=lambda i: i["activity_id"])]
+        for eid in dict.fromkeys(eids)} if eids else {}
     employees_repo.set_interests = lambda eid, items: w.interests.__setitem__(eid, [dict(i) for i in items])
     employees_repo.set_available_slots = lambda eid, slots: w.employees[eid].__setitem__("available_slots", list(slots))
 
@@ -231,6 +237,15 @@ def install(w: World):
     # club_members
     club_members_repo.is_member = lambda cid, eid: any(m["club_id"] == cid and _norm(m["employee_id"]) == _norm(eid) for m in w.members)
     club_members_repo.list_members = lambda cid: [dict(m) for m in sorted((m for m in w.members if m["club_id"] == cid), key=lambda m: m["employee_id"])]
+    club_members_repo.list_active_clubs_for_employees = lambda eids: sorted(
+        ({"employee_id": m["employee_id"], "club_id": m["club_id"], "name": w.clubs[m["club_id"]]["name"]}
+         for m in w.members
+         if m["employee_id"] in set(eids) and m["club_id"] in w.clubs and w.clubs[m["club_id"]]["is_active"]),
+        key=lambda r: (r["club_id"], r["employee_id"])) if eids else []
+    club_members_repo.list_members_with_employees = lambda cid: [
+        {**m, "employees": {k: w.employees[m["employee_id"]][k] for k in ("id", "name", "dept")}}
+        for m in sorted((m for m in w.members if m["club_id"] == cid), key=lambda m: m["employee_id"])
+        if m["employee_id"] in w.employees]
     club_members_repo.add_member = lambda cid, eid, joined_at=None: w.members.append({"club_id": cid, "employee_id": eid, "joined_at": joined_at})
     club_members_repo.remove_member = lambda cid, eid: w.members.__setitem__(slice(None), [m for m in w.members if not (m["club_id"] == cid and m["employee_id"] == eid)])
     club_members_repo.list_clubs_by_member = lambda eid: sorted(m["club_id"] for m in w.members if _norm(m["employee_id"]) == _norm(eid))
@@ -238,6 +253,11 @@ def install(w: World):
     # events
     events_repo.get = lambda eid: dict(w.events[eid]) if eid in w.events else None
     events_repo.list_upcoming_by_club = lambda cid: [dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"])) if e["event_date"] >= w.today().isoformat()]
+    events_repo.list_upcoming_by_club_with_applicants = lambda cid: [
+        {**e, "applicant_count": sum(1 for a in w.applications.values()
+                                     if a["event_id"] == e["id"] and a["status"] == "申込済み")}
+        for e in (dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"]))
+                  if e["event_date"] >= w.today().isoformat())]
     events_repo.list_upcoming_all_with_club = lambda: [
         {**e, "clubs": dict(w.clubs[e["club_id"]])}
         for e in sorted(w.events.values(), key=lambda e: (e["event_date"], e["id"]))
@@ -290,6 +310,15 @@ def install(w: World):
         return [{**_with_event(a), "employees": dict(w.employees[a["applicant_id"]])}
                 for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] in ev_ids]
     applications_repo.list_by_organizer_club = a_by_club
+    def a_count_first_time(start, end):
+        counts = {}
+        for a in w.applications.values():
+            e = w.events.get(a["event_id"])
+            if (e and a["is_first_time"] and a["status"] != "キャンセル" and e["status"] == "予定"
+                    and start <= str(e["event_date"]) < end):
+                counts[e["club_id"]] = counts.get(e["club_id"], 0) + 1
+        return counts
+    applications_repo.count_first_time_by_club_in_month = a_count_first_time
     applications_repo.list_participants = lambda eid: [
         {**a, "employees": dict(w.employees[a["applicant_id"]])}
         for a in sorted(w.applications.values(), key=lambda a: a["id"]) if a["event_id"] == eid and a["status"] == "申込済み"]

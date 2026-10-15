@@ -29,9 +29,11 @@ def _club(club_id, name):
 
 
 def _open(monkeypatch, week=(), popular=(), recommend=()):
-    monkeypatch.setattr(search_service, "get_this_week_clubs", lambda: list(week))
-    monkeypatch.setattr(search_service, "get_popular_clubs", lambda: list(popular))
-    monkeypatch.setattr(search_service, "get_recommendations", lambda employee_id: list(recommend))
+    # 画面は get_home_page（今週・人気・おすすめを1回で取る。D-08）を呼ぶ
+    monkeypatch.setattr(
+        search_service, "get_home_page",
+        lambda employee_id: {"week": list(week), "popular": list(popular), "recommendations": list(recommend)},
+    )
     monkeypatch.setattr(state, "current_employee", lambda: {"name": "加藤健太"})
     at = AppTest.from_string(SCRIPT)
     at.session_state["employee_id"] = "E001"

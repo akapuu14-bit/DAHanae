@@ -36,9 +36,9 @@ LEVEL_FILTERS = {
 }
 
 
-def _render_week():
+def _render_week(week):
     st.subheader("今週開催の部活")
-    clubs = search_service.get_this_week_clubs()[:WEEK_MAX]
+    clubs = week[:WEEK_MAX]
     if not clubs:
         st.info(EMPTY_WEEK)
         return
@@ -47,9 +47,9 @@ def _render_week():
             club_card.render(club, key_prefix="home_week")
 
 
-def _render_popular():
+def _render_popular(popular):
     st.subheader("今月の人気部活")
-    clubs = search_service.get_popular_clubs()[:POPULAR_MAX]
+    clubs = popular[:POPULAR_MAX]
     if not clubs:
         st.info(EMPTY_POPULAR)
         return
@@ -60,14 +60,14 @@ def _render_popular():
             state.go(state.CLUB_DETAIL, club_id=club["club_id"])
 
 
-def _render_recommend(employee_id):
+def _render_recommend(recommendations):
     st.subheader("あなたにおすすめ")
     choice = st.radio(
         "表示する部活", list(LEVEL_FILTERS), horizontal=True, key="home_level_filter"
     )
     clubs = [
         club
-        for club in search_service.get_recommendations(employee_id)
+        for club in recommendations
         if club["level"] in LEVEL_FILTERS[choice]
     ]
     if not clubs:
@@ -100,6 +100,8 @@ def render():
             if st.button("人を探す", key="home_to_employee_search", type="primary", width="stretch"):
                 state.go(state.EMPLOYEE_SEARCH)
 
-    _render_week()  # SP-16
-    _render_popular()  # SP-17
-    _render_recommend(employee_id)  # SP-18
+    # 今週・人気・おすすめの元になる値は、まとめて1回で取る（D-08）
+    page = search_service.get_home_page(employee_id)
+    _render_week(page["week"])  # SP-16
+    _render_popular(page["popular"])  # SP-17
+    _render_recommend(page["recommendations"])  # SP-18
