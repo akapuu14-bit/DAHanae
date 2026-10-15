@@ -21,6 +21,29 @@ def list_by_application(application_id: int) -> list[dict]:
     return res.data or []
 
 
+def list_by_applications(application_ids: list[int]) -> dict[int, list[dict]]:
+    """複数の申込のやり取りをまとめて1回で取る（list_by_application の一括版）。
+
+    {application_id: [古い順のメッセージ]}。やり取りのない申込もキーを持ち、値は空リスト。
+    application_ids が空なら問い合わせず空dictを返す。
+    """
+    ids = list(dict.fromkeys(application_ids))
+    if not ids:
+        return {}
+    res = (
+        supabase.table("messages")
+        .select("*")
+        .in_("application_id", ids)
+        .order("sent_at")
+        .order("id")
+        .execute()
+    )
+    result: dict[int, list[dict]] = {i: [] for i in ids}
+    for row in res.data or []:
+        result[row["application_id"]].append(row)
+    return result
+
+
 def insert(application_id: int, sender_id: str, body: str) -> int:
     """メッセージを1件追加し、採番された id を返す。sent_at はDBの既定値に委ねる。
 

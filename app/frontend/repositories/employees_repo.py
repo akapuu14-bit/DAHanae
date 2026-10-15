@@ -209,6 +209,15 @@ def set_available_slots(employee_id: str, available_slots: list[str]) -> None:
     ).execute()
 
 
+def get_by_ids(employee_ids: list[str]) -> dict[str, dict]:
+    """社員IDの完全一致で、複数の社員をまとめて1回で取る。{id: 社員行}。見つからないIDはキーに含めない。"""
+    ids = list(dict.fromkeys(employee_ids))
+    if not ids:
+        return {}
+    res = supabase.table("employees").select("*").in_("id", ids).execute()
+    return {r["id"]: r for r in (res.data or [])}
+
+
 def list_departments() -> list[str]:
     """employees.dept の重複を除いた値を昇順（Python の sorted と同じ）で返す。社員が0人なら空リスト。"""
     res = supabase.table("employees").select("dept").execute()
