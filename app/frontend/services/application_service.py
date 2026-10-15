@@ -17,7 +17,7 @@ from repositories import (
     events_repo,
     messages_repo,
 )
-from services import action_log_service, notification_service
+from services import action_log_service, cache_service, notification_service
 from services.errors import (
     ConflictError,
     NotFoundError,
@@ -69,6 +69,7 @@ def apply(event_id: int, applicant_id: str, message_text: str | None) -> dict:
     club_id = event["club_id"]
     is_first_time = _is_first_time(club_id, applicant_id)
     application_id = applications_repo.insert(event_id, applicant_id, is_first_time)
+    cache_service.invalidate(cache_service.APPLICATION)  # 自分の申込の直後（SP-84②）
 
     if message_text and message_text.strip():
         messages_repo.insert(application_id, applicant_id, message_text)
@@ -104,6 +105,7 @@ def cancel(application_id: int, requester_id: str) -> None:
         raise ConflictError()
 
     applications_repo.update_status(application_id, _STATUS_CANCELED, canceled_at=now.isoformat())
+    cache_service.invalidate(cache_service.APPLICATION)  # 自分のキャンセルの直後（SP-84②）
 
     club = clubs_repo.get(event["club_id"])
     if club is not None and club["organizer_id"] != requester_id:
@@ -244,6 +246,7 @@ def confirm_stamp(application_id: int, organizer_id: str) -> None:
     applications_repo.update_status(
         application_id, application["status"], confirmed_at=_now().isoformat()
     )
+    cache_service.invalidate(cache_service.APPLICATION)  # スタンプの直後（SP-84②）
     notification_service.notify(
         application["applicant_id"],
         "スタンプ",

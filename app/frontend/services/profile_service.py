@@ -11,7 +11,7 @@ from repositories import (
     clubs_repo,
     employees_repo,
 )
-from services import search_service
+from services import cache_service, search_service
 from services.errors import NotFoundError, PermissionDeniedError, ValidationError
 
 # 仕様.md 3.2 の選択肢
@@ -33,6 +33,19 @@ def _get_employee(employee_id: str) -> dict:
 
 
 def get_profile(employee_id: str, viewer_id: str) -> dict:
+    """社員プロフィール（キャッシュあり。本人ごと・閲覧者ごと・日ごと）。中身は _get_profile。
+
+    保存・公開設定の更新、メンバー変更の直後に無効化（SP-84②）。NotFoundError はキャッシュされない。
+    """
+    return _get_profile_cached(employee_id, viewer_id, search_service._today().isoformat())
+
+
+@cache_service.cached(cache_service.EMPLOYEE_PROFILE)
+def _get_profile_cached(employee_id: str, viewer_id: str, day: str) -> dict:
+    return _get_profile(employee_id, viewer_id)
+
+
+def _get_profile(employee_id: str, viewer_id: str) -> dict:
     """社員プロフィール（SP-53〜SP-55, SP-65）。読み取り専用で、操作履歴は記録しない。
 
     interests / available_slots は、非公開かつ閲覧者が本人でないとき None。本人には常に値を返す。
@@ -79,9 +92,12 @@ def update_public_settings(
         raise PermissionDeniedError("only the employee can change public settings")
     if interests_public is None and slots_public is None:
         return
-    employees_repo.update_public_settings(
-        employee["id"], interests_public=interests_public, slots_public=slots_public
-    )
+    try:
+        employees_repo.update_public_settings(
+            employee["id"], interests_public=interests_public, slots_public=slots_public
+        )
+    finally:
+        cache_service.invalidate(cache_service.PROFILE)  # 公開設定の更新の直後（SP-84②）
 
 
 def _validate_interests(interests: list[dict]) -> None:
@@ -125,5 +141,8 @@ def save_profile(
     _validate_interests(interests)
     _validate_slots(available_slots)
 
-    employees_repo.set_interests(employee["id"], interests)
-    employees_repo.set_available_slots(employee["id"], available_slots)
+    try:
+        employees_repo.set_interests(employee["id"], interests)
+        employees_repo.set_available_slots(employee["id"], available_slots)
+    finally:
+        cache_service.invalidate(cache_service.PROFILE)  # 保存の直後（途中で失敗しても捨てる。SP-84②）
