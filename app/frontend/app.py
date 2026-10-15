@@ -35,11 +35,39 @@ def _load_screen(page):
         raise
 
 
-def _render_sidebar():
+def _unread_count(employee_id, page):
+    """未読件数。保持値を使い、取り直すのは SP-84① の契機だけ（設計 D-06）。
+
+    取り直す契機：まだ取っていないとき（ログイン直後）／通知・メッセージ画面を開いているとき／
+    既読化の直後（画面側が state.invalidate_unread() で保持値を捨てる）。
+    """
+    held = st.session_state["unread_count"]
+    if held is None or page in (state.MESSAGES, state.NOTIFICATIONS):
+        held = notification_service.count_unread(employee_id)
+        st.session_state["unread_count"] = held
+    return held
+
+
+def _can_manage(employee_id):
+    """「部活の管理」を出すか。ログイン後に1回取って保持し、幹事・メンバーの変更の直後だけ取り直す。"""
+    held = st.session_state["can_manage"]
+    if held is None:
+        # 仕様 SP-01：「部活の管理」は幹事・運営者に出す。
+        # 運営者は get_role、幹事（どこかの部活の担当）は is_organizer で判定する。
+        held = (
+            auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN
+            or auth_service.is_organizer(employee_id)
+        )
+        st.session_state["can_manage"] = held
+    return held
+
+
+def _render_sidebar(page):
     """ログイン中の人の情報を集めて、サイドバー（部品）に渡す。
 
     サイドバー本体は「表示だけ」の部品なので、名前・未読件数・権限は
-    ここ（受付係）で services に聞いてから渡す。
+    ここ（受付係）で集めてから渡す。未読件数と権限は session_state に保持し、
+    再実行のたびには services に聞かない（設計 D-06、仕様 SP-84）。
     """
     employee_id = st.session_state["employee_id"]
     employee = state.current_employee()
@@ -47,13 +75,8 @@ def _render_sidebar():
         name=employee.get("name", employee_id),
         dept=employee.get("dept", ""),
         employee_id=employee_id,
-        unread_count=notification_service.count_unread(employee_id),
-        # 仕様 SP-01：「部活の管理」は幹事・運営者に出す。
-        # 運営者は get_role、幹事（どこかの部活の担当）は is_organizer で判定する。
-        can_manage=(
-            auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN
-            or auth_service.is_organizer(employee_id)
-        ),
+        unread_count=_unread_count(employee_id, page),
+        can_manage=_can_manage(employee_id),
     )
 
 
@@ -63,7 +86,7 @@ def main():
     page = state.LOGIN if not state.is_logged_in() else st.session_state["current_page"]
 
     if state.is_logged_in():
-        _render_sidebar()
+        _render_sidebar(page)
 
     screen = _load_screen(page)
     if screen is None:

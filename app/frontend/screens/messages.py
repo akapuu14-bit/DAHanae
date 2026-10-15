@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
+import state
 from services.errors import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 
 # 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
@@ -199,6 +200,7 @@ def render():
     mine = application_service.list_my_applications(me)
     received = application_service.list_received_applications(me) if is_organizer else []
     notification_service.mark_read_for_messages_screen(me)  # SP-36
+    state.invalidate_unread()  # 既読化の直後：サイドバーの未読件数を次の描画で取り直す（SP-84①）
 
     st.title("メッセージ")
     if is_organizer:
