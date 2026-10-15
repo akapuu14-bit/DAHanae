@@ -71,7 +71,7 @@
     '7': nth(side('ホーム')),
     '8': nth(main('詳しく見る')), '9': nth(main('← 戻る')), 'back': nth(main('← 戻る')), '13': nth(main('← 戻る')),
     '10': nth(main('プロフィールを見る')), '12': nth(main('プロフィールを見る')),
-    '11': () => [...d().querySelectorAll('details button')].find(b => !b.closest('[data-testid="stSidebar"]') && /（.+）/.test(b.innerText)),
+    '11': () => [...d().querySelectorAll('details button')].find(b => !b.closest('[data-testid="stSidebar"]') && /（.+）/.test(b.textContent)),
   };
   window.__T0E = {
     chk: (id, arg) => { const el = (id === '14' ? notif(arg || 'メッセージ') : F[id])(); return id + '|' + (el ? 'found' : 'none') + '|' + document.visibilityState + '|' + h1(); },
