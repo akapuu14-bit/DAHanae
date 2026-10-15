@@ -225,13 +225,19 @@ def search_employees(
     total = employees_repo.count(conditions)
     requester = (requester_id or "").strip().upper()
 
-    club_names = {c["id"]: c["name"] for c in clubs_repo.search({})} if rows else {}
+    # 表示する社員ぶんの所属部活・興味を、社員の人数に関係なく1回ずつ取る（設計 D-08）
+    row_ids = [row["id"] for row in rows]
     clubs_by_employee: dict[str, list[dict]] = {}
-    for club_id in sorted(club_names):
-        for member in club_members_repo.list_members(club_id):
-            clubs_by_employee.setdefault(member["employee_id"], []).append(
-                {"club_id": club_id, "name": club_names[club_id]}
-            )
+    for member in club_members_repo.list_active_clubs_for_employees(row_ids):
+        clubs_by_employee.setdefault(member["employee_id"], []).append(
+            {"club_id": member["club_id"], "name": member["name"]}
+        )
+    visible_ids = [
+        row["id"]
+        for row in rows
+        if _visibility(row["interests_public"], row["id"].upper() == requester) != "hidden"
+    ]
+    interests_by_employee = employees_repo.get_interests_for(visible_ids)
 
     results = []
     for row in rows:
@@ -242,7 +248,7 @@ def search_employees(
             {
                 **row,
                 "interests": (
-                    None if interests_vis == "hidden" else employees_repo.get_interests(row["id"])
+                    None if interests_vis == "hidden" else interests_by_employee.get(row["id"], [])
                 ),
                 "interests_visibility": interests_vis,
                 "available_slots": None if slots_vis == "hidden" else row.get("available_slots"),
