@@ -242,6 +242,10 @@ def install(w: World):
          for m in w.members
          if m["employee_id"] in set(eids) and m["club_id"] in w.clubs and w.clubs[m["club_id"]]["is_active"]),
         key=lambda r: (r["club_id"], r["employee_id"])) if eids else []
+    club_members_repo.list_members_with_employees = lambda cid: [
+        {**m, "employees": {k: w.employees[m["employee_id"]][k] for k in ("id", "name", "dept")}}
+        for m in sorted((m for m in w.members if m["club_id"] == cid), key=lambda m: m["employee_id"])
+        if m["employee_id"] in w.employees]
     club_members_repo.add_member = lambda cid, eid, joined_at=None: w.members.append({"club_id": cid, "employee_id": eid, "joined_at": joined_at})
     club_members_repo.remove_member = lambda cid, eid: w.members.__setitem__(slice(None), [m for m in w.members if not (m["club_id"] == cid and m["employee_id"] == eid)])
     club_members_repo.list_clubs_by_member = lambda eid: sorted(m["club_id"] for m in w.members if _norm(m["employee_id"]) == _norm(eid))
@@ -249,6 +253,11 @@ def install(w: World):
     # events
     events_repo.get = lambda eid: dict(w.events[eid]) if eid in w.events else None
     events_repo.list_upcoming_by_club = lambda cid: [dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"])) if e["event_date"] >= w.today().isoformat()]
+    events_repo.list_upcoming_by_club_with_applicants = lambda cid: [
+        {**e, "applicant_count": sum(1 for a in w.applications.values()
+                                     if a["event_id"] == e["id"] and a["status"] == "申込済み")}
+        for e in (dict(e) for e in sorted(w.club_events(cid), key=lambda e: (e["event_date"], e["id"]))
+                  if e["event_date"] >= w.today().isoformat())]
     events_repo.list_upcoming_all_with_club = lambda: [
         {**e, "clubs": dict(w.clubs[e["club_id"]])}
         for e in sorted(w.events.values(), key=lambda e: (e["event_date"], e["id"]))

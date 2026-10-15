@@ -33,6 +33,18 @@ def list_members(club_id: int) -> list[dict]:
     return res.data or []
 
 
+def list_members_with_employees(club_id: int) -> list[dict]:
+    """list_members に、各所属者の社員行（"employees": id・name・dept）を付けて1回で返す。employee_id 順。"""
+    res = (
+        supabase.table("club_members")
+        .select("*, employees(id, name, dept)")
+        .eq("club_id", club_id)
+        .order("employee_id")
+        .execute()
+    )
+    return res.data or []
+
+
 def list_active_clubs_for_employees(employee_ids: list[str]) -> list[dict]:
     """複数の社員の所属部活（is_active の部活のみ）をまとめて1回で取る。
 
