@@ -383,6 +383,10 @@ def install(w: World):
     application_service.datetime = frozen
     search_service.datetime = frozen
     club_admin_service.datetime = frozen
+    # 画面も datetime.now で「開始前か」「今日以降か」を決める。固定しないと実時計に追い抜かれて時限式に落ちる。
+    from screens import club_admin as club_admin_screen, messages as messages_screen
+    messages_screen.datetime = frozen
+    club_admin_screen.datetime = frozen
 
 
 class LaTestCase(unittest.TestCase):
