@@ -80,10 +80,44 @@ def _render_sidebar(page):
     )
 
 
+def _scroll_to_top_on_page_change(page):
+    """画面が切り替わった再実行のときだけ、本文のスクロールを先頭へ戻す。
+
+    Streamlit は画面を切り替えても、ブラウザのスクロール位置をそのまま残す。
+    下へスクロールした状態で別の画面（社員プロフィールなど）を開くと、
+    新しい画面の途中から見えて見出しや名前が隠れてしまう。
+    画面ごとに script の中身が変わるので、同じ画面での再実行では走らない。
+    表示だけの処理で、DB には触れない（D-06/D-07/D-08 の往復回数は変わらない）。
+    """
+    if st.session_state.get("_scrolled_page") == page:
+        return
+    first_run = "_scrolled_page" not in st.session_state
+    st.session_state["_scrolled_page"] = page
+    if first_run:
+        return  # 開いた直後は、もともと先頭にいる
+    st.html(
+        f"""<script>
+        /* page={page} */
+        (function () {{
+          function top() {{
+            var main = document.querySelector('[data-testid="stMain"]');
+            if (main) main.scrollTo(0, 0);
+            window.scrollTo(0, 0);
+          }}
+          top();
+          setTimeout(top, 100);
+        }})();
+        </script>""",
+        unsafe_allow_javascript=True,
+    )
+
+
 def main():
     state.init()
 
     page = state.LOGIN if not state.is_logged_in() else st.session_state["current_page"]
+
+    _scroll_to_top_on_page_change(page)
 
     if state.is_logged_in():
         _render_sidebar(page)
