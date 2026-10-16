@@ -6,6 +6,7 @@
 """
 
 from db.client import supabase
+from repositories.embed import many, one
 
 
 def is_member(club_id: int, employee_id: str) -> bool:
@@ -42,7 +43,10 @@ def list_members_with_employees(club_id: int) -> list[dict]:
         .order("employee_id")
         .execute()
     )
-    return res.data or []
+    rows = res.data or []
+    for r in rows:
+        r["employees"] = one(r.get("employees"))  # 埋め込みの形（dict/list/None）にかかわらず dict か None にそろえる
+    return rows
 
 
 def list_active_clubs_by_member(employee_id: str) -> list[dict]:
@@ -58,7 +62,12 @@ def list_active_clubs_by_member(employee_id: str) -> list[dict]:
         .eq("employee_id", employee_id)
         .execute()
     )
-    clubs = [r["clubs"] for r in (res.data or []) if r.get("clubs") and r["clubs"].get("is_active")]
+    clubs = []
+    for r in res.data or []:
+        club = one(r.get("clubs"))
+        if club and club.get("is_active"):
+            club["events"] = many(club.get("events"))
+            clubs.append(club)
     return sorted(clubs, key=lambda c: c["id"])
 
 
@@ -76,11 +85,11 @@ def list_active_clubs_for_employees(employee_ids: list[str]) -> list[dict]:
         .in_("employee_id", ids)
         .execute()
     )
-    rows = [
-        {"employee_id": r["employee_id"], "club_id": r["club_id"], "name": r["clubs"]["name"]}
-        for r in (res.data or [])
-        if r.get("clubs") and r["clubs"].get("is_active")
-    ]
+    rows = []
+    for r in res.data or []:
+        club = one(r.get("clubs"))
+        if club and club.get("is_active"):
+            rows.append({"employee_id": r["employee_id"], "club_id": r["club_id"], "name": club["name"]})
     return sorted(rows, key=lambda r: (r["club_id"], r["employee_id"]))
 
 

@@ -7,6 +7,7 @@
 import re
 
 from db.client import supabase
+from repositories.embed import one
 
 
 def _escape_like(value: str) -> str:
@@ -140,7 +141,7 @@ def get_interests(employee_id: str) -> list[dict]:
     return [
         {
             "activity_id": r["activity_id"],
-            "activity_name": (r.get("activities") or {}).get("name"),
+            "activity_name": (one(r.get("activities")) or {}).get("name"),
             "level": r["level"],
         }
         for r in (res.data or [])
@@ -168,7 +169,7 @@ def get_interests_for(employee_ids: list[str]) -> dict[str, list[dict]]:
         result[r["employee_id"]].append(
             {
                 "activity_id": r["activity_id"],
-                "activity_name": (r.get("activities") or {}).get("name"),
+                "activity_name": (one(r.get("activities")) or {}).get("name"),
                 "level": r["level"],
             }
         )

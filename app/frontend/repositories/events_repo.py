@@ -11,6 +11,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from db.client import supabase
+from repositories.embed import many, one
 
 
 def get(event_id: int) -> dict | None:
@@ -81,7 +82,9 @@ def list_upcoming_by_club_with_participants(club_id: int) -> list[dict]:
     )
     rows = []
     for row in res.data or []:
-        applications = row.pop("applications", None) or []
+        applications = many(row.pop("applications", None))
+        for a in applications:
+            a["employees"] = one(a.get("employees")) or {}  # 申込者の名前。形が想定外でも落とさない
         row["participants"] = sorted(
             (a for a in applications if a.get("status") == "申込済み"), key=lambda a: a["id"]
         )
