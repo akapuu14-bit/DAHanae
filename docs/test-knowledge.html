@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>テストの企画から実行まで</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#1f2a44">
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    nav a.hub-link {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    mark.tbc { background: var(--warn-bg); color: var(--navy); border: 1px solid var(--yellow); border-radius: 4px; padding: 0 6px; font-size: .85em; font-weight: 700; }
+    details { margin: 8px 0; }
+    summary { cursor: pointer; font-weight: 700; color: var(--navy-2); }
+    td.grade { font-weight: 700; }
+    td.aside { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+    figure.shot { margin: 14px 0 18px; }
+    figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+    figure.shot figcaption { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+    figure.shot .noimg-note { display: none; padding: 14px 16px; background: var(--soft); border: 1px dashed var(--line); font-size: .9rem; }
+    figure.shot.noimg img { display: none; }
+    figure.shot.noimg .noimg-note { display: block; }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <a class="hub-link" href="hub.html">← 開発ハブ</a>
+    <strong>テストの企画から実行まで</strong>
+    <a href="#p1">1 持ち帰ること</a><a href="#p2">2 全体の地図</a><a href="#p3">3 U・I・S・A</a><a href="#p4">4 準備</a><a href="#p5">5 文書の役割</a><a href="#p6">6 実行フロー</a><a href="#p7">7 確認フロー</a><a href="#p8">8 その後</a><a href="#p9">9 進め方</a><a href="#p10">10 場面別ガイド</a><a href="#p11">11 用語・つまずき</a>
+  </nav>
+
+
+  <main>
+    <section class="sheet" id="top">
+      <h1>テストの企画から実行まで（流れと場面別ガイド）</h1>
+      <p class="meta"><strong>対象読者:</strong> チームメート（テスト初心者〜中級）。自分の機能のテストを考える人、テストを回す人</p>
+      <p class="meta"><strong>読み終えたらできること:</strong> <strong>自分の機能の「テスト設計」を書けるようになる。</strong>そのために、テストの<strong>全体の流れ</strong>（準備 → 必要な文書 → 実行 → 確認 → その後の工程）を、1枚の地図で持ち帰ります</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-16 ／ 根拠: <code>テスト設計.md</code>・<code>テスト実行手順書.md</code>・<code>テスト結果.md</code>（いずれも <code>02_プロジェクト/bukatsu_concierge/</code>、main <code>ce1fff8</code> 時点。件数の基準日は9章に書きました）、<code>evidence/test/</code>、<code>00_ルール/V字フロー規定.md</code></p>
+      <div class="callout danger">
+        <p><strong>【確認状況】</strong> 推定は「推定」、未確認は「未確認」と書きます。件数の数値は、2026-10-12 の記録（<code>テスト結果.md</code>）から転記・再集計したものです（9章）。この教材は、実際に回した記録を例にしています。テストの中身の正本は <code>テスト設計.md</code> です。</p>
+      </div>
+    </section>
+
+    <section class="sheet" id="p1">
+      <div class="number">1</div>
+      <h2>この記事で持ち帰ること</h2>
+      <div class="callout ok">
+        <p><strong>テストは「何を・いつ・誰が・どうやって確かめ、どう記録するか」を決めて回す一連の流れで、テスト設計はその流れの中の1枚です。流れが見えれば、自分の機能のテスト設計は書けます。</strong></p>
+      </div>
+      <ul>
+        <li><strong>2章</strong>: 要求からテスト・評価までの<strong>1枚の地図</strong>（これが主役）。</li>
+        <li><strong>3〜5章</strong>: 4種類のテスト（U・I・S・A）、準備、3つのテスト文書の役割。</li>
+        <li><strong>6〜8章</strong>: 実際に回した記録を例に、実行 → 確認 → その後の工程を辿る。</li>
+        <li><strong>9章</strong>: 実践の進め方（担当の割り振り、進捗の見せ方、完了条件）。</li>
+        <li><strong>10章</strong>: 場面別ガイド（<strong>もう1つの主役</strong>）。「いま何をするか」から引けます。</li>
+      </ul>
+      <p>急ぐ人は、<strong>2章 → 10章</strong>だけ読めば足ります。詳しい元の文書へは、各章からリンク（ファイル名）で案内します。ここでは、重要なものに絞って説明します。</p>
+    </section>
+
+    <section class="sheet" id="p2">
+      <div class="number">2</div>
+      <h2>テストの全体の地図</h2>
+      <p>この案件は「V字」で進めます（<code>V字フロー規定.md</code>）。左側で「作るもの」を決め、右側で、決めたことに対応する「確かめるテスト」を置きます。<strong>テスト設計は、左側の文書と対（つい）で書きます。</strong></p>
+      <pre><code>【決める（左）】                                【確かめる（右）】
+
+ 要求 ─────────────────────────────────────────▶ 受入テスト A  （使う人の目で、合格を決める）
+   └ 要件 ───────────────────────────────────▶ システムテスト S（全体を本物に近い形で通す）
+       └ 仕様 ─────────────────────────────▶ 結合テスト I  （部品をつないで確かめる）
+           └ 設計 ───────────────────────▶ 単体テスト U  （部品を1つずつ確かめる）
+               └ 実装（作る）
+
+ テスト設計.md ＝ 上の4種類のテストを「何を確かめるか」で書いた文書（要求・要件・仕様・設計と対）</code></pre>
+      <h3>流れ（作る → 確かめる → 評価する）</h3>
+      <pre><code>① 準備        ② 設計         ③ 実行           ④ 確認            ⑤ その後
+環境・データ   テスト設計.md   テスト実行手順書   テスト結果.md      自己評価
+担当・文書     (何を確かめる)   (どう回す)        (合否を記録)       → TA の独立評価
+                                U → I → S → A    合格/不合格/        → 相互レビュー
+                                                  対象外/未実行       → 修正</code></pre>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>段</th><th>答える問い</th><th>使う文書</th><th>この教材</th></tr></thead>
+          <tbody>
+            <tr><td>準備</td><td>何を用意すれば、同じ条件でテストできるか</td><td>テスト実行手順書.md 3章</td><td>4章</td></tr>
+            <tr><td>設計</td><td>何を、どんな前提・操作で確かめ、どうなれば合格か</td><td>テスト設計.md</td><td>3・5章</td></tr>
+            <tr><td>実行</td><td>どの順番で、誰が、どう回すか</td><td>テスト実行手順書.md</td><td>6章</td></tr>
+            <tr><td>確認</td><td>合否をどう決め、どう記録し、不合格をどう切り分けるか</td><td>テスト結果.md</td><td>7章</td></tr>
+            <tr><td>その後</td><td>誰が、どの順番で、独立に評価するか</td><td>V字フロー規定.md</td><td>8章</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sheet" id="p3">
+      <div class="number">3</div>
+      <h2>U・I・S・A とは</h2>
+      <p>4種類のテストは、<strong>見る範囲の大きさ</strong>が違います。日常のたとえで言うと、新しい自転車を作って、お客さんに渡すまでの確認です。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>種類</th><th>たとえ</th><th>一言で</th><th>いつ</th><th>誰が実行</th><th>何を見る（このアプリの例）</th></tr></thead>
+          <tbody>
+            <tr><td><strong>U 単体</strong></td><td>ブレーキだけを握って、きちんと効くか確かめる</td><td>部品を<strong>1つずつ</strong>確かめる</td><td>実装の直後（手順書上。この案件の実際の順序は6章）</td><td>実装担当（手順書上）</td><td>認証の部品が、大文字小文字の違うIDでも正しく動くか（<code>services/auth_service.py</code>）</td></tr>
+            <tr><td><strong>I 結合</strong></td><td>ブレーキと車輪をつないで、握ると車輪が止まるか確かめる</td><td>部品を<strong>つないで</strong>確かめる</td><td>Uのあと</td><td>テスト担当</td><td>仕様（SP）の分岐どおりに動くか。例: 同じ開催に重複申込できない（画面→処理→データ）</td></tr>
+            <tr><td><strong>S システム</strong></td><td>完成した自転車で、本物の道を一周する</td><td><strong>全体</strong>を本物に近い形で通す</td><td>Iのあと</td><td>テスト担当</td><td>要件（F・N）を、画面をまたいで満たすか。例: ログイン → 申込 → キャンセル → 再申込</td></tr>
+            <tr><td><strong>A 受入</strong></td><td>買う人が自分で乗って、「これで良い」と言う</td><td>使う人の目で<strong>合格を決める</strong></td><td>Sのあと</td><td><strong>ユーザー</strong>（判定）</td><td>要求（R-11〜R-15）の主要な流れが、途切れず使えるか</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <p><strong>つまずきやすい点:</strong> 「テストの設計」は左側の文書と対で書き、「実行」は<strong>下（U）から上（A）へ</strong>進みます。設計の向きと、回す向きは逆です。A の合否は<strong>ユーザーだけ</strong>が書きます（AI は代筆しません）。</p>
+      </div>
+      <p class="meta">出典: <code>V字フロー規定.md</code>「左右の対応」、<code>テスト実行手順書.md</code> 1章。ID の付き方は S-01、I-001、U-001、A-01（<code>テスト設計.md</code>・<code>テスト結果.md</code>）。</p>
+    </section>
+
+    <section class="sheet" id="p4">
+      <div class="number">4</div>
+      <h2>準備: 決めること・用意するもの</h2>
+      <p>実行を始める前に、次を済ませます（<code>テスト実行手順書.md</code> 2〜3章）。<strong>準備のチェックリスト</strong>として使えます。</p>
+      <h3>① 決めること</h3>
+      <ul class="checklist">
+        <li>どの版を試すか: 対象のコミット ID を控える（<code>git rev-parse --short HEAD</code>）。</li>
+        <li>誰が、どの種類を実行するか（3章の表）。<strong>実装した人と別の人</strong>が独立評価する。</li>
+        <li>実行の順番（U → I → S → A。9章）。</li>
+        <li>証拠をどこに置くか: <code>evidence/test/</code> の <code>U/</code>・<code>I/</code>・<code>S/</code>・<code>A/</code>。</li>
+      </ul>
+      <h3>② 用意する文書</h3>
+      <ul class="checklist">
+        <li><code>要求.md</code>・<code>要件.md</code>・<code>仕様.md</code>・<code>設計.md</code>（5文書。テストの根拠）</li>
+        <li><code>テスト設計.md</code>（何を確かめるか。正本）</li>
+        <li><code>テスト実行手順書.md</code>（どう回すか）</li>
+        <li><code>テスト結果.md</code>（記録先。5章）</li>
+      </ul>
+      <h3>③ 環境とデータ</h3>
+      <ul class="checklist">
+        <li>データは<strong>架空データだけ</strong>。実データを入れない。外部公開もしない。</li>
+        <li>ダミーデータは、まず <code>python scripts/reset_data.py --dry-run</code> で内容を確認する。<strong><code>--dry-run</code> を付けずに実行すると、接続先 DB の全データが消える</strong>。実行前にチームへ声をかける。</li>
+        <li>投入後の期待: 社員 500 名・部活 15 件（S-54）。seed は固定（S-55）。</li>
+        <li>接続情報は各自の <code>.streamlit/secrets.toml</code> に置き、<strong>コミットしない</strong>。パスワードなど秘匿値は、記録・ログ・スクショのどこにも書かない。</li>
+        <li>複数人が同じ DB を同時に操作すると結果がぶれる。誰がいつ実行するかを、先に知らせる。</li>
+      </ul>
+      <h3>④ 実行前の最終チェック</h3>
+      <ul class="checklist">
+        <li>対象のコミット ID を控えた。</li>
+        <li>ダミーデータ投入の日付・実行者を記録した。</li>
+        <li>実 DB でログインできることを確認した。</li>
+        <li>他の人がテスト中でないことを確認した。</li>
+        <li>秘匿値が画面・ログに写らない設定になっている。</li>
+      </ul>
+    </section>
+
+    <section class="sheet" id="p5">
+      <div class="number">5</div>
+      <h2>文書の役割: 3つの文書の違い</h2>
+      <p>テストの文書は3つあります。<strong>中身の正本は1つだけ</strong>で、他は「回し方」と「記録」です。食い違ったら、<strong>テスト設計が正</strong>です（手順書とテスト結果の側を直す）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>文書</th><th>役割</th><th>誰が使う</th><th>いつ使う</th></tr></thead>
+          <tbody>
+            <tr><td><code>テスト設計.md</code></td><td><strong>中身の正本</strong>。何を・どんな前提と操作で確かめ、どうなれば合格か（期待結果）</td><td>設計する人、実行する人</td><td>書く: 実装の前（上流の文書と対）／読む: 実行のたび</td></tr>
+            <tr><td><code>テスト実行手順書.md</code></td><td><strong>回し方</strong>。担当・実行順・環境準備・証拠の残し方・種類別の手順</td><td>実行する人</td><td>実行の前と、実行中</td></tr>
+            <tr><td><code>テスト結果.md</code></td><td><strong>記録</strong>。合否・実行日・実行者・証拠・備考（中身は写さない）</td><td>実行した人（記入）、確認する人</td><td>実行した<strong>同じ日</strong>に記入する</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>テスト設計の1行を読む（書き方の型）</h3>
+      <p>自分の機能のテスト設計は、<strong>1行 ＝ 1つの確認</strong>で書きます。列は5つです。実際の行で見てみます（<code>テスト設計.md</code> より）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>列</th><th>意味</th><th>S-02 の例（システム）</th><th>I-006 の例（結合・異常系）</th></tr></thead>
+          <tbody>
+            <tr><td>ID</td><td>テストの番号</td><td>S-02</td><td>I-006</td></tr>
+            <tr><td>対応</td><td>元になる要件（F・N）／仕様（SP）</td><td>F-02</td><td>SP-06</td></tr>
+            <tr><td>前提</td><td>試す前の状態（誰で・どんなデータ）</td><td>一般社員でログイン／幹事または運営者でログイン</td><td>DB に接続できない状態</td></tr>
+            <tr><td>操作</td><td>やること</td><td>サイドバーを確認する</td><td>画面を表示する</td></tr>
+            <tr><td>期待結果</td><td>どうなれば合格か</td><td>一般社員には「部活の管理」が表示されない。幹事・運営者には表示される</td><td>「データを読み込めませんでした。時間をおいて再読み込みしてください」と表示される</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>自分の機能のテスト設計を書く手順</strong>（要約）:</p>
+      <ol>
+        <li>機能の<strong>要件（F・N）</strong>を1件選ぶ → <strong>S を原則1ケース</strong>書く（画面をまたぐ確認）。</li>
+        <li>その要件に対応する<strong>仕様（SP）の分岐</strong>を数える → <strong>I を分岐ごとに</strong>書く。</li>
+        <li>重要なもの（★: 重複申込防止、キャンセル・再申込、初参加判定、未読件数、非公開情報、権限、操作履歴の二重記録防止）は、<strong>正常系・異常系・境界値</strong>に分けて書く。</li>
+        <li>「前提・操作・期待結果」は、<strong>誰が読んでも同じ結果になる</strong>具体さで書く（上の例のとおり）。</li>
+        <li>仕様に書いていない挙動は、<strong>テストに足さない</strong>。「仕様に書かれていません」と報告し、末尾の「仕様との不一致・未定義」の章に挙げる。</li>
+      </ol>
+    </section>
+
+    <section class="sheet" id="p6">
+      <div class="number">6</div>
+      <h2>実行フロー: この案件の U → I → S を1つずつ辿る</h2>
+      <p>実際に回した記録（2026-10-10〜12）を例に、1段ずつ辿ります。実行の手順は <code>テスト実行手順書.md</code> 5章です。</p>
+      <pre><code>U 単体（偽repo・実装担当）→ I 結合（テスト担当）→ S システム（テスト担当）→ A 受入（ユーザー）
+ 前段に不合格がある間は、それに依存する後段を「合格」にしない（原因が前段にあるため）</code></pre>
+      <p class="meta"><strong>手順書上の順序と、この案件で実際に起きた順序は別です。</strong>上は手順書上の本来の運用です。この案件では、I は 2026-10-10〜11、S は 2026-10-11〜12 に実行・記録され、U の記録（U-001〜U-013）は、その後の 2026-10-12 に、実装担当とは別の実行者がまとめて行いました（<code>テスト結果.md</code> の実行日・実行者欄）。</p>
+      <p class="meta">「偽 repo」とは、データベースを使わない、本物そっくりの<strong>偽のデータ置き場</strong>（メモリ上のスタブ）です。速く何度でも試せますが、「実際のデータベースで動く」ことまでは言えません。</p>
+
+      <h3>① 単体 U: 部品を1つずつ（実装担当）</h3>
+      <ol>
+        <li>対象の関数・モジュールを決め、<code>テスト結果.md</code> 4章に ID（<code>U-001</code> から連番）と対象を書く。</li>
+        <li>偽 repo で呼び、期待どおりか確認する。</li>
+        <li>実行ログを <code>evidence/test/U/</code> に保存し、合否・ログ・実行者を書く。</li>
+      </ol>
+      <p><strong>この案件の記録:</strong> 画面・配色の6組（U-001〜U-006）と、サービスの7組（U-007〜U-013）の計<strong>13組</strong>を、2026-10-12 に、<strong>実装担当とは別の実行者が</strong>まとめて実行・記録しました（対象コード <code>2da2eeb</code>、ログ <code>evidence/test/U/u-inventory-main-20261012.log</code>）。ログの先頭に、対象コミット・実行者（実装担当ではない旨）・日時・環境・実行コマンドを書き、「実 DB は使っていない」ことも明記しています。</p>
+      <div class="callout">
+        <p><strong>注意:</strong> U の合格は「偽 repo での部品確認」です。<strong>実データベースでの合格を意味しません。</strong>確認できた観点だけを記録し、対象のモジュールを全部網羅したとは扱いません。</p>
+      </div>
+
+      <h3>② 結合 I: 部品をつないで（テスト担当）</h3>
+      <ol>
+        <li>実行前チェック（4章④）を済ませる。</li>
+        <li>テスト設計の各行の<strong>前提</strong>を作る（データの状態・ログインする人）。</li>
+        <li>操作して、<strong>期待結果</strong>と照合する。画面の確認はスクショを撮る。</li>
+        <li>★付きは、正常系・異常系・境界値を<strong>すべて</strong>実行してから、その観点を「完了」とする。</li>
+      </ol>
+      <p><strong>この案件の記録:</strong> I は3つの方法で確かめました。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>通称</th><th>方法</th><th>確かめられること</th><th>確かめられないこと</th></tr></thead>
+          <tbody>
+            <tr><td>L-A</td><td>処理（service）＋偽 repo</td><td>処理のルール・分岐・エラーの順序</td><td>画面、実 DB</td></tr>
+            <tr><td>L-C</td><td>画面を自動操作（Streamlit の AppTest）＋偽 repo</td><td>画面の表示・文言・遷移</td><td>実 DB、ブラウザでの見た目</td></tr>
+            <tr><td>L-B</td><td>実データベース（読取14行、書込3行）</td><td>実 DB の検索条件・一意制約など</td><td>画面（処理と DB の層のみ）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>I の合格167件は、<strong>既存の L-A・L-C の合格150件＋L-B の実 DB 合格17件</strong>の合計です（<code>テスト結果.md</code> 7.3）。全167件が実 DB で合格した、という意味ではありません。</p>
+
+      <h3>③ システム S: 全体を通す（テスト担当）</h3>
+      <ol>
+        <li>結合の主要な★が合格していることを確認する。</li>
+        <li>テスト設計1章の各行を実行し、<strong>画面をまたいだ</strong>要件の充足を確認する。</li>
+        <li>S-59 は設計上テスト対象外。N-01〜N-04・N-10 は実装レビューで扱う。</li>
+      </ol>
+      <p><strong>この案件の記録:</strong> S は、確かめ方を4つに分けました。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>通称</th><th>方法</th><th>例</th></tr></thead>
+          <tbody>
+            <tr><td>α-0</td><td>画面の自動操作＋偽 repo（DB 不要）</td><td>S-03（戻る）、S-04（検索条件の保持）</td></tr>
+            <tr><td>α-R</td><td>画面の自動操作＋<strong>実 DB の読取だけ</strong></td><td>実在の幹事・運営者・一般社員でのロール表示など</td></tr>
+            <tr><td>α-W</td><td>実 DB への<strong>書込</strong>（試験用の社員・部活を入れて、確かめ、<strong>必ず削除</strong>）</td><td>主役の4件: S-19（申込）・S-25（キャンセル）・S-26（キャンセル後の再申込）・S-20 の DB 分（二重申込の防止）</td></tr>
+            <tr><td>β</td><td>人が実機（実際のブラウザ）で確認</td><td>S-54（社員500・部活15）、S-55（seed 固定）、S-57（再起動後も申込が残る）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>S の合格44件の内訳（<code>テスト結果.md</code> 7.3）: α-R 16 ＋ α-0 確定 9 ＋ 周辺 12 ＋ α-W 主役 4 ＋ β 3 ＝ <strong>44</strong>。<strong>ただし、44件すべてが実 DB か実機での合格ではありません。</strong></p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>S の合格44の中身</th><th>件数</th><th>何で確かめたか</th></tr></thead>
+          <tbody>
+            <tr><td>実 DB・実機で裏づけた</td><td>23</td><td>α-R 16 ＋ α-W 4 ＋ β 3</td></tr>
+            <tr><td>偽 repo の画面操作で合格にした</td><td>21</td><td>α-0 9 ＋ 周辺 12。備考に「実 DB の合格ではない」と明記されている</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>一方、I の方法である L-C（偽 repo の証拠）のうち、S の行に対応する<strong>12件は、S の合格にせず「参考のみ」として未実行に残しました</strong>（α-0 に含まれない範囲で、実 DB か実機の確認待ちとした。2026-10-12）。なお、L-C（I の層の方法）と α-0（S の層の方法）は、同じ「偽 repo ＋ 画面の自動操作」の仕掛けですが、使う層が違うので、別の名前で呼んでいます。</p>
+    </section>
+
+    <section class="sheet" id="p7">
+      <div class="number">7</div>
+      <h2>確認フロー: 合否判定・不合格の切り分け・記録</h2>
+      <h3>① 合否の判定（4語だけ）</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>語</th><th>意味</th><th>書ける条件</th></tr></thead>
+          <tbody>
+            <tr><td>合格</td><td>期待結果と実測が一致した</td><td><strong>証拠</strong>（ログ・スクショのパス、または PR／Issue のリンク）がある行にだけ</td></tr>
+            <tr><td>不合格</td><td>一致しなかった</td><td>証拠と、備考に「期待: …／実測: …」を書いてから。原因が分からなければ「原因未確認」と書く（<strong>推測で書かない</strong>）</td></tr>
+            <tr><td>対象外</td><td>設計上、または承認された判断で、実行しない</td><td>備考に理由と根拠を書く。<strong>実行できなかっただけなら、対象外にしない</strong></td></tr>
+            <tr><td>未実行</td><td>まだ実行していない（空欄も未実行）</td><td>初期状態。理由があれば備考に書く</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>合否欄に書く語は、この<strong>4語のみ</strong>です（集計のため）。迷ったら備考に書きます。実行したら、<strong>同じ日のうちに</strong>、合否・実行日・実行者・証拠を記入します。</p>
+
+      <h3>② 不合格の切り分け: 何が間違っていたのか</h3>
+      <p>不合格が出たら、<strong>「テスト」「実装」「仕様」のどれが古い・間違っているか</strong>を切り分けます。この案件の実例です（<code>テスト結果.md</code> 7.2）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>テスト</th><th>期待 / 実測</th><th>原因</th><th>直したもの</th></tr></thead>
+          <tbody>
+            <tr><td>I-136</td><td>期待: 非公開の部活で、「予定」の開催に「申し込む」が出ない／実測: 出る</td><td>画面側に、非公開の確認（<code>is_active</code>）が無かった</td><td><strong>実装</strong>を直した → 再実行で合格（2026-10-11）</td></tr>
+            <tr><td>I-057・I-058</td><td>期待: 仕様どおりの文言／実測: 実装の文言が違う</td><td>仕様の文言が、実装の文言と違っていた</td><td><strong>仕様の文言</strong>を実装に合わせて改訂し（PM の裁定、2026-10-11）、テストを追従 → 再実行で合格</td></tr>
+            <tr><td>I-061</td><td>期待: 「中止」の通知でも「見る」で部活詳細へ進める／実測: 「見る」が出ない</td><td>実装が、「中止」を「見る」の対象から<strong>意図的に外していた</strong>（MVP の範囲を絞るため）</td><td>仕様（SP-45）に<strong>「MVP の範囲外」と明記</strong>して、実装と合わせた（PM の裁定、2026-10-11）。テストを追従 → 再実行で合格</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>どれを直すかは、実行した人が決めない</strong>。仕様に関わる変更は、決める人（PM）が判断し、記録に残します。</li>
+        <li>原因が分かるまでは、「原因未確認」のままにします。実行中に、仕様に書かれていない挙動に当たったら、補って判定せず、その行は<strong>未実行のまま止めて報告</strong>します。</li>
+      </ul>
+
+      <h3>③ 記録のしかた</h3>
+      <ul class="checklist">
+        <li>証拠は <code>evidence/test/</code> の該当する置き場へ。名前は <code>&lt;テストID&gt;_&lt;日付&gt;_&lt;実行者&gt;_&lt;連番&gt;.&lt;拡張子&gt;</code>（例: <code>I-041_20261012_kurosu_01.png</code>）。</li>
+        <li><strong>不合格の証拠も残す</strong>（上書きしない）。</li>
+        <li>再実行したら、合否欄を最新にし、<strong>前回の結果を備考に残す</strong>。</li>
+        <li>実行コマンド・環境・コミット ID を、証拠のログの先頭に書く。</li>
+        <li>不合格は、<code>テスト結果.md</code> 7.2「不合格の追跡」に1行ずつ足す。修正が決まるまで残す。</li>
+        <li>秘匿値・実在の個人情報が写っていないことを確認してから置く。</li>
+      </ul>
+    </section>
+
+    <section class="sheet" id="p8">
+      <div class="number">8</div>
+      <h2>その後の工程: 自己評価 → TA の独立評価 → 相互レビュー → 修正</h2>
+      <p>U・I・S を実行し終えたら、<strong>初回提出版をコミット ID で固定</strong>します（固定したあとに直したら、直したコミット ID と再実行の範囲を記録）。そのあとは、次の順番です（<code>V字フロー規定.md</code> 評価の節）。</p>
+      <pre><code>初回提出版を固定（コミット ID）
+   ↓
+① 自己評価（チーム）   自分たちの要求・受入基準に照らして「できた／想定と違った」を書く
+   ↓
+② TA の独立評価        実装した人とは別の人が、承認済みの基準で評価する
+   ↓
+③ 相互レビュー         相手チームの指摘（指摘 ID は X-連番）。自己評価に「気づいていなかった点」を足す
+   ↓
+④ 修正 → 受入 A（ユーザーが合格を決める）</code></pre>
+      <ul>
+        <li><strong>自己評価が先</strong>です。外の評価を受ける前に、自分たちで「できた／想定と違った」を書きます。</li>
+        <li><strong>結果を見て、評価の基準を変えません</strong>。変える場合は、理由と影響を ADR に書き、人の再承認を受けます。</li>
+        <li>受入 A-xx の合否は、<strong>ユーザー本人の言葉</strong>を欄に残します（AI が代筆して合格にしません）。</li>
+      </ul>
+      <p class="meta">この案件の現在地: 5章の受入テスト A-01〜A-05 の「ユーザー判定」欄は、<code>テスト結果.md</code>（2026-10-12 更新）の時点で<strong>未記入</strong>です。W4 以降の工程の進み具合は、この教材では確認していません（未確認）。</p>
+    </section>
+
+    <section class="sheet" id="p9">
+      <div class="number">9</div>
+      <h2>実践: 進め方（実際にこの案件でやったこと）</h2>
+
+      <h3>① 実施の順番と、その理由</h3>
+      <ul>
+        <li><strong>順番: U → I → S → A</strong>（小さい範囲から大きい範囲へ）。</li>
+        <li><strong>理由:</strong> 前段に不合格があると、後段の不合格の原因が前段にあるのか分からなくなります。だから、<strong>前段に不合格がある間は、その機能に依存する後段を「合格」にしません</strong>。無関係な範囲は並行して進めてよい、とも決めました。</li>
+      </ul>
+
+      <h3>② Issue を層ごとに分けて、担当を割り振る</h3>
+      <p>テストを、層ごとに別の Issue（作業カード）に分けました。<strong>層ごとに実行する人が違う</strong>ので、担当を割り振りやすく、同じファイルを同時に触る衝突も減らせます（<code>テスト結果.md</code> は、区分ごと（U／I／S／A）に担当を分け、1つの PR で触る区分を絞る）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>Issue</th><th>範囲</th><th>主な実行者</th></tr></thead>
+          <tbody>
+            <tr><td>#42</td><td>通し＋単体（U）の添付</td><td>実装担当（画面・サービス）</td></tr>
+            <tr><td>#43</td><td>結合テスト（I）</td><td>テスト担当</td></tr>
+            <tr><td>#44</td><td>システムテスト（S）</td><td>テスト担当</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">U の担当を決めるときは、GitHub の Issue の割当（assignee）ではなく、<strong>誰がそのコードを書いたか</strong>（<code>git log --diff-filter=A -- &lt;ファイル&gt;</code>）で確かめます。割当は「その課題の担当」であって、実装者とは限りません（実践ナレッジ 5.19）。</p>
+
+      <h3>③ 進捗を見える形にする</h3>
+      <ul>
+        <li><strong>件数ベースの表</strong>にする（工数は測っていないので、割合は「件数の割合」）。</li>
+        <li><strong>合否の語彙を4語に固定</strong>する（合格／不合格／対象外／未実行）。</li>
+        <li><strong>空欄ゼロ</strong>にする。空欄も「未実行」と扱い、書き忘れと区別できるようにします。</li>
+      </ul>
+      <p>この案件の進捗です（<code>テスト結果.md</code> 7.3、2026-10-12 の集計。<code>テスト結果.md</code> の main <code>bdb0a07</code> 時点の値で、2026-10-15 の進捗ページと同じです）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>層</th><th>件数</th><th>合格</th><th>不合格</th><th>対象外</th><th>未実行</th><th>合格の割合</th></tr></thead>
+          <tbody>
+            <tr><td>I（結合）</td><td>204</td><td>167</td><td>0</td><td>0</td><td>37</td><td>約82%</td></tr>
+            <tr><td>S（システム）</td><td>62</td><td>44</td><td>0</td><td>2</td><td>16</td><td>約71%</td></tr>
+            <tr><td>U（単体・13組）</td><td>13</td><td>13</td><td>0</td><td>0</td><td>0</td><td>100%</td></tr>
+            <tr><td>Issue #42・#43・#44</td><td>3</td><td colspan="5">すべて CLOSED（#43・#44 は 2026-10-12、#42 は 2026-10-13 にクローズ。GitHub で確認）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta"><strong>再計算の式:</strong> 合格の割合 ＝ 合格 ÷ 件数。I は 167÷204 ＝ 0.819（約82%）、S は 44÷62 ＝ 0.710（約71%）。件数は、<code>テスト結果.md</code> の S・I 表の行を数えて、合計（S 62、I 204）と一致することを確認しました。U の「13組」は、ファイル・モジュール単位の数え方で、pytest の件数（185ケース）とは別の単位です（混ぜない）。</p>
+      <div class="callout">
+        <p><strong>その後の変化:</strong> 2026-10-15 に、性能テスト（S-63〜S-65、I-205〜I-218）が追加されました（いずれも設計のみで<strong>未実行</strong>）。そのため、現行の <code>テスト結果.md</code>（main <code>ce1fff8</code> 時点。テスト担当が main <code>86054e4</code> でも同じ値を確認）の表は、S が65行（未実行19）、I が218行（未実行51）です（行を数えて確認）。上の表は、追加前の2026-10-12 の集計です。<code>テスト結果.md</code> 7.3 の集計表は、この追加を反映していません。性能は <code>evidence/perf/</code> 側で計測・判定が進んでいますが、<code>テスト結果.md</code> には未反映です。</p>
+      </div>
+
+      <h3>④ 完了条件を先に決める</h3>
+      <p>この案件の #42・#43・#44 の完了条件は、<strong>「全件合格」ではなく、「合否と実行ログが記録・添付されること」</strong>でした。</p>
+      <ul>
+        <li><strong>なぜ先に決めるか:</strong> 決めずに進めると、「全件合格でないと閉じられない」と読み違えて、終われなくなります。実際に、そう受け取りかけた場面がありました（実践ナレッジ 5.18）。</li>
+        <li><strong>どう決めるか:</strong> Issue の<strong>受入基準の文面</strong>を読んで決めます。「合格させること」と「結果を正直に記録すること」は別の目標です。</li>
+      </ul>
+
+      <h3>⑤ 未実行を残すときは、なぜ安全かを説明する</h3>
+      <p>2026-10-12 時点の未実行（I 37件・S 16件の計53件）を残したままクローズするときは、<strong>「なぜそれで安全か」を、その場で明文化</strong>しました（<code>テスト結果.md</code> 7.3 の区分）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>未実行の区分</th><th>件数</th><th>残している理由</th></tr></thead>
+          <tbody>
+            <tr><td>I: 一部だけ確認済み</td><td>25</td><td>一部の観点だけ合格済みで、残りは未確認のため、行全体は未実行のまま</td></tr>
+            <tr><td>I: 他の層へ送り</td><td>12</td><td>別の層で確認する整理にした（行ごとの理由は、<code>テスト結果.md</code> の備考）</td></tr>
+            <tr><td>S: L-C（偽 repo）の証拠は「参考のみ」</td><td>12</td><td>α-0 に含まれない範囲で、偽 repo の証拠だけでは S の合格にしなかった。実 DB か実機の確認待ちとして、未実行に残した</td></tr>
+            <tr><td>S: 実機（β）待ち</td><td>4</td><td>S-06・S-12・S-14・S-52。実機の見た目の確認だけが残っている</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>安全な理由 ①</strong>: 未実行を「合格」に数えていません。「合格167」「合格44」は、証拠のある件数だけです（ただし S の44には、偽 repo で合格にした21件が含まれる。6章の表）。数字が実際より良く見えないように、合格の「方法」を備考に残しています。</li>
+        <li><strong>安全な理由 ②</strong>: 残した理由が備考に書いてあるので、次に誰が何をすればよいかが分かります。2026-10-12 時点の未実行53行（I 37＋S 16）は、上の4区分の理由です。その後に追加した性能テストの17行（S 3＋I 14）は、備考に「設計のみで未実行」と書いてあり、別の理由です。</li>
+        <li><strong>安全な理由 ③</strong>: 壊れると困る中核（申込・キャンセル・データ件数・再起動後の残存）は、実 DB か実機で確かめた、という記録があります（S-19・S-20・S-25・S-26・S-54・S-57。チームの記録）。</li>
+      </ul>
+      <div class="callout danger">
+        <p><strong>限界（残っている弱点）:</strong> すべての S を実 DB で通したわけではありません。外部公開や実データに進むなら、S の表示系の実 DB 確認を足す必要があります（運営への相談が要る領域）。この「中核は確認済み」の整理は、チームの記録に基づくもので、書記が再確認はしていません（未確認）。</p>
+      </div>
+    </section>
+
+    <section class="sheet" id="p10">
+      <div class="number">10</div>
+      <h2>場面別ガイド: やること → 理由 → よくある失敗</h2>
+      <p>「いま、何をすればいいか」を、場面から引く表です。<strong>5つの場面</strong>があります。</p>
+
+      <h3>A. テストを企画する</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>やること</th><th>理由</th><th>よくある失敗</th></tr></thead>
+          <tbody>
+            <tr><td>要件（F・N）と仕様（SP）から、S と I のテスト設計を書く（5章の型）</td><td>テスト設計は、上流の文書と対で書くもの。根拠の ID（対応列）で、後から追える</td><td>実装が終わってから、思いついた順に書く</td></tr>
+            <tr><td>★（重要な観点）は、正常系・異常系・境界値に分ける</td><td>重複申込・権限・非公開情報などは、1つの確認では漏れる</td><td>正常系だけで「確認した」とする</td></tr>
+            <tr><td>仕様に書いていない挙動は、足さずに報告する</td><td>文書の穴をテストで埋めると、穴がそのまま見えなくなる</td><td>「たぶんこうだろう」で期待結果を書く</td></tr>
+            <tr><td>完了条件を先に決める（9章④）</td><td>終わりが決まっていないと、全件合格にこだわって終われない</td><td>「全件合格」を暗黙の条件にする</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>B. 人に分担する</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>やること</th><th>理由</th><th>よくある失敗</th></tr></thead>
+          <tbody>
+            <tr><td>Issue を層（U・I・S）ごとに分け、種類ごとに担当を決める（9章②）</td><td>実行する人が層ごとに違う。同じ記録ファイルを同時に触る衝突も減る</td><td>1つの Issue に全部入れて、誰が何をするか曖昧になる</td></tr>
+            <tr><td>実装した人とは別の人が、独立に評価する</td><td>自分の実装を自分で評価すると、見落としに気づきにくい</td><td>実装担当が、自分の I・S を独立評価として記入する</td></tr>
+            <tr><td>U の担当は、書いた人（<code>git log</code>）で確かめる</td><td>Issue の割当は「その課題の担当」で、実装者とは限らない</td><td>割当を実装者と取り違える</td></tr>
+            <tr><td>誰がいつ DB を使うかを、先に知らせる</td><td>同じ DB を同時に操作すると、結果がぶれる</td><td>他の人がテスト中の DB に、初期化をかける</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>C. 実行する</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>やること</th><th>理由</th><th>よくある失敗</th></tr></thead>
+          <tbody>
+            <tr><td>準備のチェックリスト（4章④）を済ませてから始める</td><td>環境や版が違うと、結果が再現しない</td><td>コミット ID を控えずに実行する</td></tr>
+            <tr><td>U → I → S → A の順に回す（9章①）</td><td>前段の不合格が、後段の原因になる</td><td>前段が不合格のまま、依存する後段を「合格」にする</td></tr>
+            <tr><td>日付に関わるテストは、日付を固定し、実行時刻も記録する（11章）</td><td>日本時間の早朝（0〜9時）は、UTC では前日。「今日」がずれる</td><td>日をまたいでから再実行して、結果が変わる</td></tr>
+            <tr><td>データを消す操作は、まず <code>--dry-run</code> で確認する</td><td>付け忘れると、接続先の全データが消える</td><td>確認せずに、共有 DB で初期化する</td></tr>
+            <tr><td>秘匿値が画面・ログに写ったら、その証拠を置かない</td><td>コミットすると、値の変更が必要になる</td><td>パスワード欄が写ったスクショを、そのまま置く</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>D. 進捗を共有する</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>やること</th><th>理由</th><th>よくある失敗</th></tr></thead>
+          <tbody>
+            <tr><td>層別の件数の表で見せる（合格／不合格／対象外／未実行）</td><td>全体が一目で分かり、割合の根拠も示せる</td><td>「だいたい終わった」と文章だけで伝える</td></tr>
+            <tr><td>合否の語は4語に固定し、空欄をゼロにする</td><td>空欄が、書き忘れか未実行か分からなくなる</td><td>「保留」「一部OK」など、4語以外を書く</td></tr>
+            <tr><td>未実行は合格に混ぜず、残す理由を書く（9章⑤）</td><td>数字が実際より良く見えるのを防ぐ。次の担当が分かる</td><td>偽 repo での合格を、実 DB の合格として報告する</td></tr>
+            <tr><td>数値は、元の記録（<code>テスト結果.md</code>）で確かめ、日付と版を付ける</td><td>古い数字が独り歩きする（性能テストの追加で、行数が変わった）</td><td>日付のない数字を、そのまま引用する</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>E. 不合格が出た</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>やること</th><th>理由</th><th>よくある失敗</th></tr></thead>
+          <tbody>
+            <tr><td>不合格として、証拠を残す。期待／実測の差分を書く</td><td>後から原因を追うための材料になる</td><td>証拠を上書きする。差分を書かない</td></tr>
+            <tr><td>原因は推測せず、「原因未確認」と書く。7章の切り分け（テスト・実装・仕様のどれが古いか）を行う</td><td>推測で直すと、別の不具合を作る</td><td>確認せずに、テストの期待結果を実測に書き換える</td></tr>
+            <tr><td>修正後は、<strong>全件を通しで取り直した1本の証拠</strong>にする</td><td>修正前と修正後の一部を継ぎ合わせても、「修正後に全件が通った」証拠にならない（実践ナレッジ 5.17）</td><td>修正後に、落ちた件だけ再実行して足し合わせる</td></tr>
+            <tr><td>再実行したら、前回の結果を備考に残し、7.2 に行を足す</td><td>何が・いつ・どう直ったかの履歴になる</td><td>合否欄だけ書き換えて、前回の結果を消す</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sheet" id="p11">
+      <div class="number">11</div>
+      <h2>つまずきやすい点・用語</h2>
+      <h3>つまずきやすい点</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>つまずき</th><th>見分け方・対処</th></tr></thead>
+          <tbody>
+            <tr><td>偽 repo で合格しても、実 DB で動くとは限らない</td><td>合格の「方法」（偽 repo／実 DB／実機）を、備考に残す。S の合格44には、偽 repo の画面操作で合格にした21件が含まれる（備考に「実 DB の合格ではない」）。実 DB・実機で裏づけた合格は23件</td></tr>
+            <tr><td>日付に関わるテストが、日によって結果が変わる</td><td>日本時間（Asia/Tokyo）が基準。実行環境が UTC だと、日本時間の0〜9時にだけ「今日」が1日前になり得る。日付を固定し、<strong>早朝と通常の時間帯の両方</strong>で試し、時刻を備考に書く</td></tr>
+            <tr><td>数えた件数が、文書によって違う</td><td>単位を確かめる。U の「13組」と、pytest の「185ケース」は別の単位。S・I の件数は、日付と版（コミット）を付けて引用する</td></tr>
+            <tr><td>「全件合格でないと閉じられない」と読んでしまう</td><td>Issue の受入基準の文面を読む（9章④）</td></tr>
+            <tr><td>修正後の証拠を、継ぎ合わせて作ってしまう</td><td>全件を通しで取り直した1本にする（10章E）</td></tr>
+            <tr><td>手順書の「要確認」が、解決済みか分からない</td><td>下の表のとおり、手順書の本文は 2026-10-10 のまま。<strong>実際の運用を確かめてから</strong>使う</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>手順書 0.1「本書に書いていないこと（要確認）」の現在地</h3>
+      <p><code>テスト実行手順書.md</code> 0.1 には、5つの未確認がありました。現物の記録で確かめた結果です（書記の確認。手順書の本文は未更新）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>#</th><th>未確認だった点</th><th>現在地</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>単体テストの実行コマンド・置き場所</td><td><strong>実際には決まって運用</strong>: <code>tests/</code> に置き、<code>pytest</code> で実行（U の実行ログに実行コマンドを記録）。手順書本文への反映は未確認</td></tr>
+            <tr><td>2</td><td><code>scripts/reset_data.py</code> の DB 書込</td><td><strong>実装はある。実動作は未確認</strong>: コードには DB への書込（<code>reset_db</code>）と <code>--check-db</code> がある（冒頭の説明文の「まだ実装していない」は古い記述。テスト担当が読んで確認。実行・DB 接続はしていない）。実 DB で実行して確かめた記録は見つけていない（S-55 は <code>--dry-run</code> の一致確認で、再 seed は含まない）</td></tr>
+            <tr><td>3</td><td>証拠の保存先</td><td><strong>解決済み</strong>: <code>evidence/test/</code> で確定（PM 承認、2026-10-10）</td></tr>
+            <tr><td>4</td><td>実 DB にテスト専用スキーマを分けるか</td><td><strong>未確認</strong>: 分けた記録は見当たらない。実際は、試験用の社員・部活を入れて削除する方式（センチネル方式）で運用</td></tr>
+            <tr><td>5</td><td>I を画面操作でやるか、処理の呼び出しでやるか</td><td><strong>実際には両方</strong>: 処理（L-A）・画面（L-C）・実 DB（L-B）の3系統で運用（6章）。手順書本文への反映は未確認</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>用語</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>用語</th><th>やさしい説明</th></tr></thead>
+          <tbody>
+            <tr><td>偽 repo（スタブ）</td><td>データベースの代わりに、メモリ上に置く偽のデータ置き場。速く試せるが、実 DB の挙動までは言えない</td></tr>
+            <tr><td>実 DB</td><td>本物のデータベース（Supabase）。ただし、中のデータは架空</td></tr>
+            <tr><td>★</td><td>テスト設計で、特に重要な観点につけた印。正常系・異常系・境界値のすべてを確かめる</td></tr>
+            <tr><td>正常系／異常系／境界値</td><td>うまくいく場合／失敗する場合／ぎりぎりの値（例: 開始時刻の「ちょうど」）</td></tr>
+            <tr><td>証拠</td><td>合否の根拠になる、ログ・スクショ・PR／Issue のリンク。無いものは合格にしない</td></tr>
+            <tr><td>対象外</td><td>設計や承認された判断で、実行しないもの（例: S-59 は運用ルールで、黒箱では確かめない）。実行できなかっただけなら、対象外ではなく未実行</td></tr>
+            <tr><td>センチネル</td><td>実 DB に書き込む試験で使う、試験専用の社員・部活。確かめたあと、必ず削除する</td></tr>
+            <tr><td>独立評価</td><td>実装した人とは別の人が、承認済みの基準で行う評価</td></tr>
+            <tr><td>トレーサビリティ</td><td>要求 → 要件 → 仕様 → テストを、ID でたどれること</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout ok">
+        <p><strong>ほかのナレッジ:</strong> 進め方・git のつまずきは <a href="practice-knowledge.html">実践ナレッジ（ハマりどころ集）</a>（特に 5.17〜5.19）、実装の書き方は <a href="be-cheatsheet.html">BE実装チートシート</a>、層の考え方は <a href="be-intro.html">BE入門</a>、性能の事例は <a href="perf-knowledge.html">アクセススピード改善ナレッジ</a>。</p>
+      </div>
+      <p class="meta">詳しい記録: <code>テスト設計.md</code>（正本）、<code>テスト実行手順書.md</code>、<code>テスト結果.md</code>、<code>evidence/test/</code>（U・I・S・β の証拠）、<code>00_ルール/V字フロー規定.md</code>。</p>
+    </section>
+  </main>
+</body>
+</html>
