@@ -9,10 +9,6 @@
 開く社員は session_state["target_employee_id"]（無ければ自分）。
 """
 
-import logging
-import os
-import traceback
-
 import streamlit as st
 
 import state
@@ -35,22 +31,6 @@ EXPERIENCE_LEVELS = ["未経験", "初心者", "経験あり"]
 SLOTS = ["平日夜", "土曜午前", "土曜午後", "日曜"]
 LEVEL_COLUMNS = 4  # 活動の経験レベルは、この数ずつ並べて全部出す
 _SAVED_FLAG = "profile_saved"
-_FRONTEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_log = logging.getLogger(__name__)
-
-
-def _diagnosis(error):
-    """【一時対応】例外の型・発生ファイルと行・関数名だけの文字列。メッセージ本文・値は含めない（原因確定後に削除する）。
-
-    アプリ自身のコード（app/frontend 配下）で最後に実行された位置を選ぶ。無ければ最後の位置。
-    """
-    frames = traceback.extract_tb(error.__traceback__)
-    own = [f for f in frames if os.path.abspath(f.filename).startswith(_FRONTEND_DIR + os.sep)]
-    frame = (own or frames or [None])[-1]
-    if frame is None:
-        return f"例外の型：{type(error).__name__}"
-    path = os.path.relpath(os.path.abspath(frame.filename), _FRONTEND_DIR) if own else os.path.basename(frame.filename)
-    return f"例外の型：{type(error).__name__}／場所：{path}:{frame.lineno}／関数：{frame.name}"
 
 
 def _render_header(profile):
@@ -146,16 +126,6 @@ def _render_editor(profile, me):
 
 
 def render():
-    """【一時対応】例外が出たら診断（型・場所・関数）を画面に出し、ログにも残してから、例外はそのまま投げ直す。"""
-    try:
-        _render()
-    except Exception as error:  # 診断のためだけに受け、握りつぶさない
-        _log.exception("employee_profile でエラー")
-        st.error(f"プロフィール画面でエラーが発生しました（診断用の一時表示）。{_diagnosis(error)}")
-        raise
-
-
-def _render():
     me = st.session_state["employee_id"]
     target = st.session_state.get("target_employee_id") or me
     try:
