@@ -3,7 +3,7 @@
 - 作成: yamapi（書記）/ 2026-10-16 / 依頼: god（conv-9fdb7a）
 - 読む人: 人間（PM・参加者）
 - 範囲: フィードバック「各ページの遷移や接続スピードが遅い」への対応の全体。コード・5文書は変更していない。
-- 事実の出典: `evidence/perf/` の各ファイル、`hive/board.md`、`hive/agents/god/memory.md`（2026-10-14 以降）、git log（origin/main acde998 まで）。T6 の比較表は PR #183（ブランチ `feature/perf-t6-compare`、722a048）の `16-before-after.md`。**#183 は本報告の作成時点で main に未反映**。
+- 事実の出典: `evidence/perf/` の各ファイル、`hive/board.md`、`hive/agents/god/memory.md`（2026-10-14 以降）、git log（origin/main acde998 まで）。T6 の比較表は PR #183（ブランチ `feature/perf-t6-compare`、722a048）の `16-before-after.md`。**#183 は作成後の 2026-10-16 にマージ済み**（god 追記）。
 - 書き分け: **確認済み**＝記録の数値・事実そのもの / **推定**＝計算や整合からの見立て / **未確認**＝材料がない。数値は元の表から転記し、変えていない。解釈は「解釈」と明記する。
 
 ## 0. 要約（5行）
@@ -132,7 +132,7 @@ PM の回答（2026-10-15）。出典: `hive/agents/god/memory.md`、`hive/board
 | 往復上限 | 3回（案）→ 3.1【1】で確定。のち遷移ごとの上限に（3.4） | `7-plan-decisions.md`、`10-s64-b-caps-proposal.md` |
 | 改修の完了判定 | S-64（往復回数）の合格。S-63（時間）は未達なら不合格と記録し、完了判定とは分ける | `7-plan-decisions.md` 追記⑤ |
 | 撤退ライン | 往復3回を満たせば合格扱い。時間未達は原因を記録し、D-10 等は次の課題へ | `7-plan-decisions.md`【2】 |
-| ADR-PERF-01 への結果記入 | takahiro へ記入を依頼済み（本報告の作成時点で記入済みかは未確認） | `hive/agents/god/memory.md`（T6 完了時） |
+| ADR-PERF-01 への結果記入 | PR #184（takahiro、人間のレビュー待ち。god 追記） | `hive/agents/god/memory.md`（T6 完了時） |
 
 - `16-before-after.md` 5章は「撤退ラインは ADR に未記入」と書く。実装計画前の PM 決定【2】（上表）とは別に、ADR 4章の欄が空という意味である。
 
@@ -175,7 +175,7 @@ PM の回答（2026-10-15）。出典: `hive/agents/god/memory.md`、`hive/board
 | T4b | S-65・I-215〜218 の鮮度・無効化テスト | #180 | 12件合格（偽repo） |
 | 修正 | プロフィール画面の埋め込み select の戻り（dict/list/None）の正規化と一時の診断表示 | #181 | 6.2 |
 | T5 | 改修後の Cloud 再測定（Reboot 後・44d099e、22回） | #182 | 甲 合格7・不合格4 |
-| T6 | 改修前後の比較・H1/H2 検証 | #183（未マージ） | `16-before-after.md` |
+| T6 | 改修前後の比較・H1/H2 検証 | #183（マージ済み） | `16-before-after.md` |
 | 上限の記録 | ⑦・⑭の緩和 | #173、#175 | 3.4 |
 
 T2 の内訳（出典: `hive/agents/god/memory.md`）:
@@ -191,7 +191,7 @@ T2 の内訳（出典: `hive/agents/god/memory.md`）:
 
 - 計画・文書の PR: #161（5文書）、#162（実装計画）。
 - T2-1 の人を探すで、見込みと5往復の差が出た原因は、基本社員5人分の `get_interests`（数え方の差）。
-- 診断表示の削除 PR は terao が担当。本報告の作成時点では**未確認**。
+- 診断表示の削除は PR #185（terao、人間のレビュー待ち。god 追記）。
 
 ## 5. 結果
 
@@ -315,7 +315,7 @@ T2 の内訳（出典: `hive/agents/god/memory.md`）:
 
 ### 7.6 手続き
 
-- ADR-PERF-01 への結果記入（takahiro）、一時の診断表示の削除 PR（terao）、#183 のマージは、本報告の作成時点で**未確認**。
+- 作成後の状況（god 追記）：#183 はマージ済み。ADR-PERF-01 への結果記入は PR #184、一時の診断表示の削除は PR #185。どちらも人間のレビュー待ち（本報告の作成時点では未確認だった）。
 - 撤退ラインの記入は、PM が事実（5章）を見て決める（`16-before-after.md` 5.1）。
 
 ### 7.7 別件: 画面のスクロール位置
