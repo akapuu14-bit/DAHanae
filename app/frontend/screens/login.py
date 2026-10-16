@@ -7,6 +7,7 @@
 import streamlit as st
 
 import state
+from components.sidebar import DEMO_BANNER
 
 # 本物のサービスを使う（mocks/ の仮実装から差し替え済み）
 from services import auth_service
@@ -42,3 +43,4 @@ def render():
                 st.rerun()
 
         st.caption(DEMO_NOTE)  # SP-12
+        st.caption(DEMO_BANNER)  # Issue #45：架空データの注記
