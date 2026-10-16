@@ -1,19 +1,15 @@
-"""プロフィール画面の Cloud エラー対応：PostgREST の埋め込みの戻りの形（dict/list/None/想定外）と、一時の診断表示。
+"""プロフィール画面の Cloud エラー対応：PostgREST の埋め込みの戻りの形（dict/list/None/想定外）。
 
 実DBは、埋め込みを関係の向きによって dict でも list でも返し、行が無ければ None を返す。偽repoはこの形を取らないため、
 supabase 層を差し替えて、実repo（club_members_repo・employees_repo・events_repo）が落ちないことを確かめる。
-診断表示（employee_profile）は原因確定後に削除する一時対応。
 """
 import importlib.util
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from lc_base import LcTestCase
 from repositories.embed import many, one
-from screens import employee_profile
 from services import profile_service
-from services.errors import AppError
 
 
 def _fresh(name):
@@ -134,43 +130,6 @@ class OtherEmbedShapes(unittest.TestCase):
         events = [{"id": 1, "club_id": 1, "event_date": "2099-01-01", "applications": None}]
         with mock.patch.object(events_repo, "supabase", _supabase(events=events)):
             self.assertEqual(events_repo.list_upcoming_by_club_with_participants(1)[0]["participants"], [])
-
-
-SECRET = "https://example.supabase.co key=sb_secret_ABC123 password=hunter2"
-
-
-class ProfileDiagnosis(LcTestCase):
-    def test_diagnosis_shows_type_place_function_only(self):
-        try:
-            employee_profile.state.go("存在しない画面")  # アプリ内（state.py）で ValueError
-        except ValueError as error:
-            text = employee_profile._diagnosis(error)
-        self.assertIn("ValueError", text)
-        self.assertIn("state.py", text)
-        self.assertIn("go", text)
-        self.assertNotIn("存在しない画面", text)  # メッセージ本文・値は出さない
-
-    def test_error_screen_shows_diagnosis_without_secrets_and_still_raises(self):
-        with mock.patch.object(profile_service, "get_profile", side_effect=AttributeError(SECRET)):
-            at = self.app("E001", page="employee_profile", target_employee_id="E002")
-        self.assertTrue(at.exception)  # 例外は握りつぶさず、Streamlit にも伝わる
-        shown = " ".join(e.value for e in at.error)
-        self.assertIn("診断用の一時表示", shown)
-        self.assertIn("AttributeError", shown)
-        self.assertIn("employee_profile.py", shown)
-        for secret in ("example.supabase.co", "sb_secret", "hunter2", "password", "key="):
-            self.assertNotIn(secret, shown)
-
-    def test_app_error_is_also_diagnosed_and_logged(self):
-        with mock.patch.object(profile_service, "get_profile", side_effect=AppError("x")), \
-             self.assertLogs("screens.employee_profile", level="ERROR"):
-            at = self.app("E001", page="employee_profile", target_employee_id="E002")
-        self.assertIn("AppError", " ".join(e.value for e in at.error))
-
-    def test_normal_screen_has_no_diagnosis(self):
-        at = self.app("E001", page="employee_profile", target_employee_id="E002")
-        self.assertFalse(at.exception)
-        self.assertFalse([e for e in at.error if "診断用" in e.value])
 
 
 if __name__ == "__main__":
