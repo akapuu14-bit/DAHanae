@@ -11,6 +11,9 @@ import streamlit as st
 
 import state
 
+# デモ版の注記（Issue #45）。ログイン画面とサイドバーの2か所だけに出す。画面ごとには繰り返さない。
+DEMO_BANNER = "デモ版です。表示されている社員・部活・開催はすべて架空のデータです。"
+
 # (表示名, 移動先の画面)。並びは SP-01 で決まっている順番どおり。
 _MENU = (
     ("ホーム", state.HOME),
@@ -64,3 +67,5 @@ def render(*, name, dept, employee_id, unread_count=0, can_manage=False):
         if st.button("ログアウト", key="sidebar_logout", width="stretch"):
             state.logout()
             st.rerun()
+
+        st.caption(DEMO_BANNER)
