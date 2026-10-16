@@ -15,11 +15,37 @@
       --navy-2: #2e426d;
       --pale: #e8ebf2;
       --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
       --yellow: #f2c230;
       --green: #2e7d5b;
       --red: #b23a48;
       --muted: #5b6475;
       --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -39,7 +65,7 @@
       align-items: center;
       padding: 10px 18px;
       overflow-x: auto;
-      background: rgba(31, 42, 68, .96);
+      background: var(--nav-bg);
       color: #fff;
     }
     nav strong { white-space: nowrap; margin-right: 8px; }
@@ -64,7 +90,7 @@
       margin: 0 0 30px;
       padding: 52px 58px;
       background: var(--paper);
-      box-shadow: 0 12px 30px rgba(31, 42, 68, .11);
+      box-shadow: 0 12px 30px var(--shadow);
       border-top: 8px solid var(--navy-2);
     }
     .slide::before {
@@ -92,7 +118,7 @@
     .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .card {
       padding: 20px 22px;
-      background: #f6f7fa;
+      background: var(--soft);
       border-left: 5px solid var(--navy-2);
     }
     .card h3 { margin-top: 0; }
@@ -114,14 +140,14 @@
     .callout {
       margin: 24px 0;
       padding: 17px 20px;
-      background: #fff8d9;
+      background: var(--warn-bg);
       border-left: 6px solid var(--yellow);
     }
-    .danger { background: #fff0f1; border-left-color: var(--red); }
-    .ok { background: #edf7f2; border-left-color: var(--green); }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
     code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: #edf0f5;
+      background: var(--code-bg);
       border-radius: 5px;
       padding: 2px 6px;
       font-size: .92em;
@@ -130,7 +156,7 @@
       margin: 12px 0 22px;
       padding: 18px 20px;
       overflow-x: auto;
-      background: var(--navy);
+      background: #1f2a44;
       color: #f7f8fb;
       border-radius: 8px;
       line-height: 1.65;
