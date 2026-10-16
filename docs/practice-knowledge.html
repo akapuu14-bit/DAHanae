@@ -153,6 +153,8 @@
     .checklist { list-style: none; padding: 0; }
     .checklist li { padding-left: 0; }
     .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall h4 { margin: 22px 0 8px; font-size: 1.05rem; padding-bottom: 3px; border-bottom: 1px solid var(--line); }
+    .pitfall h3.grp { margin-top: 34px; border-bottom-width: 3px; }
     .pitfall dl { margin: 0; }
     .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
     .pitfall dd { margin: 0 0 6px; }
@@ -377,43 +379,23 @@ gh workflow run dashboard.yml</code></pre>
       <div class="number">5 ★</div>
       <h2>ハマりどころ集（失敗と対処）</h2>
 
-      <h3>5.1 サンドボックス内で gh と git push（SSH）が失敗</h3>
-      <dl>
-        <dt>原因</dt><dd>サンドボックスがTLS傍受・keyring不可・SSHを遮断している</dd>
-        <dt>対処</dt><dd>ghとpushはサンドボックス外で実行する。外向きの操作なので、人間の承認を得て行った</dd>
-      </dl>
+      <div class="callout ok hint"><strong>次に活かす一言:</strong> 失敗の多くは「確認前に動いた」か「境界が書かれていなかった」か「書式の不一致」。この3つを先に潰す。</div>
 
-      <h3>5.2 Pages有効化とadmin付与ができない</h3>
-      <dl>
-        <dt>原因</dt><dd>個人リポジトリでは、コラボレーターにadminを付けられない。Pages有効化はオーナー権限が必要</dd>
-        <dt>対処</dt><dd>Pages有効化はオーナー（あかぷ）に依頼した。Issue作成とassignはwrite権限で足りるため、docsの「admin」表記を「write」に訂正した</dd>
-      </dl>
 
-      <h3>5.3 依頼メッセージが配送されず bad- で戻った</h3>
-      <dl>
-        <dt>原因</dt><dd>outboxのJSONが独自書式だった（bodyがオブジェクトなど）</dd>
-        <dt>対処</dt><dd>正しい書式に統一した。必須キーは次の10個。id（拡張子抜きのファイル名と一致）／conversation／from／to／act／subject／body（文字列）／hops／requires_reply／needs_human／created_at</dd>
-      </dl>
+      <p>この章の項目（番号は変えていません）: ① 確認前に動いた＝5.4・5.7・5.9・5.10・5.14・5.15・5.17・5.18・5.19／② 境界が未記述＝5.5・5.8・5.16／③ 書式の不一致＝5.3・5.13／④ 上の3類型に当てはまらないもの（環境・権限・仕組みの制約）＝5.1・5.2・5.6・5.11・5.12</p>
 
-      <h3>5.4 「待機」の指示より先に、mirinが旧版UIを実装した（T-026、旧版は commit <code>9a05220</code>）</h3>
+      <p><strong>2026-10-01〜10-04 の追記</strong>（記録日 2026-10-04。立ち上げ後、実装期に入ってからの失敗と学び。根拠は各項目の PR・commit と、末尾「出典」の追記分）</p>
+
+
+      <h3 class="grp">① 確認前に動いた</h3>
+
+      <h4>5.4 「待機」の指示より先に、mirinが旧版UIを実装した（T-026、旧版は commit <code>9a05220</code>）</h4>
       <dl>
         <dt>原因</dt><dd>仕様がUI/UX込みで二転三転していた。確定GO前に発注した</dd>
         <dt>対処</dt><dd>正直に報告させ、旧版は破棄して新版で作り直した。以後は確定GOが出るまで発注しない（hold運用）</dd>
       </dl>
 
-      <h3>5.5 AIが書いたコードが衝突し、破棄した</h3>
-      <dl>
-        <dt>原因</dt><dd>teraoとmirinが同じ層を別のAPIで実装した</dd>
-        <dt>対処</dt><dd>方針を「実装は人間が各自」に転換し、I/F契約と1ファイル1所有者で再設計した（第3章）。破棄したコードは退避コピー0件で復元不可だが、方針が破棄だったので実害はなし</dd>
-      </dl>
-
-      <h3>5.6 ダッシュボードが「足した」結果、見づらくなった</h3>
-      <dl>
-        <dt>原因</dt><dd>機能追加を重ね、内訳が常時開き、0件セクションも並んだ</dd>
-        <dt>対処</dt><dd>T-023とT-027で整理した。内訳は既定で閉じる、0件セクションは見出しごと非表示、未アサインは別ブロックに分離。数値・集計は不変</dd>
-      </dl>
-
-      <h3>5.7 大きめのUI依頼が二転三転した</h3>
+      <h4>5.7 大きめのUI依頼が二転三転した</h4>
       <dl>
         <dt>原因</dt><dd>最初の指示に案がなく、作ってから確認した</dd>
         <dt>対処</dt><dd>提案→確認を先に回し、確定してから発注する</dd>
@@ -422,19 +404,7 @@ gh workflow run dashboard.yml</code></pre>
       <div class="card">
         <p><strong>補足（Issue二重化）</strong>: 横断レビュー（T-013）で、タスクIssueが <code>setup_github.sh</code> と <code>create_issues.sh</code> の両方で作られる二重化（重大）と、テスト設計が確定した仕様に追随していない矛盾（重大）を検出した。前者は <code>create_issues.sh</code> に一本化、後者はテスト設計を更新して解消（T-014〜T-016）。<strong>作った文書を、別の担当（kurosu）が横断で見る</strong>工程が効いた。</p>
       </div>
-      <div class="callout ok hint"><strong>次に活かす一言:</strong> 失敗の多くは「確認前に動いた」か「境界が書かれていなかった」か「書式の不一致」。この3つを先に潰す。</div>
-
-      <p><strong>2026-10-01〜10-04 の追記</strong>（記録日 2026-10-04。立ち上げ後、実装期に入ってからの失敗と学び。根拠は各項目の PR・commit と、末尾「出典」の追記分）</p>
-
-      <h3>5.8 I-F契約に関数が無く、仕様どおりの画面を作れなかった（2026-10-04）</h3>
-      <dl>
-        <dt>何が起きた</dt><dd>あかぷが画面の実装中に2件見つけた。① サイドバーの「部活の管理」は SP-01 で幹事・運営者に表示するが、<code>get_role(employee_id, club_id=None)</code> は is_admin しか見ないため、幹事を部活横断で判定できなかった。② S04 部活詳細に必要な読み取り関数 <code>get_club_detail</code> が I-F契約に無かった</dd>
-        <dt>原因</dt><dd>仕様（SP-01、S04 の SP-26〜SP-28・SP-32）にある振る舞いに対応する service 関数が、I-F契約で定義されていなかった。repository 側の材料（<code>clubs_repo.list_by_organizer</code> など）はそろっていた</dd>
-        <dt>対処</dt><dd>仕様外の補完ではなく「契約の穴埋め」と判断し、takahiro が I-F契約に関数を追加した（PR #90 <code>is_organizer</code>、PR #91 <code>get_club_detail</code>）。既存関数のシグネチャは変えない。god が実コードと突き合わせて検証した。2026-10-04 時点で、どちらもはなえの承認待ち（OPEN）</dd>
-        <dt>次に活かす一言</dt><dd>画面を作り始める前に、その画面が呼ぶ関数が I-F契約にあるかを突き合わせる</dd>
-      </dl>
-
-      <h3>5.9 契約の文言修正がマージに間に合わず、契約と実装がずれた（2026-10-03〜04）</h3>
+      <h4>5.9 契約の文言修正がマージに間に合わず、契約と実装がずれた（2026-10-03〜04）</h4>
       <dl>
         <dt>何が起きた</dt><dd>PR #73（I-F契約への search_service 追記）が、「今週」の定義を直す前にマージされた（2026-10-03）。実装は PM 裁定で「今日〜今週の日曜」に直った（commit 7cf0762、#78）が、main の I-F契約は旧い「月〜日全体」の文言のまま残った</dd>
         <dt>原因</dt><dd>修正をマージ前のブランチに乗せたが、そのブランチが先にマージされた</dd>
@@ -442,7 +412,7 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>急ぎの文言修正は、対象ブランチがマージ済みかを確かめてから、main 向けの別 PR にする</dd>
       </dl>
 
-      <h3>5.10 ローカルの main を基準にして、PR に関係ないコミットが混ざった（2026-10-03）</h3>
+      <h4>5.10 ローカルの main を基準にして、PR に関係ないコミットが混ざった（2026-10-03）</h4>
       <dl>
         <dt>何が起きた</dt><dd>PR #69（hub.html の2行修正）に、未 push のローカルコミット 70f703d（messages_repo）が混入した。2026-10-04 には、ローカル main が origin/main より 53 コミット遅れていることも見つかった</dd>
         <dt>原因</dt><dd>作業ブランチをローカルの main から切っていた</dd>
@@ -450,31 +420,7 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>基準は常に origin/main。PR 前の差分確認を手順に固定する</dd>
       </dl>
 
-      <h3>5.11 新しいナレッジページが GitHub Pages で 404 になった（2026-10-04）</h3>
-      <dl>
-        <dt>何が起きた</dt><dd>#87 で追加した <code>docs/be-cheatsheet.html</code> が、開発ハブのカードから開くと 404 だった</dd>
-        <dt>原因</dt><dd>Pages へのデプロイ（<code>.github/workflows/dashboard.yml</code>）が、コピーするファイルを cp 行で明示列挙しており、新しいページが入っていなかった</dd>
-        <dt>対処</dt><dd>PR #88 で cp 行に1ファイルを追加した。再デプロイ後に 200 を確認した（god）</dd>
-        <dt>次に活かす一言</dt><dd><code>docs/</code> にページを足すときは、<code>dashboard.yml</code> の cp 行も同じ PR で直す</dd>
-      </dl>
-
-      <h3>5.12 PR 上で dashboard の deploy ジョブが毎回 fail する（2026-10-04 時点）</h3>
-      <dl>
-        <dt>何が起きた</dt><dd>dashboard ワークフローは pull_request イベントでも動き、そのときの結果は毎回 failure だった。main への push では success だった。<code>gh run list --workflow dashboard.yml</code> の 2026-10-04 の12件では、pull_request 9件がすべて failure、push（main）3件がすべて success</dd>
-        <dt>原因</dt><dd>未確認。deploy ジョブが github-pages 環境へ配信する構成であることは確認したが、PR で失敗する理由までは調べていない</dd>
-        <dt>対処</dt><dd>PR 上の deploy の fail はマージ可否の判断に使わず、マージ後の main の実行結果で確かめる（mirin の記録。#95 のマージ後に build・deploy とも success）</dd>
-        <dt>次に活かす一言</dt><dd>「いつも落ちるチェック」は、理由が分かるまで記録して区別し、本物の失敗と混ぜない</dd>
-      </dl>
-
-      <h3>5.13 ダッシュボードの時刻が UTC と JST で混ざっていた（2026-10-04）</h3>
-      <dl>
-        <dt>何が起きた</dt><dd>カンバンの日付判定は JST なのに、PR の時刻とページの生成時刻だけ UTC で表示されていた</dd>
-        <dt>原因</dt><dd><code>scripts/gen_dashboard.py</code> の <code>fmt_dt()</code> と <code>generated_at</code> が UTC で整形していた</dd>
-        <dt>対処</dt><dd>PR #95 で両方を JST に統一し、変換を固定するテストを3件追加した（pytest 36 passed）。マージ（commit 6d162e9）後の Actions で build・deploy とも success。公開ページの見た目そのものは未確認</dd>
-        <dt>次に活かす一言</dt><dd>表示用の時刻の整形は1つの関数に集め、どの TZ で出すかをテストで固定する</dd>
-      </dl>
-
-      <h3>5.14 依頼文の件数が実際と違った（17 → 18 issue、2026-10-04）</h3>
+      <h4>5.14 依頼文の件数が実際と違った（17 → 18 issue、2026-10-04）</h4>
       <dl>
         <dt>何が起きた</dt><dd>BE実装チートシートの依頼で「17 issue」とされ、記事にも 17 と書いていたが、列挙された番号（#8〜#10、#13〜#27）は18件だった</dd>
         <dt>原因</dt><dd>件数を、列挙から数え直していなかった</dd>
@@ -482,7 +428,7 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>件数は、一覧を作ってから数える</dd>
       </dl>
 
-      <h3>5.15 「すべてマージ完了」の Slack 文面と GitHub の状態が食い違って見えた（2026-10-03）</h3>
+      <h4>5.15 「すべてマージ完了」の Slack 文面と GitHub の状態が食い違って見えた（2026-10-03）</h4>
       <dl>
         <dt>何が起きた</dt><dd>はなえの Slack に「すべてマージ完了」とあったが、GitHub では #71〜#73 が OPEN だった</dd>
         <dt>原因</dt><dd>食い違いではなく時系列だった。#71〜#73 は、その投稿の後に作られた PR だった（god が訂正）</dd>
@@ -490,15 +436,7 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>状態は一次情報（GitHub）で確かめ、文面は「いつ時点か」とあわせて読む</dd>
       </dl>
 
-      <h3>5.16 疎な worktree で変更が116ファイルの「削除」として巻き込まれた（2026-10-11）</h3>
-      <dl>
-        <dt>何が起きた</dt><dd>#140 のブランチで、画面修正（<code>club_detail.py</code> の1ファイル）のコミット <code>36fb4a6</code> に、手元に無い116ファイルの削除が入った（<code>git show --stat</code> で 117 files changed、3 insertions、18377 deletions）。レビューで見つかり、<code>93c02d5</code> で <code>c362af2</code> から復元した（復元後の差分に削除なし、pytest 250 passed。god の記録）</dd>
-        <dt>原因</dt><dd>疎（sparse）な worktree で、対象ファイルを指定せずに add した可能性が高い（god の見立て。実際に打ったコマンドは確認していない）。手元に無いファイルは「削除された」と見えるため、そのまま巻き込まれる</dd>
-        <dt>対処</dt><dd><code>hive/git-safety-rules.md</code> を制定し、全スタッフに周知した。(1) 疎な worktree で <code>git add -A</code> / <code>git add .</code> を使わず、対象ファイルだけを明示して add する (2) commit 前に <code>git status</code> と <code>git diff --cached --stat</code> で意図しない <code>deleted:</code> が無いか見る (3) push 前に <code>git diff --name-status &lt;親&gt; HEAD</code> で D（削除）を確認する (4) worktree を作ったら <code>git ls-files | wc -l</code> でファイルが揃っているか確かめる (5) force push しない。迷ったら push 前に止まって god に聞く。以降の PR で同種の削除が出たという記録は見当たらない（再発しないことの検証ではない）</dd>
-        <dt>次に活かす一言</dt><dd>add は対象ファイルを名指しし、push 前に「D が出ていないか」を必ず見る</dd>
-      </dl>
-
-      <h3>5.17 テスト証拠を「修正前＋修正後の一部」の継ぎ合わせで作ろうとした（2026-10-12）</h3>
+      <h4>5.17 テスト証拠を「修正前＋修正後の一部」の継ぎ合わせで作ろうとした（2026-10-12）</h4>
       <dl>
         <dt>何が起きた</dt><dd>S-xx の α-R（実DB読取）の実走結果が、リポジトリに通しの1本として無かった。残っていたのは、修正前の全件実走（10 failed / 18 passed。落ちたのは S-13・S-17・S-18）と、修正後にその3件だけ再実走した記録（3 passed）の2本だった</dd>
         <dt>原因</dt><dd>ReadOnlyGuard の空応答（<code>IndexError</code>）を直した後に、全件を取り直していなかった。2本を足せば19件ぶんに見えるが、修正後のコードで全件が同時に通った証拠にはならない</dd>
@@ -506,7 +444,7 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>テスト側・ハーネス側を直したら、証拠は全件を通しで取り直した1本にする</dd>
       </dl>
 
-      <h3>5.18 「全件合格でないとクローズできない」と受け取りかけた（#42/#43/#44、2026-10-12）</h3>
+      <h4>5.18 「全件合格でないとクローズできない」と受け取りかけた（#42/#43/#44、2026-10-12）</h4>
       <dl>
         <dt>何が起きた</dt><dd>W3 の #42（通し＋単体）・#43（結合）・#44（システム）には未実行のテストが残っていた（結果.md の2026-10-12時点: 結合は合格167／未実行37、システムは合格44／対象外2／未実行16）。全件合格でなければクローズできないのでは、という見方が出かけた</dd>
         <dt>原因</dt><dd>受入基準の読み違い。この3課題の基準は「全件合格」ではなく「合否と実行ログが記録・添付されること」だった</dd>
@@ -514,12 +452,87 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>クローズ条件は課題の受入基準の文面で確かめる。未実行は合格と混ぜず、残す理由をその場で明文化する</dd>
       </dl>
 
-      <h3>5.19 GitHub の issue 割当を「実装者」と取り違えかけた（U-xx、2026-10-12）</h3>
+      <h4>5.19 GitHub の issue 割当を「実装者」と取り違えかけた（U-xx、2026-10-12）</h4>
       <dl>
         <dt>何が起きた</dt><dd>単体確認 U-001〜U-013 を担当タスクへ対応させる表に、GitHub の課題の割当者としてはなえが載り、実装者のように読めた。はなえは U-xx の実装担当ではなかった</dd>
         <dt>原因</dt><dd>課題の assignee は「その課題の担当」であって、そのコードを書いた人とは限らない。ファイル単位の担当確認をしていなかった</dd>
-        <dt>対処</dt><dd>実装者を git の初出コミット（author）で確定した。画面 U-001〜006 はあかぷ、サービス U-007〜013 はだーあさ（例: <code>club_admin_service.py</code> は <code>dbf3264</code>、2026-10-10、Hiroki Asada）。U の採番はファイル／モジュール単位の13組（画面・配色6＋サービス7）。#42 の集約コメントを「確認する人」列つきに作り直した。なお U の担当確認（あかぷの U-001〜006）が済んだかは、この記録時点で未確認</dd>
+        <dt>対処</dt><dd>実装者を git の初出コミット（author）で確定した。画面 U-001〜006 はあかぷ、サービス U-007〜013 はだーあさ（例: <code>club_admin_service.py</code> は <code>dbf3264</code>、2026-10-10、だーあさ）。U の採番はファイル／モジュール単位の13組（画面・配色6＋サービス7）。#42 の集約コメントを「確認する人」列つきに作り直した。なお U の担当確認（あかぷの U-001〜006）が済んだかは、この記録時点で未確認</dd>
         <dt>次に活かす一言</dt><dd>「誰が書いたか」は assignee でなく <code>git log --diff-filter=A -- &lt;file&gt;</code> で確かめる</dd>
+      </dl>
+      <h3 class="grp">② 境界が未記述</h3>
+
+      <h4>5.5 AIが書いたコードが衝突し、破棄した</h4>
+      <dl>
+        <dt>原因</dt><dd>teraoとmirinが同じ層を別のAPIで実装した</dd>
+        <dt>対処</dt><dd>方針を「実装は人間が各自」に転換し、I/F契約と1ファイル1所有者で再設計した（第3章）。破棄したコードは退避コピー0件で復元不可だが、方針が破棄だったので実害はなし</dd>
+      </dl>
+
+      <h4>5.8 I-F契約に関数が無く、仕様どおりの画面を作れなかった（2026-10-04）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>あかぷが画面の実装中に2件見つけた。① サイドバーの「部活の管理」は SP-01 で幹事・運営者に表示するが、<code>get_role(employee_id, club_id=None)</code> は is_admin しか見ないため、幹事を部活横断で判定できなかった。② S04 部活詳細に必要な読み取り関数 <code>get_club_detail</code> が I-F契約に無かった</dd>
+        <dt>原因</dt><dd>仕様（SP-01、S04 の SP-26〜SP-28・SP-32）にある振る舞いに対応する service 関数が、I-F契約で定義されていなかった。repository 側の材料（<code>clubs_repo.list_by_organizer</code> など）はそろっていた</dd>
+        <dt>対処</dt><dd>仕様外の補完ではなく「契約の穴埋め」と判断し、takahiro が I-F契約に関数を追加した（PR #90 <code>is_organizer</code>、PR #91 <code>get_club_detail</code>）。既存関数のシグネチャは変えない。god が実コードと突き合わせて検証した。2026-10-04 時点で、どちらもはなえの承認待ち（OPEN）</dd>
+        <dt>次に活かす一言</dt><dd>画面を作り始める前に、その画面が呼ぶ関数が I-F契約にあるかを突き合わせる</dd>
+      </dl>
+
+      <h4>5.16 疎な worktree で変更が116ファイルの「削除」として巻き込まれた（2026-10-11）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>#140 のブランチで、画面修正（<code>club_detail.py</code> の1ファイル）のコミット <code>36fb4a6</code> に、手元に無い116ファイルの削除が入った（<code>git show --stat</code> で 117 files changed、3 insertions、18377 deletions）。レビューで見つかり、<code>93c02d5</code> で <code>c362af2</code> から復元した（復元後の差分に削除なし、pytest 250 passed。god の記録）</dd>
+        <dt>原因</dt><dd>疎（sparse）な worktree で、対象ファイルを指定せずに add した可能性が高い（god の見立て。実際に打ったコマンドは確認していない）。手元に無いファイルは「削除された」と見えるため、そのまま巻き込まれる</dd>
+        <dt>対処</dt><dd><code>hive/git-safety-rules.md</code> を制定し、全スタッフに周知した。(1) 疎な worktree で <code>git add -A</code> / <code>git add .</code> を使わず、対象ファイルだけを明示して add する (2) commit 前に <code>git status</code> と <code>git diff --cached --stat</code> で意図しない <code>deleted:</code> が無いか見る (3) push 前に <code>git diff --name-status &lt;親&gt; HEAD</code> で D（削除）を確認する (4) worktree を作ったら <code>git ls-files | wc -l</code> でファイルが揃っているか確かめる (5) force push しない。迷ったら push 前に止まって god に聞く。以降の PR で同種の削除が出たという記録は見当たらない（再発しないことの検証ではない）</dd>
+        <dt>次に活かす一言</dt><dd>add は対象ファイルを名指しし、push 前に「D が出ていないか」を必ず見る</dd>
+      </dl>
+
+      <h3 class="grp">③ 書式の不一致</h3>
+
+      <h4>5.3 依頼メッセージが配送されず bad- で戻った</h4>
+      <dl>
+        <dt>原因</dt><dd>outboxのJSONが独自書式だった（bodyがオブジェクトなど）</dd>
+        <dt>対処</dt><dd>正しい書式に統一した。必須キーは次の10個。id（拡張子抜きのファイル名と一致）／conversation／from／to／act／subject／body（文字列）／hops／requires_reply／needs_human／created_at</dd>
+      </dl>
+
+      <h4>5.13 ダッシュボードの時刻が UTC と JST で混ざっていた（2026-10-04）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>カンバンの日付判定は JST なのに、PR の時刻とページの生成時刻だけ UTC で表示されていた</dd>
+        <dt>原因</dt><dd><code>scripts/gen_dashboard.py</code> の <code>fmt_dt()</code> と <code>generated_at</code> が UTC で整形していた</dd>
+        <dt>対処</dt><dd>PR #95 で両方を JST に統一し、変換を固定するテストを3件追加した（pytest 36 passed）。マージ（commit 6d162e9）後の Actions で build・deploy とも success。公開ページの見た目そのものは未確認</dd>
+        <dt>次に活かす一言</dt><dd>表示用の時刻の整形は1つの関数に集め、どの TZ で出すかをテストで固定する</dd>
+      </dl>
+
+      <h3 class="grp">④ 上の3類型に当てはまらないもの（環境・権限・仕組みの制約）</h3>
+
+      <h4>5.1 サンドボックス内で gh と git push（SSH）が失敗</h4>
+      <dl>
+        <dt>原因</dt><dd>サンドボックスがTLS傍受・keyring不可・SSHを遮断している</dd>
+        <dt>対処</dt><dd>ghとpushはサンドボックス外で実行する。外向きの操作なので、人間の承認を得て行った</dd>
+      </dl>
+
+      <h4>5.2 Pages有効化とadmin付与ができない</h4>
+      <dl>
+        <dt>原因</dt><dd>個人リポジトリでは、コラボレーターにadminを付けられない。Pages有効化はオーナー権限が必要</dd>
+        <dt>対処</dt><dd>Pages有効化はオーナー（あかぷ）に依頼した。Issue作成とassignはwrite権限で足りるため、docsの「admin」表記を「write」に訂正した</dd>
+      </dl>
+
+      <h4>5.6 ダッシュボードが「足した」結果、見づらくなった</h4>
+      <dl>
+        <dt>原因</dt><dd>機能追加を重ね、内訳が常時開き、0件セクションも並んだ</dd>
+        <dt>対処</dt><dd>T-023とT-027で整理した。内訳は既定で閉じる、0件セクションは見出しごと非表示、未アサインは別ブロックに分離。数値・集計は不変</dd>
+      </dl>
+
+      <h4>5.11 新しいナレッジページが GitHub Pages で 404 になった（2026-10-04）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>#87 で追加した <code>docs/be-cheatsheet.html</code> が、開発ハブのカードから開くと 404 だった</dd>
+        <dt>原因</dt><dd>Pages へのデプロイ（<code>.github/workflows/dashboard.yml</code>）が、コピーするファイルを cp 行で明示列挙しており、新しいページが入っていなかった</dd>
+        <dt>対処</dt><dd>PR #88 で cp 行に1ファイルを追加した。再デプロイ後に 200 を確認した（god）</dd>
+        <dt>次に活かす一言</dt><dd><code>docs/</code> にページを足すときは、<code>dashboard.yml</code> の cp 行も同じ PR で直す</dd>
+      </dl>
+
+      <h4>5.12 PR 上で dashboard の deploy ジョブが毎回 fail する（2026-10-04 時点）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>dashboard ワークフローは pull_request イベントでも動き、そのときの結果は毎回 failure だった。main への push では success だった。<code>gh run list --workflow dashboard.yml</code> の 2026-10-04 の12件では、pull_request 9件がすべて failure、push（main）3件がすべて success</dd>
+        <dt>原因</dt><dd>未確認。deploy ジョブが github-pages 環境へ配信する構成であることは確認したが、PR で失敗する理由までは調べていない</dd>
+        <dt>対処</dt><dd>PR 上の deploy の fail はマージ可否の判断に使わず、マージ後の main の実行結果で確かめる（mirin の記録。#95 のマージ後に build・deploy とも success）</dd>
+        <dt>次に活かす一言</dt><dd>「いつも落ちるチェック」は、理由が分かるまで記録して区別し、本物の失敗と混ぜない</dd>
       </dl>
     </section>
 
