@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>アクセススピード改善ナレッジ</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#1f2a44">
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    nav a.hub-link {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    mark.tbc { background: var(--warn-bg); color: var(--navy); border: 1px solid var(--yellow); border-radius: 4px; padding: 0 6px; font-size: .85em; font-weight: 700; }
+    details { margin: 8px 0; }
+    summary { cursor: pointer; font-weight: 700; color: var(--navy-2); }
+    td.grade { font-weight: 700; }
+    td.aside { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+    figure.shot { margin: 14px 0 18px; }
+    figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+    figure.shot figcaption { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+    figure.shot .noimg-note { display: none; padding: 14px 16px; background: var(--soft); border: 1px dashed var(--line); font-size: .9rem; }
+    figure.shot.noimg img { display: none; }
+    figure.shot.noimg .noimg-note { display: block; }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <a class="hub-link" href="hub.html">← 開発ハブ</a>
+    <strong>アクセススピード改善ナレッジ</strong>
+    <a href="#p1">1 背景</a><a href="#p2">2 仮説と往復</a><a href="#p3">3 度合い</a><a href="#p4">4 実装</a><a href="#p5">5 結果</a><a href="#p6">6 学んだこと</a><a href="#p7">7 場面別ガイド</a>
+  </nav>
+
+  <main>
+    <section class="sheet" id="top">
+      <h1>アクセススピード改善ナレッジ（遅い画面を数えて直した話）</h1>
+      <p class="meta"><strong>対象読者:</strong> チームメート（初心者〜中級）。Streamlit と Supabase を使って画面を作る人</p>
+      <p class="meta"><strong>読み終えたらできること:</strong> (A) 自分の画面が遅いとき、原因を調べる手順を踏める。(B) 今回の改善（D-06 / D-07 / D-08）の考え方と、その代わりに背負うこと（デメリット）を、これからの実装で判断できる</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-16 ／ 根拠: <code>evidence/perf/17-final-report.md</code>、<code>evidence/perf/16-before-after.md</code>、<code>docs/adr/ADR-PERF-01-性能改善方式選定.md</code>。表の数値は元の表から転記しています。再計算した数値には、式を添えました（5章）</p>
+      <div class="callout danger">
+        <p><strong>【確認状況】</strong> 推定は「推定」、未確認は「未確認」と書きます。時間を測ったのは<strong>代表11遷移のみ・各2回</strong>です。未確認事項の全体は、最終報告（<code>17-final-report.md</code> の7章）にまとめてあります。</p>
+      </div>
+    </section>
+
+    <section class="sheet" id="p1">
+      <div class="number">1</div>
+      <h2>背景: 「遷移が遅い」と言われた。でも「遅い」の基準がなかった</h2>
+      <p>発表後（2026-10-15）に、TA（ティーチングアシスタント）ののんちゃんから、次のフィードバックが出ました。</p>
+      <div class="callout"><p>「Streamlit Cloud で全画面の遷移が遅い、検索も表示も」</p></div>
+      <h3>要求・要件に、速度の定義がなかった</h3>
+      <p>非機能要件（N-01〜N-14）に、速度（応答時間・待ち時間）の項目は<strong>1つもありませんでした</strong>。具体的には、次の2つが、どの文書にも書かれていませんでした。</p>
+      <ul>
+        <li><strong>時間</strong>: 「画面を切り替えて、何秒以内に表示されれば合格か」</li>
+        <li><strong>回数</strong>: 「1回の操作で、データベースに何回まで問い合わせてよいか」</li>
+      </ul>
+      <p>基準がないと、「遅い」と言われても、直す側は<strong>どこまで直せば終わりか</strong>を決められません。そもそも、今の状態が基準を満たしているのかも判定できません。のんちゃんの指摘は、文書にない基準を、実際に使った人の感覚が先に示した、という形になりました。</p>
+      <h3>この時点で分かっていたこと</h3>
+      <ul>
+        <li><code>st.cache_*</code>（Streamlit のキャッシュ機能）は 0 件でした。</li>
+        <li>Supabase は東京、インスタンスは NANO、CPU 使用率は 2%（測定した日時・方法は不明）。</li>
+        <li>数値の計測値は、フィードバックに付いていませんでした。</li>
+      </ul>
+      <p>そこで「感覚で直す」のをやめて、<strong>測る → 原因を絞る → 目標を決める → 直す → 同じ方法で測り直す</strong>という順番で進めました（段階0〜8）。</p>
+    </section>
+
+    <section class="sheet" id="p2">
+      <div class="number">2</div>
+      <h2>原因を絞る（1）: 仮説を立て、確かめるために「往復」を数えた</h2>
+      <p>「遅い」の原因を、感覚ではなく順番に絞るために、まず原因の仮説を4つ立てました（段階0。立てた時点では、どれも<strong>未検証</strong>）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>仮説</th><th>具体的には</th><th>もし本当なら</th></tr></thead>
+          <tbody>
+            <tr><td>H1 距離</td><td>画面を動かす Streamlit Cloud は<strong>米国</strong>にあり（場所は変えられない）、データを持つ Supabase は<strong>東京</strong>にある。1回データベースに聞くたびに、国をまたぐ分だけ待たされる</td><td>聞く回数が多いほど遅い。1回あたりが長い</td></tr>
+            <tr><td>H2 キャッシュなし・全体を再実行</td><td>Streamlit は操作のたびに <code>app.py</code> を先頭から実行し直す。しかも、結果をおぼえておく仕組み（キャッシュ。<code>st.cache_*</code>）が 0 件で、同じことを何度も聞き直している</td><td>同じ内容を、毎回聞いている</td></tr>
+            <tr><td>H3 二重実行</td><td>画面を切り替えるとき、<code>st.rerun</code> によって、同じ実行が<strong>2回</strong>走る</td><td>聞く回数が、そのまま2倍になる</td></tr>
+            <tr><td>H4 Supabase の性能</td><td>Supabase のインスタンス（NANO）が非力で、1回の問い合わせが遅い</td><td>1回あたりが長い（ただし CPU 使用率 2% のため、主因ではない見込み。見込みであって確認ではない）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>どう確かめるか: まず「往復の回数」を数える</h3>
+      <p>H1〜H3 は、どれも<strong>「データベースへの問い合わせの回数が多い」</strong>ことで遅くなる、という点でつながっています（この整理は書記の見立てです）。一方で、1回あたりの実時間（H1・H4）は、一度も実測できていません。そこで、<strong>手元で何度でも同じように数えられる「往復の回数」</strong>から調べました。</p>
+      <p><strong>往復</strong>とは、Cloud から Supabase へ「この情報をください」と聞いて、答えが返ってくるまでの1回です。（補助のたとえ: 米国の事務所から東京の倉庫へ電話して、答えを聞いて切るまでが1回。電話の回数が増えるほど待たされます。）</p>
+
+      <h3>数えて分かったこと①: サイドバーが、画面を切り替えるたびに3回聞いている</h3>
+      <p>Streamlit は、ボタンを押すなど操作があるたびに、<strong><code>app.py</code> を先頭から実行し直します</strong>（H2）。<code>app.py</code> の <code>main()</code> は、ログイン中なら、まず画面の左のサイドバーを作ります。サイドバーには「未読件数」と「『部活の管理』を出すか（権限）」が要るので、その値をデータベースに聞きます。改修前のコードは次のとおりでした（<code>app/frontend/app.py</code> の <code>_render_sidebar</code>、D-06 の変更前。要点のみ抜粋）。</p>
+      <pre><code>sidebar.render(
+    ...
+    unread_count=notification_service.count_unread(employee_id),   # 往復1: 未読件数
+    can_manage=(
+        auth_service.get_role(employee_id) == auth_service.ROLE_ADMIN  # 往復1: 社員の権限
+        or auth_service.is_organizer(employee_id)                      # 往復1: 幹事か（運営者なら省略）
+    ),
+)</code></pre>
+      <p>つまり、<strong>画面の中身とは関係なく</strong>、画面を1回表示するたびに、サイドバーだけで3往復が走ります（運営者は、権限が1回目で決まり、幹事の確認が省略されるので2往復）。</p>
+      <p>しかも、画面の切り替え（<code>state.go</code>）では、画面が<strong>2回描き直される</strong>ことが分かっています（H3。仕組みは確認済み）。2回とも、サイドバーを作り直します。</p>
+      <pre><code>[ボタンを押す: 画面を切り替える]
+   │
+   ├─ 1回目の実行 ─ サイドバーを作る ─┬ 未読件数 …… 往復1
+   │                                   ├ 権限（get_role） …… 往復1
+   │                                   └ 幹事か（is_organizer） …… 往復1   ← 運営者は省略
+   │               └ 画面の中身を作る …… 画面ごとの往復
+   │
+   └─ 2回目の実行（st.rerun で描き直し）─ サイドバーをもう一度 …… 往復3
+                                          画面の中身（改修前は、ここでも読む画面あり）
+
+   サイドバーだけで  3往復 × 2回 = 6往復（運営者は 2往復 × 2回 = 4往復）</code></pre>
+      <p class="meta">出典: 6往復・運営者4往復は <code>17-final-report.md</code> 1.3。「3往復×2回」の内訳は、改修前のコード（上）と、<code>state.go</code> の再実行2回（最終報告 7.2）からの読み取りです。画面の中身側の内訳は未確認です。</p>
+      <p>だから、実際の遷移は次のようになりました。たとえば「ホーム→通知」は7往復で、そのうち6がサイドバーです（7−6の引き算）。「ホーム→部活を探す」は8往復で、うち6がサイドバーです。<strong>画面の中身が軽くても、サイドバーの6往復は毎回かかる</strong>ので、どの遷移も一定以上は遅くなります。これが、「全画面の遷移が遅い」と感じられた理由の1つ（推定）です。</p>
+      <div class="callout">
+        <p><strong>目安の計算（実測ではありません）:</strong> 見かけの1往復は最大でも約0.26秒（2069ms÷8往復。Streamlit 側の時間を含む「上限の目安」。実際の1往復はこれより短い）。これで 6往復×0.26秒＝<strong>最大でも約1.6秒</strong>が、サイドバーだけで毎回かかっていた、と見積もれます。<strong>1往復の実時間は、一度も実測していません。</strong></p>
+      </div>
+
+      <h3>数えて分かったこと②: 往復が増える原因は、サイドバーだけではない</h3>
+      <p>偽データのアプリで、画面が使う問い合わせの回数を数えました（本番の規模での数え直しは未確認）。仮説になかった候補も見つかりました。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>見つけたこと</th><th>中身</th></tr></thead>
+          <tbody>
+            <tr><td>C1 サイドバーが毎回聞く</td><td>上の仕組み。遷移1回あたり6往復（運営者は4）</td></tr>
+            <tr><td>C5 件数に比例して増える（N+1）</td><td>「部活1つにつき問い合わせ1回」のような作りだと、部活が増えるほど往復が増える。ホーム・人を探す・部活の管理・メッセージ・部活詳細・プロフィールの6画面で確認</td></tr>
+            <tr><td>C6 表示のたびに書込みが走る</td><td>部活検索・部活詳細・メッセージ画面で、表示の途中に書込みが1往復</td></tr>
+            <tr><td>C8 Streamlit 側の実行・描画の時間</td><td>往復では説明できない固定の時間。この時点では数えられず、改修後に「残っている可能性がある」と分かった</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>結果として、1回の遷移で3往復以内に収まるものは、改修前は<strong>0件</strong>でした（部活を探すは8往復、人を探すは24〜36往復）。本番 DB に対する時間の計測は、途中で<strong>打ち切りました</strong>（人間の判断）。そのため、DB 側の処理時間とネットワークの時間は分けられていません。</p>
+    </section>
+
+    <section class="sheet" id="p3">
+      <div class="number">3</div>
+      <h2>原因を絞る（2）: 仮説は、どこまで確かめられたか（度合い）</h2>
+      <p>改修後の測定（<code>16-before-after.md</code>）と最終報告から、仮説と候補の「度合い」を、次の4段階にまとめました。<strong>記号だけでなく、言葉も併記</strong>しています。</p>
+      <div class="callout">
+        <p><strong>凡例（◎○△×の目安は書記が設定。決まった基準ではありません）</strong></p>
+        <ul>
+          <li><strong>◎ 大きく効いた</strong>: 関係する遷移で、時間が約8割以上短縮し、往復も減った。</li>
+          <li><strong>○ 効いた（中程度）</strong>: 時間が約4〜7割短縮した。</li>
+          <li><strong>△ 少し・推定どまり</strong>: 効いた形跡はあるが、推定どまり。<strong>（分離不可）</strong>は、D-06・D-07・D-08 を同時に入れたため、単独の効果を分けられないもの。</li>
+          <li><strong>× 未検証・未対策</strong>: 確かめていない、または対策をしていない。</li>
+        </ul>
+      </div>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>仮説・候補</th><th>度合い</th><th>根拠（一言）</th></tr></thead>
+          <tbody>
+            <tr><td>H1 距離</td><td class="grade">△ 推定どまり（分離不可）</td><td>往復を減らすと時間が大きく減った（⑫ 27〜39往復→11、約6.5秒→約0.4秒）ので、往復回数が主因だったことは支持される。ただし距離だけの寄与は分けられない（D-10 をしていない）</td></tr>
+            <tr><td>H2 キャッシュなし・全体を再実行</td><td class="grade">△ 推定どまり（分離不可）</td><td>仕組みは確認済み。D-07 を入れたが、D-06・D-08 と同時で、キャッシュ単独の効果は出せない。キャッシュの命中率は Cloud で未測定</td></tr>
+            <tr><td>H3 二重実行</td><td class="grade">× 未対策</td><td>D-09 を実施していないので、再実行2回の構造は残っている（推定）</td></tr>
+            <tr><td>H4 Supabase の性能</td><td class="grade">× 未検証</td><td>1往復の実測がない。③⑭が H4 か C8 かは分けられない</td></tr>
+            <tr><td>C1 サイドバーの固定往復</td><td class="grade">○ 効いた（中程度）</td><td>往復 ① 8→2、④ 7→2。時間 ① 約1.4秒→約0.7秒（約51%短縮）、④ 約1.4秒→約0.9秒（約38%）。D-06・D-07・D-08 の合計の値で、D-06 単独は分離不可</td></tr>
+            <tr><td>C5 件数に比例する往復（N+1）</td><td class="grade">◎ 大きく効いた</td><td>往復 ⑫ 27〜39→11、② 24〜36→8。時間 ⑫ 約6.5秒→約0.4秒（約93%）、② 約6.5秒→約1.0秒（約84%）。3方式の合計の値で、D-08 単独は分離不可</td></tr>
+            <tr><td>C6 表示時の書込み</td><td class="grade">△ 推定どまり</td><td>③ 約2.5秒→約1.3秒（約49%）、⑭ 約3.2秒→約1.6秒（約50%）。ただし、既読化で関連キャッシュを捨てて取り直しになる見立てで、未確認</td></tr>
+            <tr><td>C8 Streamlit 側の時間</td><td class="grade">× 未検証</td><td>往復2回の ①④ が 約0.7秒・約0.9秒と、往復の差の割に差が小さく、残っている可能性がある。固定分の大きさは未確認</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">出典: <code>16-before-after.md</code> の 2章・4章、<code>17-final-report.md</code> 5.4。秒は ms を小数1桁に丸めた値。短縮率は、5章の式（（改修前−改修後）÷改修前）。◎○△×の割り当ては、凡例の目安に従った書記の判断です。</p>
+      <p>表記の方法について: 記号を4段階にしたのは、◎の数が多いほど良い、と一目で読めて、色だけに頼らずに言葉を併記できるためです。度合いを「％の効果」だけで表すと、分離できないもの（H1・H2）を数字にできないので、記号に「分離不可」を添える形にしました。</p>
+    </section>
+
+    <section class="sheet" id="p4">
+      <div class="number">4</div>
+      <h2>実装: 5文書で目標を具体化し、3つの方式で往復を減らした</h2>
+
+      <h3>まず、5文書を更新して「目標とするアウトプット」を具体化した</h3>
+      <p>1章の「速度の定義がない」を埋めるために、実装の前に、<strong>5つの文書（要求・要件・仕様・設計・テスト設計）を更新</strong>しました。そこで、目標とするアウトプットを、次のように具体的な数字にしました（人間（PM）が決定。2026-10-15）。</p>
+      <ul>
+        <li><strong>時間</strong>: 主要な遷移で、<strong>中央値 1.0 秒以内・最大 2.0 秒以内</strong>（Streamlit Cloud・起動済みの状態）。</li>
+        <li><strong>往復の回数</strong>: 遷移1回あたりの読取往復に上限を置く。最初の案は3回で、のちに、遷移ごと・社員の種類ごとの上限になりました（S-64）。</li>
+      </ul>
+      <p>時間は Cloud でしか測れず、条件もそろえにくい一方、<strong>往復の回数は、手元で何度でも同じように数えられます</strong>。回数を補助の目標にしたので、テストで必ず確かめられます。</p>
+
+      <h3>なぜ「問い合わせの回数を減らす」を狙ったのか</h3>
+      <p>2・3章のとおり、候補は多くありました。そのなかで、回数を減らす方式（D-06・D-07・D-08）を選んだ理由は、ADR-PERF-01 の比較（3章）と決定（4章）によると、次のとおりです。</p>
+      <ul>
+        <li><strong>確認できた原因に、直接効く</strong>: 全遷移に共通するサイドバーの固定往復（C1）と、件数に比例する N+1（C5）は、数えて確認済みでした。</li>
+        <li><strong>手元で何度でも同じに数えられ、テストで確かめられる</strong>: 時間は Cloud でしか測れず、条件もそろえにくい。回数なら、改修のあとに同じ手順で再確認できます。</li>
+        <li><strong>1往復あたりの時間を縮める案は、先に進めにくかった</strong>: 距離（H1）に効く D-10（Cloud や Supabase の場所を近づける）は、運営への相談が必要で、今回は見送りました。1往復の実時間も測れていませんでした。</li>
+      </ul>
+
+      <h3>採用した3つの方式（D-06 / D-08 / D-07）</h3>
+      <p>どれも「1回の問い合わせを速くする」のではなく、<strong>「問い合わせの回数を減らす」</strong>考え方です。</p>
+      <div class="card">
+        <h3>D-06: サイドバーの値を持ち続ける</h3>
+        <p>2章の3往復を、毎回聞くのをやめます。未読件数と権限を <code>session_state</code> に<strong>保持</strong>し、聞き直すのは、通知・メッセージ画面を開いたときと、既読にした直後（と、幹事・メンバーを変えた直後）だけです。</p>
+        <p class="meta">効くところ: 全画面の遷移（サイドバーは毎回あるため）。</p>
+      </div>
+      <div class="card">
+        <h3>D-08: まとめて取得する（N+1 をなくす）</h3>
+        <p>「部活1つにつき1回」と聞く代わりに、「必要な部活の分を<strong>1回でまとめて</strong>ください」と聞きます。部活が10個でも100個でも、往復の回数は同じです。</p>
+        <p class="meta">効くところ: ホーム、人を探す、部活の管理、メッセージ、部活詳細、プロフィールの6画面。</p>
+      </div>
+      <div class="card">
+        <h3>D-07: 読んだ結果を短い間おぼえておく（キャッシュ）</h3>
+        <p><code>st.cache_data</code> で、読取の結果を保存し、同じ内容をもう一度聞かないようにします。<strong>申込・書込みのあとは、関係するキャッシュをすぐ捨てます</strong>（古い表示が出ないようにするため）。</p>
+        <p class="meta">鮮度のルール: 「更新の直後だけ取り直す」（PM 決定）。一定時間ごとに更新する方式は採りませんでした。</p>
+      </div>
+      <h3>採らなかった案</h3>
+      <ul>
+        <li><strong>D-09</strong>（画面遷移の再実行を2回から1回にする）: PM の判断（2026-10-16）で、実施しない。</li>
+        <li><strong>D-10</strong>（Cloud か Supabase の場所を近づける）: 運営への相談が必要なため見送り。</li>
+      </ul>
+      <h3>実装の進め方</h3>
+      <p>AI スタッフ（バックエンド担当）が実装し、テスト担当がテストを付け、人間が PR をレビューしてマージしました。順番は D-06（PR #169）→ D-08（画面ごと、#170〜#177）→ D-07（#178）です。</p>
+    </section>
+
+    <section class="sheet" id="p5">
+      <div class="number">5</div>
+      <h2>結果: 代表遷移の待ち時間が、平均で約78%短縮した</h2>
+      <div class="callout ok">
+        <p><strong>ひとことで:</strong> 代表11遷移の待ち時間は、<strong>平均で約78%短縮（約4.1秒 → 約0.9秒）</strong>しました（倍率にすると約4.7分の1。補助の言い方です）。最大の改善は ⑥「ホーム→部活の管理（運営者）」で、<strong>約8.2秒 → 約1.4秒</strong>。改修前より遅くなった遷移は 0 です。</p>
+      </div>
+      <p class="meta"><strong>再計算の式:</strong> 下の表の11行（各2回の平均、ms）を合計。改修前 45,034ms ÷ 11 ＝ 約4,094ms（約4.1秒）、改修後 9,677ms ÷ 11 ＝ 約880ms（約0.9秒）。短縮率 ＝ （4,094 − 880）÷ 4,094 ＝ 約0.785（約78.5%。合計どうしの 1 − 9,677 ÷ 45,034 も同じ値）。倍率は 45,034 ÷ 9,677 ＝ 約4.65。⑦は「部活を探す→ホーム」の行を使用。元の値は <code>16-before-after.md</code>。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>遷移</th><th>改修前</th><th>改修後</th><th>短縮（秒・短縮率）</th><th>往復（改修前の小/大→後）</th><th>目標</th></tr></thead>
+          <tbody>
+            <tr><td>① ホーム→部活を探す</td><td>約1.4秒</td><td>約0.7秒（約51%）</td><td>約0.7秒</td><td>8/8 → 2</td><td class="aside">内</td></tr>
+            <tr><td>② ホーム→人を探す</td><td>約6.5秒</td><td>約1.0秒</td><td>約5.5秒（約84%）</td><td>24/36 → 8</td><td class="aside">超（1.03秒）</td></tr>
+            <tr><td>③ ホーム→メッセージ</td><td>約2.5秒</td><td>約1.3秒</td><td>約1.2秒（約49%）</td><td>11/21 → 5</td><td class="aside">超</td></tr>
+            <tr><td>④ ホーム→通知（未読0）</td><td>約1.4秒</td><td>約0.9秒</td><td>約0.5秒（約38%）</td><td>7/7 → 2</td><td class="aside">内</td></tr>
+            <tr><td>⑤ ホーム→自分のプロフィール</td><td>約1.7秒</td><td>約0.5秒</td><td>約1.2秒（約71%）</td><td>13/17 → 4</td><td class="aside">内</td></tr>
+            <tr><td>⑥ ホーム→部活の管理（運営者）</td><td>約8.2秒</td><td>約1.4秒</td><td>約6.8秒（約83%）</td><td>27/30 → 6</td><td class="aside">超</td></tr>
+            <tr><td>⑦ 部活を探す→ホーム</td><td>約6.2秒</td><td>約0.5秒</td><td>約5.7秒（約92%）</td><td>18/26 → 6</td><td class="aside">内</td></tr>
+            <tr><td>⑧ 部活を探す→部活詳細</td><td>約3.5秒</td><td>約0.7秒</td><td>約2.8秒（約79%）</td><td>17/20 → 7</td><td class="aside">内</td></tr>
+            <tr><td>⑩ 部活詳細→主催者プロフィール</td><td>約3.9秒</td><td>約0.6秒</td><td>約3.2秒（約83%）</td><td>21/28 → 8</td><td class="aside">内</td></tr>
+            <tr><td>⑫ 人を探す→プロフィール</td><td>約6.5秒</td><td>約0.4秒</td><td>約6.1秒（約93%）</td><td>27/39 → 11</td><td class="aside">内</td></tr>
+            <tr><td>⑭ 通知→メッセージ</td><td>約3.2秒</td><td>約1.6秒（約50%）</td><td>約1.6秒</td><td>12/22 → 7</td><td class="aside">超</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">時間は各2回の平均（秒は ms を÷1000して小数1桁に丸めたもの。短縮は ms の差を丸めたので、引き算とずれる行があります。短縮率 ＝ （改修前 − 改修後）÷ 改修前 を、ms で計算して整数に丸めたもの）。⑦は出発の画面6か所すべてが目標内で、上は代表の1行（他は <code>16-before-after.md</code>）。往復は偽データの規模「小/大」。「目標」の列は、中央値 1.0秒・最大 2.0秒の判定規則「甲」（2回の平均が1.0秒以内、かつ大きいほうが2.0秒以内）による。</p>
+
+      <h3>往復の上限と鮮度のテスト</h3>
+      <ul>
+        <li><strong>往復の上限（S-64）: 合格</strong>。一般・幹事・運営者×小・大の24行すべてで、上限以内でした。</li>
+        <li><strong>鮮度（S-65）: 12件合格</strong>。申込・キャンセルの直後に、部活詳細・自分の申込・未読件数が古いままにならないことを確かめました（偽データのアプリでの確認です）。</li>
+      </ul>
+      <h3>目標に届かなかった4遷移も、改修前より速くなっている</h3>
+      <p>目標（平均1.0秒以内・大きいほうが2.0秒以内）に届かなかったのは、②③⑥⑭の4遷移です。<strong>ただし、4遷移とも、改修前より速くなっています</strong>（式は上と同じ: （改修前 − 改修後）÷ 改修前）。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>遷移</th><th>改修前 → 改修後</th><th>短縮</th><th>目標との差（記録）</th></tr></thead>
+          <tbody>
+            <tr><td>② ホーム→人を探す</td><td>約6.5秒 → 約1.0秒</td><td>約5.5秒（約84%）</td><td>平均 1.026秒で、1.0秒を26ms超過（1回目 1.484秒・2回目 0.568秒）</td></tr>
+            <tr><td>③ ホーム→メッセージ</td><td>約2.5秒 → 約1.3秒</td><td>約1.2秒（約49%）</td><td>2回とも超過（1.208秒・1.312秒）</td></tr>
+            <tr><td>⑥ ホーム→部活の管理（運営者）</td><td>約8.2秒 → 約1.4秒</td><td>約6.8秒（約83%）</td><td>1回目 2.126秒が2.0秒超過、2回目 0.729秒</td></tr>
+            <tr><td>⑭ 通知→メッセージ</td><td>約3.2秒 → 約1.6秒</td><td>約1.6秒（約50%）</td><td>2回とも超過（1.735秒・1.411秒）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>原因の候補は <code>17-final-report.md</code> 5章に記録しました（推定・未確認を含みます）。PM の判断（2026-10-16）で D-09 は実施せず、残りの原因（Streamlit 側 C8・Supabase H4・距離）は分けられていません。</p>
+
+      <h3>この実装のデメリット・注意点（時間短縮と引き換えに背負うもの）</h3>
+      <p>往復を減らす方式は、「覚えておく」ことで速くしています。だから、<strong>覚えたものが古くなる</strong>ことと、<strong>覚え方を守り続ける手間</strong>が、代わりに残ります。次の表は、最終報告の7章から、重要なものに絞りました。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>注意点</th><th>具体的には</th><th>どうするか</th></tr></thead>
+          <tbody>
+            <tr><td>古い表示が出ることがある</td><td>キャッシュの間、他の人の更新が自分の画面に出ない。開始時刻を過ぎても「申し込む」ボタンが残る（押すと「申込できません」と出て、申込は作られない）</td><td>「他の人の操作が原因の古さだけは許容」と PM が決めた。申込・書込みの直後は取り直す</td></tr>
+            <tr><td>コードが複雑になる</td><td>読取にキャッシュを足すと、書込みのあとで捨てる処理（無効化）が要る。<strong>捨て忘れると、古い表示のまま</strong>になる</td><td>書込みを足す人が、関係するキャッシュを捨てる。テスト（S-65）で守るが、ホーム・部活を探すの鮮度テストは検出力が弱いことが分かっている</td></tr>
+            <tr><td>往復の余裕が少ない</td><td>往復の上限は<strong>ちょうどで余裕0のセルが多い</strong>。あとで1往復でも増えると、上限を超える</td><td>画面を変えたら、往復を数え直す。上限を緩めるときは、PM が判断して記録する</td></tr>
+            <tr><td>保持した値は、取り直す契機を決めて守る必要がある</td><td>サイドバーの値（D-06）は、契機以外では取り直さない。別のセッションで権限が変わった場合の保持値は未確認</td><td>契機（通知・メッセージ画面、既読の直後など）を、コードの説明に書いておく</td></tr>
+            <tr><td>一部は全件取得している</td><td>所属部活・次回開催日は、開催の絞り込みをせず全件を取って判定している。転送量は<strong>未実測</strong>（規模が大きくなると重くなる可能性。推定）</td><td>規模が変わったら再確認する</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">時間の測定は代表遷移のみ・各2回で、1往復の実時間も未実測です。偽データで確かめた範囲と、実データベースで確かめた範囲の違いなど、<strong>未確認事項の網羅は最終報告に任せます</strong>: <code>evidence/perf/17-final-report.md</code> の7章。</p>
+    </section>
+
+    <section class="sheet" id="p6">
+      <div class="number">6</div>
+      <h2>企画・実行で学んだこと</h2>
+      <p>中心は次の2点です。あわせて、公開の仕組み（自動デプロイ・Manage app）の学びを残します。</p>
+
+      <h3>① 開発初期から、速度に関する要求・要件を定めておくべきだった</h3>
+      <p>1章のとおり、速度の定義が要求・要件になかったために、問題が見つかってから、5文書を更新して基準を決めることになりました。最初の要求・要件の段階で、次を一緒に決めておけば、実装の途中で気づけたはずです（これからの提案です。今回は未実施）。</p>
+      <ul>
+        <li>主要な画面の遷移で、<strong>何秒以内</strong>か（どこで測るか。Cloud・起動済みなど、条件も）</li>
+        <li>1回の操作の<strong>問い合わせ回数の上限</strong>（手元で数えられるので、テストにできる）</li>
+        <li>それを<strong>誰が・いつ</strong>確かめるか</li>
+      </ul>
+
+      <h3>② 基準を厳密に設計すると、現実に合わず難しい。量の制御も、事前の設計で考える</h3>
+      <p>最初の基準は、厳密に作りました。ところが、実際に測ると、現実に合わない場面が出ました。そのたびに、人間（PM）が確認して、次のように見直しました。</p>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>見直したもの</th><th>最初</th><th>見直し後</th></tr></thead>
+          <tbody>
+            <tr><td>判定の規則</td><td>中央値・最大で判定（各5回）</td><td>「甲」: 2回の平均が1.0秒以内、かつ大きいほうが2.0秒以内</td></tr>
+            <tr><td>往復の上限</td><td>全遷移で3回（案）</td><td>キャッシュなしの初回の値で、遷移ごと・社員の種類ごとの上限（のち2か所を緩めた: ⑦ 6→7、⑭ 一般6→7・運営者4→5）</td></tr>
+            <tr><td>計測の回数</td><td>各5回</td><td>各2回</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>基準を厳密にするほど、<strong>試験の回数・工程が増え、AI のトークン消費も増えます</strong>。今回は、工程が段階0〜8、実装前レビュー Q1〜Q9、Cloud での手動計測と、多くなりました。計測を各5回から各2回にした理由は、チームの記録に「トークン削減のため」と書かれています。</p>
+      <p>作業量を抑える工夫もしました。時間の計測は、画面の画像を撮らず、ブラウザの JavaScript で<strong>時間を文字で取得</strong>する方式にしました。約30回ごとに会話を区切り、定例の報告は1〜2行にしました。</p>
+      <div class="callout">
+        <p><strong>ここから学べること:</strong></p>
+        <ul>
+          <li>基準は、最初から厳密にしすぎない。測れる最小限から始め、必要なら見直す。</li>
+          <li><strong>必要な改善に必要な分だけトークンを使う</strong>ために、<strong>量の制御</strong>（測る遷移の数、1遷移あたりの回数、工程の打ち切り条件）も、<strong>事前の設計</strong>に入れておく（提案です。今回は、途中で必要になってから決めた）。</li>
+          <li>量を減らしたら、<strong>何を減らしたか</strong>を、結果と一緒に書く（各2回では、1回の外れ値が結果を大きく動かす）。基準を変えるときは、「何を・なぜ・誰が」変えたかを記録し、決めるのは PM にする。</li>
+        </ul>
+      </div>
+
+      <h3>③ Streamlit Community Cloud は、main への反映で自動デプロイされる</h3>
+      <ul>
+        <li>ファイルを保存しても、commit しても、公開アプリには反映されません。</li>
+        <li>PR を作っただけでも、原則として反映されません。<strong>main に push／マージすると、自動でデプロイされます</strong>。</li>
+        <li>だから、<strong>間違ったコードをマージすると、公開中のアプリに直結します</strong>。開発用の環境を分けて、マージの前に確かめる必要があります（マージ＝公開反映）。</li>
+      </ul>
+
+      <h3>④ Manage app の使い方</h3>
+      <p>公開アプリの右下の「Manage app」を開くと、ログと、アプリの操作メニューが出ます（下の画面。架空社員のデータです）。</p>
+      <figure class="shot" id="manage-shot">
+        <img src="hub-assets/perf-manage-app.png" alt="左に公開アプリ（ホーム画面）、右に Manage app のログ画面。ログの右下の「…」メニューに、Download log、Analytics、Reboot app、Delete app、Settings、Your apps、Documentation、Support が並ぶ。最下部に、main ・ akapuu14-bit/dahanae/main/app/frontend/app.py と表示されている" loading="lazy" onerror="document.getElementById('manage-shot').classList.add('noimg')">
+        <p class="noimg-note">（画面の画像は読み込めませんでした。ファイル: <code>docs/hub-assets/perf-manage-app.png</code>）</p>
+        <figcaption>Manage app の画面。右のログに、依存パッケージの導入（pip install）から Uvicorn の起動までが出ている。右下の「…」メニューに <strong>Download log</strong> と <strong>Reboot app</strong> がある。</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Reboot app</strong>: アプリを再起動します。今回、プロフィール画面のエラーが、これで解消しました（7章）。</li>
+        <li><strong>Download log</strong>（ログ）: エラーの本文を確認する場所です。今回は、アプリの管理者経由でログをもらうと2〜3日かかる見込みだったので、待たずに、画面側でエラーの原因を絞れる診断表示を一時的に入れました（のち削除。PR #185）。</li>
+        <li><strong>どのブランチを見ているか</strong>: 画面の最下部に、<code>main ・ akapuu14-bit/dahanae/main/app/frontend/app.py</code> と表示されています。<strong>この画面の表示では、このアプリは main ブランチの <code>app/frontend/app.py</code> を見ています</strong>。つまり、前の項目（③）の「main へのマージで公開に反映される」と、画面の表示が一致します。<mark class="tbc">ただし、Settings の設定値そのものは見ていません</mark>。</li>
+      </ul>
+    </section>
+
+    <section class="sheet" id="p7">
+      <div class="number">7</div>
+      <h2>場面別ガイド: 次に何をするか（やること → 理由 → NG例）</h2>
+      <p>企画・実装の途中で「いま、何をすればいいか」を引く表です。表は<strong>場面</strong>で引きます。つまずいたときの見分け方は、あとの「症状から引く」にあります。</p>
+      <div class="callout ok">
+        <p><strong>ほかのナレッジとの分担:</strong> チームの進め方や git のつまずきは <a href="practice-knowledge.html">実践ナレッジ（ハマりどころ集）</a>、コードの書き方（N+1 の気配・未読件数を1本に集約するなど）は <a href="be-cheatsheet.html">BE実装チートシート</a>（5.8・5.10）、層の考え方は <a href="be-intro.html">BE入門</a>。この章は、<strong>速度・往復・公開</strong>に関わる場面だけを扱い、上の資料の内容は繰り返しません。</p>
+      </div>
+
+      <h3>A. 企画・要件を決めるとき</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>場面</th><th>やること</th><th>理由</th><th>NG例</th></tr></thead>
+          <tbody>
+            <tr><td>要求・要件を書く</td><td>主要な遷移の「何秒以内」と、1操作あたりの「問い合わせ回数の上限」を、機能と一緒に書く（条件も書く: Cloud・起動済み）</td><td>書かないと、遅いかどうか判定できず、直す側が終わりを決められない（1章）</td><td>「サクサク動くこと」とだけ書く</td></tr>
+            <tr><td>測る計画を決める</td><td>測る遷移・1遷移の回数・やめる条件を先に決める。測れる最小限から始める</td><td>厳密にするほど、回数・工程・トークンが増える（6章②）</td><td>全画面×5回を最初から決める</td></tr>
+            <tr><td>トークン消費の目安・目標を決める</td><td>企画のときに、トークン消費の目安・目標も具体的に決める。たとえば、計測の回数、工程の数、会話の区切り、定例報告の長さの上限を決める（数字は<strong>例</strong>: 1遷移あたり2回まで／会話は約30回で区切る／定例報告は1〜2行。今回の実績で書いてあるのは、この3つのみ）</td><td>決めておかないと、基準を厳密にするほど、試験の回数・工程・トークンが増えていく（6章②）。必要な改善に必要な分だけ使うための量の制御は、事前の設計に入れる</td><td>量の目安を決めず、途中で必要になってから回数を減らす（今回は、計測を5回→2回に見直した）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>B. 画面を作る・変えるとき</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>場面</th><th>やること</th><th>理由</th><th>NG例</th></tr></thead>
+          <tbody>
+            <tr><td>新しい画面で、読取を書く</td><td>その画面が、何回データベースに聞くかを数えて、上限と比べる（このプロジェクトでは <code>tests/count_profile.py</code>。2回目以降の数は <code>--warm</code>）</td><td>往復は、手元で何度でも同じように数えられる</td><td>動いたからと、数えない</td></tr>
+            <tr><td>一覧を作る</td><td>ループの中で1件ずつ聞かず、必要な分を<strong>1回でまとめて</strong>取る（D-08）</td><td>件数に比例して往復が増える（N+1）</td><td>部活ごとに、1件ずつ取得する</td></tr>
+            <tr><td>全画面共通の部品（サイドバーなど）</td><td>値を <code>session_state</code> に保持し、取り直す契機（既読にした直後など）を決める（D-06）</td><td>画面を切り替えるたびに全部走る（2章）</td><td>部品の中で、毎回データベースに聞く</td></tr>
+            <tr><td>読取にキャッシュ（<code>st.cache_data</code>）を使う</td><td>書込み（申込・キャンセル・既読）の直後に、関係するキャッシュを捨てる処理を<strong>セットで</strong>書く</td><td>捨て忘れると、古い表示のままになる（5章）</td><td>読取にだけ、キャッシュを足す</td></tr>
+            <tr><td>表示の途中で、書込みが走る画面を作る</td><td>書込みを、表示とは別の操作に分けられないか考える。分けられないなら、書込みのあとの再取得の回数を数える</td><td>書込みのたびにキャッシュを捨てると、毎回取り直しになる（③⑭が遅い原因の見立て。<mark class="tbc">未確認</mark>）</td><td>読取と書込みを、1つの表示処理に混ぜる</td></tr>
+            <tr><td>画面を変えたあと</td><td>往復を数え直す。上限ちょうどなら、1往復足す変更の前に、上限の見直しを PM に相談する</td><td>余裕0のセルが多い（5章）</td><td>黙って上限の数字を緩める</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>C. 遅いと言われたとき・測るとき</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>場面</th><th>やること</th><th>理由</th><th>NG例</th></tr></thead>
+          <tbody>
+            <tr><td>「遅い」と言われた</td><td>まず、<strong>「どこから、どこまでの待ちが遅いのか」</strong>を1つに決める（例: ホームの画面で「部活を探す」を押してから、部活の一覧が出るまで）。次に、その間に何回データベースに聞いているか、往復を数える。数が多い理由は、「毎回聞いている」「件数に比例して増える」「同じ内容を何度も聞いている」の順に疑う</td><td>感覚で直すと、効いたかどうか分からない</td><td>思いついた所から、直し始める</td></tr>
+            <tr><td>時間を測る</td><td>Cloud で、画面を前面にして、起動済みの状態で、1操作ずつ間を空けて測る。何回目を採用するか、先に決める</td><td>画面が隠れる（hidden）と大きく出る。連打すると2回目が速く出る</td><td>他のウィンドウの裏で測る／連打する</td></tr>
+            <tr><td>直して、測り直す</td><td>直す前と同じ方法で数え、前の記録と並べる。残ったものは「残った」と書く</td><td>効果と、残りの原因を分けるため</td><td>「全部速くなった」と書く</td></tr>
+            <tr><td>偽データのテストが通った</td><td>Cloud（本物のデータベース）でも確かめる</td><td>偽データと実データベースで、戻りの形が違うことがある（下の AttributeError）</td><td>偽データで通ったから、完了とする</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>D. 公開するとき</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>場面</th><th>やること</th><th>理由</th><th>NG例</th></tr></thead>
+          <tbody>
+            <tr><td>マージする前</td><td>「main へのマージ＝公開への反映」と考え、開発用の環境で確かめてからマージする</td><td>自動デプロイされる（6章③）</td><td>確かめずに、マージする</td></tr>
+            <tr><td>測定している最中</td><td>アプリの変更を入れない</td><td>測定の前提が変わるため</td><td>測定の途中で、マージする</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>症状から引く（見分け方 → 対処）</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>症状</th><th>原因の見分け方</th><th>対処</th></tr></thead>
+          <tbody>
+            <tr><td>プロフィール系の画面だけ、Cloud でエラー画面（<code>AttributeError</code>。「The original error message is redacted…」）</td><td>偽データ（手元）では通り、Cloud だけで落ちる → データベースの戻りの形（dict・list・None）が違うと疑う（見立て）。Manage app のログで本文を見る</td><td>戻りの形をそろえる処理（正規化）を入れた（PR #181）</td></tr>
+            <tr><td>人を探す→プロフィールで、クリックしても見出しが変わらず <code>httpx.RemoteProtocolError</code></td><td>上と同じ原因かは<mark class="tbc">未確認</mark>。接続の使い回しによる切断の可能性が挙がったが、確認していない</td><td>再現したら、操作とログを残して報告する</td></tr>
+            <tr><td>マージして Cloud が更新されたのに、挙動が変わらない</td><td>デプロイのログが「Pulling → Updated app!」だけで、再起動の記録がない → 古いプロセスが動き続けている疑い</td><td>Manage app の <strong>Reboot app</strong>（今回はこれで解消。修正の効果との切り分けは<mark class="tbc">未了</mark>）</td></tr>
+            <tr><td>開始時刻を過ぎたのに「申し込む」ボタンが残る</td><td>キャッシュの表示が古い。押すと「申込できません」と出て、申込は作られない</td><td>仕様として許容（5章）。気になる場合は、PM に相談する</td></tr>
+            <tr><td>日が変わると、テストが落ちる</td><td>テストが実際の時刻（<code>datetime.now</code>）に依存している</td><td>時刻を固定してテストする</td></tr>
+            <tr><td>計測した時間が、急に大きい</td><td>画面が他のウィンドウに隠れていないか（hidden）。連打していないか</td><td>画面を前面にして、1操作ずつ間を空けて測り直す</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="meta">詳しい記録: <code>evidence/perf/17-final-report.md</code>（最終報告）、<code>evidence/perf/16-before-after.md</code>（改修前後の比較）、<code>docs/adr/ADR-PERF-01-性能改善方式選定.md</code>（方式の決定と結果）。</p>
+    </section>
+  </main>
+</body>
+</html>
