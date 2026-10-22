@@ -554,9 +554,9 @@ gh workflow run dashboard.yml</code></pre>
         <dt>次に活かす一言</dt><dd>依頼は1通に全部入れる。小さな追加は、報告を受けた後に god が積む</dd>
       </dl>
 
-      <h4>5.22 main へのマージ直後の Pages 公開が cancelled になり、再実行が必要だった（#199・#201・#202、2026-10-22）</h4>
+      <h4>5.22 main へのマージ直後の Pages 公開が cancelled になり、再実行が必要だった（#199・#201・#202・#203、2026-10-22）</h4>
       <dl>
-        <dt>何が起きた</dt><dd>PR をマージした直後、main への push で動く <code>dashboard.yml</code>（GitHub Pages への公開）が cancelled になった。god の記録では #199・#201・#202 で起き、いずれも手動で再実行して success になった</dd>
+        <dt>何が起きた</dt><dd>PR をマージした直後、main への push で動く <code>dashboard.yml</code>（GitHub Pages への公開）が cancelled になった。god の記録では #199・#201・#202・#203 で起き、いずれも手動で再実行して success になった</dd>
         <dt>原因</dt><dd>PR 側の実行と pages の公開が競合した、と god は記録している。根本原因は調べていない（5.12 の PR 上の失敗との関係も未確認）</dd>
         <dt>対処</dt><dd><code>gh workflow run dashboard.yml --ref main</code> で再実行し、本番のページを開いて（または curl で）新しい文言が反映されたことを確かめた</dd>
         <dt>次に活かす一言</dt><dd>マージ後は main の実行結果まで見る。cancelled なら再実行し、本番の内容を確かめてから「反映済み」と報告する</dd>
