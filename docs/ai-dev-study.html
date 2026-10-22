@@ -236,308 +236,217 @@
       .pattern { grid-template-columns: 1fr; }
       .pattern > div:nth-last-child(2) { border-bottom: 1px solid var(--line); }
     }
+    .prob { margin: 20px 0 4px; padding: 10px 16px; background: var(--ai-bg); border-left: 5px solid var(--ai); border-radius: 4px; font-weight: 700; }
+    .prob .lbl2 { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 4px; background: var(--ai); color: var(--paper); font-size: .78rem; }
+    .cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 18px; }
+    .cards3 > div, .cards4 > div { padding: 12px 14px; background: var(--soft); border-top: 4px solid var(--navy-2); border-radius: 6px; font-size: .9rem; line-height: 1.6; }
+    .cards3 h4, .cards4 h4 { margin: 0 0 6px; font-size: .98rem; }
+    .cards4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0 18px; }
+    .fb { min-height: 90px; }
+    @media (max-width: 760px) { .cards3, .cards4 { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <nav aria-label="資料内ナビゲーション">
     <a class="hub-link" href="hub.html">← 開発ハブ</a>
     <strong>AI駆動開発の取り組み紹介</strong>
-    <a href="#p0">0 はじめに</a><a href="#p1">1 全体像</a><a href="#p2">2 5文書</a><a href="#p3">3 Issue</a><a href="#p4">4 GitHub</a><a href="#p5">5 進捗</a><a href="#p6">6 テスト</a><a href="#p7">7 まとめ</a><a href="#pa">付録</a>
+    <a href="#p1">① キーポイント</a><a href="#p2">② 最初の仕様書</a><a href="#p3">③ 実装環境</a><a href="#p4">④ ダッシュボード</a><a href="#p5">⑤ テスト</a><a href="#p6">⑥ 次の挑戦</a><a href="#p7">⑦ フィードバック</a>
   </nav>
 
   <main>
     <section class="sheet" id="top">
       <h1>AIエージェント活用による開発自動化と品質向上 ― これまでの取り組み紹介</h1>
       <p class="meta"><strong>対象:</strong> 風船アプリ／部活コンシェルジュを一緒に開発したメンバー（AI駆動開発の経験あり）</p>
-      <p class="meta"><strong>この会のゴール:</strong> 部活コンシェルジュで新しく試したこと（5文書作成・Issueの具体化・GitHub管理・進捗管理・テスト実行計画のAI活用）を<strong>知ってもらう</strong>こと。真似用のプロンプトやコマンドは載せません。図と実例が中心です</p>
-      <p class="meta"><strong>形式:</strong> 30分・画面共有でスクロールしながら話す読み物。各章の右肩に目安時間を書いています</p>
-      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-22 ／ 根拠: <code>01_ナレッジ/実践ナレッジ.md</code>・<code>00_ルール/V字フロー規定.md</code>・<code>02_プロジェクト/bukatsu_concierge/</code> の5文書・実装計画・テスト結果、<code>scripts/</code>、<code>.github/workflows/dashboard.yml</code>（いずれも main <code>03c0ce0</code> 時点）</p>
+      <p class="meta"><strong>この会のゴール:</strong> 部活コンシェルジュで新しく試したことを<strong>知ってもらう</strong>こと。真似用のプロンプトやコマンドは載せません。図と実例が中心です</p>
+      <p class="meta"><strong>形式:</strong> 30分・画面共有でスクロールしながら話す読み物。時間配分は ①4分 ②4分 ③5分 ④5分 ⑤4分 ⑥4分 ⑦3分 ＋ 質疑1分</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-22 ／ 根拠: <code>01_ナレッジ/実践ナレッジ.md</code>・<code>01_ナレッジ/log.md</code>・<code>02_プロジェクト/bukatsu_concierge/</code> の inputs・テスト結果、<code>docs/test-knowledge.html</code>、統括（god）の作業記録</p>
       <div class="callout danger">
-        <p><strong>【確認状況】</strong> 風船アプリ側の「以前のやり方」はこのリポジトリに記録がないため、<mark class="tbc">【要確認：ユーザー記入】</mark> としています。部活コンシェルジュ側の数値・日付は、出典ファイルで確かめたものだけを書きました。性能・セキュリティの話は本編に入れていません（付録のリンク先にあります）。</p>
-      </div>
-    </section>
-
-    <section class="sheet" id="p0">
-      <div class="number">0<span class="time">約3分</span></div>
-      <h2>はじめに ― 風船アプリと何が違ったか</h2>
-      <div class="tablewrap stack">
-        <table>
-          <thead><tr><th>観点</th><th>風船アプリ</th><th>部活コンシェルジュ</th></tr></thead>
-          <tbody>
-            <tr><td>AIの使い方</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>りじちょー（統括）＋スタッフAI 5名の「チーム」として役割分担（1章）</td></tr>
-            <tr><td>文書</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>要求・要件・仕様・設計・テスト設計の5文書をIDでつなぎ、対象版をコミットIDで固定（2章）</td></tr>
-            <tr><td>タスク</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>仕様IDからIssue 37件に分解。受入基準・触るファイルつき（3章）</td></tr>
-            <tr><td>GitHub</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>Label・Milestoneをスクリプトで一括作成。PRのマージは人が判断（4章）</td></tr>
-            <tr><td>進捗</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>IssueとPRからダッシュボードが自動更新（5章）</td></tr>
-            <tr><td>テスト</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>U・I・S・Aの4段で計画し、合否と証拠ログを1行ずつ記録（6章）</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="callout ok">
-        <p><strong>持ち帰ってほしいこと（3つ）</strong></p>
-        <ul>
-          <li>AIに「作業」を任せ、人は「決めること」を持つ。その境目を工程ごとに決めておくと速く進む。</li>
-          <li>文書のIDが、Issue・PR・テストまで1本の糸でつながる。つながっていると、AIに任せても抜けが見える。</li>
-          <li>進捗とテストは「報告する」より「記録から自動で見える」形にする。</li>
-        </ul>
+        <p><strong>【書き方】</strong> 数値・日付は出典ファイルで確かめたものだけを書いています。性能・セキュリティは本編に入れていません。</p>
       </div>
     </section>
 
     <section class="sheet" id="p1">
-      <div class="number">1<span class="time">約4分</span></div>
-      <h2>全体像 ― 5工程と、AI・人の分担</h2>
-      <p>今回の取り組みは、次の5工程です。それぞれで「AIが担当したこと」と「人が決めたこと」を分けて重ねました。</p>
-      <div class="legend"><span class="chip ai">AIの担当</span><span class="chip hu">人が決めた点</span></div>
-      <div class="flow5">
-        <div class="step"><h4>① 5文書の作成</h4>
-          <div class="ai"><span class="lbl">AI</span>資料3種から要求を抽出、要件・仕様の案、資料間の食い違いの検出</div>
-          <div class="hu"><span class="lbl">人</span>保留24項目の裁定、対象版と実装開始の承認</div></div>
-        <div class="step"><h4>② Issueの具体化</h4>
-          <div class="ai"><span class="lbl">AI</span>仕様IDからタスクに分解、受入基準・触るファイル・実装のコツを記入</div>
-          <div class="hu"><span class="lbl">人</span>担当の割り当て、方針（実装は人が各自）</div></div>
-        <div class="step"><h4>③ GitHubの管理</h4>
-          <div class="ai"><span class="lbl">AI</span>Label・Milestone・Issueの一括作成スクリプト</div>
-          <div class="hu"><span class="lbl">人</span>PRのレビューとマージ、Pages有効化（オーナー権限）</div></div>
-        <div class="step"><h4>④ 進捗管理</h4>
-          <div class="ai"><span class="lbl">AI</span>ダッシュボードの生成と自動更新の仕組み</div>
-          <div class="hu"><span class="lbl">人</span>PRに <code>Closes #</code> を書く、公開範囲の判断</div></div>
-        <div class="step"><h4>⑤ テスト実行計画</h4>
-          <div class="ai"><span class="lbl">AI</span>テスト設計、テストの実行と証拠ログの保存</div>
-          <div class="hu"><span class="lbl">人</span>実DB確認の承認、どの方法を合格とするかの指定、課題のクローズ</div></div>
-      </div>
-      <h3>体制</h3>
-      <div class="team">
-        <div class="row"><div class="box human">人間チーム<br><small>だーあさ（Data/Backend）・あかぷ（App/UI）・はなえ（PdM・レビュー）</small></div></div>
-        <div class="arrow">▲ 提案・確認　▼ 「Aで」「OK、進めて」などの決定</div>
-        <div class="row"><div class="box boss">りじちょー（統括）<br><small>窓口・割り振り・レビュー。提案はするが決断はしない</small></div></div>
-        <div class="arrow">▼ 依頼（4部構成）　▲ 成果物＋証拠</div>
-        <div class="row">
-          <div class="box staff">takahiro<br><small>設計</small></div>
-          <div class="box staff">mirin<br><small>フロント</small></div>
-          <div class="box staff">terao<br><small>BE/DB</small></div>
-          <div class="box staff">kurosu<br><small>テスト</small></div>
-          <div class="box staff">yamapi<br><small>書記</small></div>
+      <div class="number">①<span class="time">約4分</span></div>
+      <h2>AI駆動開発のキーポイント ―「確率」を仕組みでコントロールする</h2>
+      <p>AIの出力は毎回少しずつ違い、ときどき間違えます。これは普段のAI利用と同じです。だから「1回で正しく出させる」ことより、<strong>間違いが残る確率を仕組みで下げる</strong>ことを考えました。この考え方が、この資料全体の背骨です。</p>
+      <div class="cards3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <h4>例1 .md ファイルで出力を制御する</h4>
+          <p>役割・話し方・やってよいこと／いけないことを .md に書いて、毎回読ませます。たとえば「文書に書いていないことは作らず、『仕様に書かれていません』と報告して止まる」というルールです。ぶれ幅そのものを狭めます。</p>
+        </div>
+        <div>
+          <h4>例2 複数のエージェントでレビューする</h4>
+          <p>1体が書き、別の1体が確かめます。2体とも同じところを見落としたときだけ、ミスが残ります。2回続けてミスする確率は、1回ミスする確率より下がります。</p>
         </div>
       </div>
-      <p>基本の流れは <strong>提案 → 確認 → GO → 実装 → レビュー → 反映</strong> です。人が決める箇所は必ず「提案」として出し、本人の回答を記録してから進めました（<a href="practice-knowledge.html">実践ナレッジ</a> 1章）。</p>
-      <p class="meta">実装はAIではなく人が各自で行う方針に、途中で変えています。AIが書いたコードが衝突したためです（実践ナレッジ 5.5）。</p>
+      <div class="loop">
+        <span class="n ai">書く役（yamapi）</span><span class="a">▶</span>
+        <span class="n ai">検証する役（kurosu）</span><span class="a">▶</span>
+        <span class="n hu">人がレビュー</span><span class="a">▶</span>
+        <span class="n">公開</span>
+      </div>
+      <div class="callout ok">
+        <p><strong>実例:</strong> テストのナレッジページ（<a href="test-knowledge.html">テストの企画から実行まで</a>）では、yamapi の下書きを kurosu が事実確認しました。結果は必須の修正2件・推奨3件・任意2件で、必須の2件を直してから公開に回しました（2026-10-16、統括の記録）。</p>
+      </div>
+      <p class="meta">注意: 同じモデル・同じ前提で見ると、ミスが重なることがあります。今回効いたのは、<strong>「書く役」と「検証する役」を分け、検証する役に元の記録を見に行かせた</strong>ことです。</p>
     </section>
 
     <section class="sheet" id="p2">
-      <div class="number">2<span class="time">約5分</span></div>
-      <h2>5文書の作成</h2>
-      <div class="pattern">
-        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
-        <div class="k">今回</div><div>
-          <div class="chain">
-            <div class="node"><b>要求 R</b>R-01〜R-49<br>誰が何のために</div><span class="sep">▶</span>
-            <div class="node"><b>要件 F/N</b>F-01〜F-52・N-01〜N-16<br>何を満たせばよいか</div><span class="sep">▶</span>
-            <div class="node"><b>仕様 SP</b>SP-01〜SP-86<br>どう振る舞うか</div><span class="sep">▶</span>
-            <div class="node"><b>設計 ＋ テスト設計</b>どう作るか／どう確かめるか</div>
-          </div>
-          <p>各IDが上の文書のIDを指します。たとえば <strong>R-11・R-12</strong>（「部活を探す」「人を探す」を使いたい）→ <strong>F-10</strong>（ホームに2つの大きな入口）→ <strong>SP-14・SP-15</strong>（見出しとあいさつ文、ボタン2つ）。この糸は3章のIssue、6章のテストまで続きます。</p>
-          <div class="loop">
-            <span class="n ai">AIが資料から案を作る</span><span class="a">▶</span>
-            <span class="n ai">食い違い・未決を表にする</span><span class="a">▶</span>
-            <span class="n hu">人が採否・裁定</span><span class="a">▶</span>
-            <span class="n">文書に書き戻す</span><span class="a">▶</span>
-            <span class="n hu">対象版をコミットIDで固定し承認</span>
-          </div>
-        </div>
-        <div class="k">実例</div><div>
-          <ul>
-            <li>要求: 企画書・要件定義書v1.1・開発仕様書v0.1 の3資料から抽出。<strong>資料間でMVPスコープが食い違う</strong>ことをAIが見つけ、人へ上申した。</li>
-            <li>要件: 保留24項目を表にして、人が裁定した。</li>
-            <li>テスト設計を書く途中で、kurosuが<strong>仕様の穴を5件</strong>見つけ、4件を仕様に反映した。</li>
-            <li>対象版 <code>9a6a20f</code> と実装計画に、PMが承認（2026-09-27）。承認の記録がない会話だけでは実装を始めない決まり。</li>
-          </ul>
-          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要求.md">要求.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要件.md">要件.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/仕様.md">仕様.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装計画.md">実装計画.md</a>（5章 承認欄）</p>
-          <h3>「書いていないことは作らせない」</h3>
-          <p>スタッフAIは文書にあることだけを作り、書いていないことは「仕様に書かれていません」と報告して止まります（V字フロー規定のゲート）。実装中に、画面が呼ぶ関数がI/F契約に無いと分かったこともあります（あかぷが発見）。その場で補わず、「仕様外の補完」ではなく「契約の穴埋め」と判断して、契約に関数を足すPR（#90・#91）を出してから進めました（実践ナレッジ 5.8）。逆に、確定前に発注した画面をAIが先に作ってしまい、作り直したこともあります（同 5.4）。</p>
-        </div>
-        <div class="k">学び</div><div class="learn">文書を先に固めると「何が未決か」が表になり、人の判断が速くなる。</div>
+      <div class="number">②<span class="time">約4分</span></div>
+      <h2>最初の仕様書の質を大事にする</h2>
+      <p>5文書（要求・要件・仕様・設計・テスト設計）をAIと作る前に、<strong>元になる資料の質</strong>を上げておくことが大事でした。特に重要なのは次の2つです。</p>
+      <ol>
+        <li><strong>解決したい課題と要求の具体化</strong> ― 誰が、何に困っていて、どうなれば嬉しいか。</li>
+        <li><strong>仕様のキー部分の具体化</strong> ― どんなフローで動くか。フロントとバックの両方をイメージできるとよい。</li>
+      </ol>
+      <p>今回は、はなえさんが要件定義書と開発仕様書で具体化してくれていたので、スムーズに進みました。</p>
+      <h3>元の資料 → 5文書</h3>
+      <div class="chain">
+        <div class="node"><b>企画書</b>だーあさ作・9/21版<br>ビジョン</div>
+        <div class="node"><b>要件定義書 v1.0 → v1.1</b>はなえ作・9/23作成、9/27更新<br>目的・ユーザー・仮説・利用フロー</div>
+        <div class="node"><b>開発仕様書 v0.1</b>はなえ作・9/27<br>構成・画面S01〜S10・データ</div>
+        <span class="sep">▶</span>
+        <div class="node"><b>5文書</b>要求 R → 要件 F/N → 仕様 SP → 設計 ＋ テスト設計</div>
       </div>
+      <h3>キー部分の例: 「部活を探す」フロー（要件定義書 v1.1 7章A）</h3>
+      <div class="loop">
+        <span class="n">条件で検索</span><span class="a">▶</span>
+        <span class="n">カード一覧</span><span class="a">▶</span>
+        <span class="n">部活詳細（開催一覧・参加者）</span><span class="a">▶</span>
+        <span class="n">開催を選んで申込</span><span class="a">▶</span>
+        <span class="n ai">DBに保存・幹事にアプリ内通知</span><span class="a">▶</span>
+        <span class="n">申込完了画面</span><span class="a">▶</span>
+        <span class="n">メッセージで幹事とやり取り</span>
+      </div>
+      <p>画面の流れ（フロント）の途中に、「DBに保存・幹事に通知」（バック）が1行で入っています。開発仕様書 v0.1 には、画面の一覧（S01〜S10）と、データの表（社員・部活・開催・申込・メッセージ・通知など）まで書かれていました。</p>
+      <p class="meta">資料は <code>02_プロジェクト/bukatsu_concierge/inputs/</code> にあります（リポジトリには含めていないため、リンクはありません）。5文書は <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要求.md">要求.md</a> から辿れます。</p>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>実装で迷う確率</div>
     </section>
 
     <section class="sheet" id="p3">
-      <div class="number">3<span class="time">約3分</span></div>
-      <h2>Issueの具体化</h2>
-      <div class="pattern">
-        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
-        <div class="k">今回</div><div>
-          <p>仕様IDの束を、<strong>1ファイル1タスク</strong>のIssueに分けました。2章の糸の続きです。</p>
-          <div class="chain">
-            <div class="node"><b>仕様</b>SP-14〜SP-18<br>ホーム画面</div><span class="sep">▶</span>
-            <div class="node"><b>Issue T-F06</b>screens/home.py（S02）</div><span class="sep">▶</span>
-            <div class="node"><b>受入基準</b>0件時の案内文を含め SP-14〜18 どおり</div><span class="sep">▶</span>
-            <div class="node"><b>触るファイル・ラベル</b><code>screens/home.py</code><br>area:ui・wave:2</div>
-          </div>
-          <p>各Issueには「目的・対応SP・依存・受入基準・触るファイル・ラベル・担当」をそろえ、末尾に落とし穴を1行で書いた「💡実装のコツ」を付けました。</p>
-          <h3>AIへの依頼の4部構成</h3>
-          <div class="tablewrap">
-            <table>
-              <thead><tr><th>部</th><th>書くこと</th></tr></thead>
-              <tbody>
-                <tr><td>目的</td><td>何のためか、読み手は誰か</td></tr>
-                <tr><td>成果物</td><td>置き場所とファイル名、章立て</td></tr>
-                <tr><td>道具・情報源</td><td>事実を拾ってよい場所（創作させない）</td></tr>
-                <tr><td>境界</td><td>触ってよい範囲、やってはいけないこと、完了の条件</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="k">実例</div><div>
-          <ul>
-            <li>Wave0〜4 で <strong>Issue 37件</strong>（5／14／9／6／3件）。</li>
-            <li>💡実装のコツは、タスクバックログ・Issue本文・<code>task_hints.json</code> の3か所に同じ内容で配った（37件、過不足なし）。</li>
-            <li>横断レビューで、Issueが2つのスクリプトから二重に作られる問題が見つかり、1本にまとめた。</li>
-          </ul>
-          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/issues_seed.md">issues_seed.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/タスクバックログ.md">タスクバックログ.md</a> ／ <a href="overview.html">開発ロードマップ（overview）</a></p>
-        </div>
-        <div class="k">学び</div><div class="learn">「何を作るか」に加えて「どこまで触ってよいか」を書くと、越境と衝突が減る。</div>
+      <div class="number">③<span class="time">約5分</span></div>
+      <h2>実装環境の整備（5文書の後にやったこと）</h2>
+      <div class="cards3">
+        <div><h4>1. 開発の全体像の見える化</h4>Wave0〜4 のタイムラインと全タスクの早見表を <a href="overview.html">開発ロードマップ（overview）</a> にまとめました。</div>
+        <div><h4>2. GitHub Issues の具体化</h4>タスクを Issue にして、目的・受入基準・触るファイルを書きました。<code>create_issues.sh</code> で37件を一括作成（2026-09-28）。</div>
+        <div><h4>3. 開発ハブ</h4>日々の入口になるリンク集（<a href="hub.html">開発ハブ</a>）。ダッシュボードは④で紹介します。</div>
       </div>
+      <h3>苦戦したこと</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>苦戦</th><th>起きたこと</th></tr></thead>
+          <tbody>
+            <tr><td>全体像が見えない</td><td>5文書だけでは全体像が見えず、チームで具体化できなかった</td></tr>
+            <tr><td>Issue が記号だらけ</td><td>Issue の説明が「I/F契約の何番」のような記号と数字だけで、何を作るのかが見えなかった</td></tr>
+            <tr><td>完了条件が難しい</td><td>完了条件が、初心者に分かる言葉になっていなかった</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout ok">
+        <p><strong>⇒ 何を作るのか、受入基準は何かを、簡単に理解できるようにする。</strong>（⑥の「次の挑戦」1につながります）</p>
+      </div>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>何を作るかの取り違え</div>
     </section>
 
     <section class="sheet" id="p4">
-      <div class="number">4<span class="time">約3分</span></div>
-      <h2>GitHubの管理</h2>
-      <div class="pattern">
-        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
-        <div class="k">今回</div><div>
-          <div class="loop">
-            <span class="n ai">AIがスクリプトで Label・Milestone・Issue を作成</span><span class="a">▶</span>
-            <span class="n">ブランチで作業 → PR</span><span class="a">▶</span>
-            <span class="n hu">人がレビュー・マージ</span>
-          </div>
-          <div class="tablewrap">
-            <table>
-              <thead><tr><th>作ったもの</th><th>中身</th></tr></thead>
-              <tbody>
-                <tr><td>Label</td><td>area（be/ui/pdm）・type（feature/bug）・prio（high/mid/low）の8つ＋ wave:0〜4</td></tr>
-                <tr><td>Milestone</td><td>「〜9/29 アプリのカタチ」「〜10/2 8割」「10/7-12 最終」の3つ</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p>スクリプトは、すでにあるLabel・Milestoneは作らずに飛ばすので、何度流しても重複しません。PRのマージは人が判断し、自分のコードを自分で承認しない形にしました（実装計画 1章）。</p>
-        </div>
-        <div class="k">実例</div><div>
-          <ul>
-            <li>ローカルの main から分岐して、関係ないコミットがPRに混ざった → 基準を常に origin/main にした（実践ナレッジ 5.10）。</li>
-            <li>作業フォルダの状態のせいで、1ファイルの修正が116ファイルの「削除」を巻き込んだ。レビューで見つけて復元し、git の安全ルールを作った（同 5.16）。</li>
-            <li>新しいページを足したのに、公開のコピー一覧に入れ忘れて404になった（同 5.11）。</li>
-          </ul>
-          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/scripts/setup_github.sh">scripts/setup_github.sh</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/docs/github-管理セットアップ.md">github-管理セットアップ.md</a></p>
-        </div>
-        <div class="k">学び</div><div class="learn">作るのはAIに任せ、main に入れる判断は人が持つ。マージ前の差分確認が最後の砦になった。</div>
+      <div class="number">④<span class="time">約5分</span></div>
+      <h2>進捗管理ダッシュボードの自動化</h2>
+      <h3>前提: GitHub Pages の作り方</h3>
+      <div class="loop">
+        <span class="n">docs/ の HTML</span><span class="a">▶</span>
+        <span class="n ai">dashboard.yml が site/ にコピー＋ダッシュボードを生成</span><span class="a">▶</span>
+        <span class="n">GitHub Pages で公開</span>
       </div>
+      <p>main への push で自動的に動きます。Issue・PR の状態が変わるたびにも、ダッシュボードを作り直します。</p>
+      <div class="callout">
+        <p><strong>小話</strong></p>
+        <ul>
+          <li>新しいページを足したのに、コピー一覧に入れ忘れて、本番だけ404になった（実践ナレッジ 5.11）。</li>
+          <li>PR の上では公開ジョブが毎回失敗し、main では成功した（同 5.12）。統括の記録（2026-10-16）では、環境の保護ルールによるもので想定内とされています。</li>
+        </ul>
+      </div>
+      <h3>狙い</h3>
+      <p>開発段階ごと・人ごとに、進捗を見える化すること。PR本文に <code>Closes #番号</code> と書いてマージすると、Issue が自動でクローズされます。これで、進捗管理の手間をゼロにしました。</p>
+      <div class="loop">
+        <span class="n hu">PR本文に <code>Closes #12</code></span><span class="a">▶</span>
+        <span class="n hu">マージ</span><span class="a">▶</span>
+        <span class="n">Issue が自動クローズ</span><span class="a">▶</span>
+        <span class="n ai">ダッシュボードを再生成</span>
+      </div>
+      <h3>苦戦したこと</h3>
+      <p>開発中に仕様の不備や抜け漏れが見つかり、I/F契約を修正しました。その修正で増えたタスクは Issue 管理の外になり、Issue 側では後から追えませんでした。PR の記録には残っているので、後追いはできます。</p>
+      <p class="meta">実例: 画面が呼ぶ関数が I/F契約に無く、契約に足す PR（#90・#91）を出した（実践ナレッジ 5.8）。契約の文言の修正が先のマージに間に合わず、別の PR（#79）で直した（同 5.9）。</p>
+      <p class="meta">リンク: <a href="./">ダッシュボード</a> ／ <a href="practice-knowledge.html">実践ナレッジ</a></p>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>進捗の見落とし</div>
     </section>
 
     <section class="sheet" id="p5">
-      <div class="number">5<span class="time">約3分</span></div>
-      <h2>進捗管理の自動化</h2>
-      <div class="pattern">
-        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
-        <div class="k">今回</div><div>
-          <div class="loop">
-            <span class="n hu">PR本文に <code>Closes #12</code></span><span class="a">▶</span>
-            <span class="n hu">マージ</span><span class="a">▶</span>
-            <span class="n">Issueが自動でクローズ</span><span class="a">▶</span>
-            <span class="n ai">ワークフローが集計</span><span class="a">▶</span>
-            <span class="n ai">ダッシュボードを更新・公開</span>
-          </div>
-          <p>集計は、Issue・PRの変化、main への push、毎日1回の定時、手動のいずれでも動きます。人が手で行うのは「Issueを立てる」「PRに <code>Closes #</code> を書く」の2つだけです（進捗管理ガイド 4章）。</p>
-          <div class="tablewrap">
-            <table>
-              <thead><tr><th>場所</th><th>役割</th></tr></thead>
-              <tbody>
-                <tr><td>ダッシュボード</td><td>数字（誰が・どれだけ・遅れているか）。自動更新</td></tr>
-                <tr><td>overview</td><td>地図（全体像と現在地）</td></tr>
-                <tr><td>タスクバックログ</td><td>正本（受入基準・依存・所有境界）</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <h3>UTC と JST のずれ</h3>
-          <p>GitHub Actions の時刻は UTC です。定時実行は「UTC 21:00 ＝ JST 06:00」と書いています。ダッシュボードでは、締切の判定は JST なのに、PRの時刻と生成時刻だけ UTC で表示されていました。PR #95 で表示を JST にそろえ、変換をテストで固定しました（実践ナレッジ 5.13）。</p>
+      <div class="number">⑤<span class="time">約4分</span></div>
+      <h2>テストは準備が大事</h2>
+      <p class="meta">自動化したもの: AI によるテストの実行と、証拠ログの記録。</p>
+      <div class="cards3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <h4>1. 先に5文書のミスを直す</h4>
+          <p>実装と文書のずれ、更新漏れを、テストの前に直します。</p>
+          <p><strong>実例:</strong> 2026-10-10 のテストレビューで、仕様と実装のずれが34項目見つかりました。原因は、9/27 の初回提出の後、文書の更新（v0.2）が漏れていたことでした（統括の記録）。</p>
         </div>
-        <div class="k">実例</div><div>
-          <p class="meta">リンク: <a href="./">ダッシュボード</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/.github/workflows/dashboard.yml">dashboard.yml</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/docs/進捗管理ガイド.md">進捗管理ガイド.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/pull/95">PR #95</a></p>
+        <div>
+          <h4>2. テスト実行手順書で工程を見える化</h4>
+          <p>何を、誰が、どうテストするかを1つの手順書にまとめます。分担するときに特に大事です。</p>
+          <p>詳しくは <a href="test-knowledge.html">テストの企画から実行まで</a> にあります。</p>
         </div>
-        <div class="k">学び</div><div class="learn">進捗は「報告する」のではなく、IssueとPRから「勝手に集計される」形にする。</div>
       </div>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>文書と実装のずれの見逃し</div>
     </section>
 
     <section class="sheet" id="p6">
-      <div class="number">6<span class="time">約5分</span></div>
-      <h2>テスト実行計画</h2>
-      <div class="pattern">
-        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
-        <div class="k">今回</div><div>
-          <div class="chain">
-            <div class="node"><b>U 単体</b>設計と対<br>部品を1つずつ</div><span class="sep">▶</span>
-            <div class="node"><b>I 結合</b>仕様と対<br>部品をつないで</div><span class="sep">▶</span>
-            <div class="node"><b>S システム</b>要件と対<br>全体を本物に近い形で</div><span class="sep">▶</span>
-            <div class="node"><b>A 受入</b>要求と対<br>自己評価 → 他者評価</div>
-          </div>
-          <p>テストの1行は、上流の1つのIDに対応します。2章の糸では、<strong>F-10 → S-10</strong> です。S-10 は 2026-10-11 に合格しましたが、記録には「偽のデータでの確認で、実DBの合格ではない」と書いてあります。</p>
-          <h3>証拠の残し方</h3>
-          <ul>
-            <li>合否は「合格／不合格／対象外／未実行」。空欄は未実行として扱う。</li>
-            <li>合格にするのは、証拠（ログ・スクショ）のパスを書いてから。</li>
-            <li>どの方法で確かめたか（偽のデータ／実DBの読み取り／実機）を行ごとに書き分ける。</li>
-            <li>直したあとの証拠は、全件を通しで取り直した1本にする。修正前と修正後の一部をつなぎ合わせない（実践ナレッジ 5.17）。</li>
-          </ul>
+      <div class="number">⑥<span class="time">約4分</span></div>
+      <h2>次の開発でチャレンジしたいこと</h2>
+      <div class="cards4">
+        <div>
+          <h4>1. Issue 設計の具体化</h4>
+          <p>実装しやすく、完了条件がはっきりした Issue にする（③の苦戦から）。</p>
         </div>
-        <div class="k">実例</div><div>
-          <div class="callout">
-            <p><strong>「全件合格でないと閉じられない」という誤解</strong></p>
-            <p>2026-10-12 時点で、結合テストは合格167／未実行37、システムテストは合格44／対象外2／未実行16でした。全件合格でないと課題を閉じられないのでは、という見方が出かけました。実際の受入基準は「合否と実行ログが記録・添付されること」でした。未実行を合格に数えず、残す理由を書いたうえで、#43・#44 を閉じました（実践ナレッジ 5.18）。</p>
-          </div>
-          <p class="meta">リンク: <a href="test-knowledge.html">テストの企画から実行まで</a>（詳しい流れと件数）／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/テスト結果.md">テスト結果.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/issues/43">#43</a> ・ <a href="https://github.com/akapuu14-bit/DAHanae/issues/44">#44</a></p>
+        <div>
+          <h4>2. PR レビューの自動化</h4>
+          <p>完了条件がはっきりしていれば、1時間に1回の自動レビューで「手動で見るか、自動でよいか」を判断できるはずです。</p>
+          <p class="meta">裏付け: 課題 #43・#44 は、完了条件を「合否と実行ログが記録されること」と決めていたので閉じられた（実践ナレッジ 5.18）。</p>
         </div>
-        <div class="k">学び</div><div class="learn">閉じる条件は受入基準の文面で確かめる。未実行は合格と混ぜず、残す理由をその場で書く。</div>
+        <div>
+          <h4>3. メンバーが判断できる柔軟性と、ルールの明確化</h4>
+          <p>ベーさんのルール設定がステキでした。担当者の裁量・やっていいこと・やってはいけないことが具体化されていました。PM の確認が要ること／確認なしで進めてよいことを、同じようにルールにしたいです。</p>
+          <div class="tablewrap"><table>
+            <thead><tr><th>区分</th><th>例</th></tr></thead>
+            <tbody>
+              <tr><td>担当者の裁量（自分で判断してよい）</td><td>デザインの変更</td></tr>
+              <tr><td>PM の確認が要る（確認なしで進めない）</td><td>I/F契約の変更</td></tr>
+            </tbody>
+          </table></div>
+          <p class="meta">関連: 確定前に発注した画面を AI が先に作り、作り直した（実践ナレッジ 5.4）。</p>
+        </div>
+        <div>
+          <h4>4. .md ファイルのアップデート</h4>
+          <p>これまでの開発のエラー・ミスを、週1回自動でナレッジにする設計にしましたが、うまく機能しませんでした。中身の理解を高めて改善したいです。</p>
+          <p class="meta"><strong>自動で起動していなかった事例:</strong> クラウドの定期実行（Routine）を、cron <code>0 18 * * 0</code>・過去7日の失敗を抜き出して PR にする設定で用意しました。発火した実績は確認できていません（リモートに該当ブランチが無い）。2026-10-15 に、だーあさの判断でナレッジ還元は手動運用に切り替えました（<code>01_ナレッジ/log.md</code>）。原因は特定していません。記録上は「月曜18:00 JST」ですが、cron の <code>0 18 * * 0</code> を UTC で読むと月曜03:00 JST になり、食い違いがあります。</p>
+        </div>
       </div>
     </section>
 
     <section class="sheet" id="p7">
-      <div class="number">7<span class="time">約3分</span></div>
-      <h2>まとめ</h2>
-      <p class="meta">以下は、1〜6章の記録から書記が整理したものです。</p>
-      <div class="two">
-        <div class="ai">
-          <h3>任せてよかったこと</h3>
-          <ul>
-            <li>資料からの抽出と、資料間の食い違いの検出</li>
-            <li>仕様IDからIssueへの分解と、本文の記入</li>
-            <li>Label・Milestone・Issueの一括作成</li>
-            <li>進捗の集計とダッシュボードの更新</li>
-            <li>テストの実行と証拠ログの保存</li>
-            <li>別の担当による横断レビュー（仕様の穴5件、Issueの二重化）</li>
-          </ul>
-        </div>
-        <div class="hu">
-          <h3>人が持つべきだったこと</h3>
-          <ul>
-            <li>案の採否と保留の裁定（「Aで」「決定」）</li>
-            <li>対象版を示したうえでの実装開始の承認</li>
-            <li>PRのレビューとマージ</li>
-            <li>公開範囲の判断</li>
-            <li>テストで何を合格とするかの指定と、課題を閉じる判断</li>
-          </ul>
-        </div>
+      <div class="number">⑦<span class="time">約3分</span></div>
+      <h2>チームメンバーからのフィードバック（あかぷの兄貴）</h2>
+      <p>当日、あかぷの兄貴にお話しいただきます。</p>
+      <div class="cards3">
+        <div class="fb"><h4>感想</h4></div>
+        <div class="fb"><h4>苦労したポイント</h4></div>
+        <div class="fb"><h4>改善点</h4></div>
       </div>
-      <div class="callout ok">
-        <p><strong>失敗の多くは「確認前に動いた」「境界が書かれていなかった」「書式がそろっていなかった」のどれかでした。</strong>この3つを先に潰すと、AIに任せられる範囲が広がります。</p>
-      </div>
-      <p class="meta">発表者からの一言: <mark class="tbc">【要確認：ユーザー記入】</mark></p>
-    </section>
-
-    <section class="sheet" id="pa">
-      <div class="number">付録<span class="time">約1分</span></div>
-      <h2>もっと詳しく</h2>
+      <p class="meta">質疑（約1分）</p>
+      <h3>もっと詳しく</h3>
       <ul>
         <li><a href="practice-knowledge.html">📘 Munder Difflinチーム開発 実践ナレッジ</a> ― ハイブの回し方・V字・進捗基盤・ハマりどころ集</li>
-        <li><a href="test-knowledge.html">🧪 テストの企画から実行まで</a> ― U・I・S・A と、実行・確認の流れ、場面別ガイド</li>
-        <li><a href="perf-knowledge.html">⚡ アクセススピード改善ナレッジ</a> ― 遅い画面を数えて直した話（本編では扱っていません）</li>
+        <li><a href="test-knowledge.html">🧪 テストの企画から実行まで</a> ― U・I・S・A と、実行・確認の流れ</li>
+        <li><a href="perf-knowledge.html">⚡ アクセススピード改善ナレッジ</a> ― 本編では扱っていません</li>
       </ul>
     </section>
   </main>
