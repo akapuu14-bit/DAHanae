@@ -250,6 +250,30 @@
     @media (max-width: 560px) {
       .stack.labeled td[data-label]::before { content: attr(data-label); display: block; color: var(--muted); font-size: .78rem; font-weight: 800; }
     }
+    .next6 table { font-size: 1rem; line-height: 1.75; }
+    .next6 th, .next6 td { padding: 14px 16px; border-color: var(--line); }
+    .next6 tbody td { border-bottom: 2px solid var(--line); }
+    .next6 th { font-size: .9rem; letter-spacing: .04em; }
+    .next6 th.c-theme { width: 22%; }
+    .next6 th.c-ref { background: var(--hu-bg); color: var(--hu); border-bottom: 3px solid var(--hu); }
+    .next6 th.c-next { background: var(--ai-bg); color: var(--ai); border-bottom: 3px solid var(--ai); }
+    .next6 td.theme { font-weight: 800; background: var(--soft); }
+    .next6 td.ref { background: var(--hu-bg); border-left: 4px solid var(--hu); }
+    .next6 td.next { background: var(--ai-bg); border-left: 4px solid var(--ai); }
+    .next6 .no { display: inline-flex; align-items: center; justify-content: center; width: 1.7em; height: 1.7em; margin-right: 8px; border-radius: 50%; background: var(--navy-2); color: var(--paper); font-size: .9rem; font-weight: 800; vertical-align: 1px; }
+    @media (min-width: 561px) {
+      .next6 td.next { position: relative; }
+      .next6 td.next::before { content: "▶"; position: absolute; left: -13px; top: 16px; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: var(--paper); color: var(--ai); border: 1px solid var(--ai); font-size: .62rem; }
+    }
+    @media (max-width: 560px) {
+      .next6 tr { margin-bottom: 16px; border-width: 2px; border-radius: 6px; overflow: hidden; }
+      .next6 td { border-left: 0; border-bottom: 1px solid var(--line); }
+      .next6 td.ref, .next6 td.next { border-left: 5px solid; }
+      .next6 td.ref { border-left-color: var(--hu); }
+      .next6 td.next { border-left-color: var(--ai); }
+      .next6 td.ref::before { color: var(--hu); }
+      .next6 td.next::before { color: var(--ai); }
+    }
   </style>
 </head>
 <body>
@@ -292,7 +316,7 @@
       <p class="meta">注意: 同じモデル・同じ前提で見ると、ミスが重なることがあります。今回効いたのは、<strong>「書く役」と「検証する役」を分け、検証する役に元の記録を見に行かせた</strong>ことです。</p>
       <h3>体制（この資料に出てくる人とAI）</h3>
       <div class="team">
-        <div class="row"><div class="box human">メンバー 3名<br><small>はなえ（PdM）・だーあさ（BE）・あかぷ（App/UI）</small></div></div>
+        <div class="row"><div class="box human">メンバー 3名<br><small>はなえ（PM）・だーあさ（BE）・あかぷ（App/UI）</small></div></div>
         <div class="arrow">▲ 提案・確認　▼ 決定（「Aで」「OK、進めて」など）</div>
         <div class="row"><div class="box boss">りじちょー（統括 AI）<br><small>窓口・割り振り・レビュー。提案はするが決断はしない</small></div></div>
         <div class="arrow">▼ 依頼　▲ 成果物＋証拠</div>
@@ -422,15 +446,15 @@
     <section class="sheet" id="p6">
       <div class="number">⑥</div>
       <h2>次の開発でチャレンジしたいこと</h2>
-      <div class="tablewrap stack labeled">
+      <div class="tablewrap stack labeled next6">
         <table>
-          <thead><tr><th>テーマ</th><th>今回の反省</th><th>次にやること</th></tr></thead>
+          <thead><tr><th class="c-theme">テーマ</th><th class="c-ref">今回の反省</th><th class="c-next">次にやること</th></tr></thead>
           <tbody>
-            <tr><td>1. 仕様のビジュアル化</td><td data-label="今回の反省">仕様を変えたとき、何が変わったのかをつかめなかった。.md だと構造が見えにくい</td><td data-label="次にやること">主要フロー図を軸に、画面遷移図・ER図を添える。変更前後を並べて色を付ける</td></tr>
-            <tr><td>2. Issue 設計の具体化</td><td data-label="今回の反省">何を作るか・完了条件が伝わらなかった。増えたタスクを Issue にするルールもなかった</td><td data-label="次にやること">誰でも分かる言葉で書く。仕様変更で増えたタスクは「いつ・誰が」Issue にするか決めておく</td></tr>
-            <tr><td>3. 裁量とルールの明確化</td><td data-label="今回の反省">裁量があいまいで、工夫する余地も迷わず進むルールもなかった</td><td data-label="次にやること">「自分で決めてよいこと／確認が要ること」を最初に決める（例：デザインの変更は担当者が判断、I/F契約の変更はPMに確認。ベーさんのルールがお手本）</td></tr>
-            <tr><td>4. PR レビューの自動化</td><td data-label="今回の反省">はなえさんにコードレビューの負荷が集中した</td><td data-label="次にやること">Claude が1時間に1回 PR をレビューし、マージまで判断する。前提は 2 の完了条件</td></tr>
-            <tr><td>5. .md のアップデート</td><td data-label="今回の反省">用意された仕組み（.md）を、自分たちの開発に合わせてカスタマイズして使いこなせなかった。週1回の自動ナレッジ化も、自動で起動せず機能しなかった</td><td data-label="次にやること">まず「どの確率を制御したいか」を決め、班の開発に合った仕組みに .md を育てて機能させ、開発の精度・クオリティを上げる</td></tr>
+            <tr><td class="theme"><span class="no">1</span>仕様のビジュアル化</td><td class="ref" data-label="今回の反省">仕様を変えたとき、何が変わったのかをつかめなかった。.md だと構造が見えにくい</td><td class="next" data-label="次にやること">主要フロー図を軸に、画面遷移図・ER図を添える。変更前後を並べて色を付ける</td></tr>
+            <tr><td class="theme"><span class="no">2</span>Issue 設計の具体化</td><td class="ref" data-label="今回の反省">何を作るか・完了条件が伝わらなかった。増えたタスクを Issue にするルールもなかった</td><td class="next" data-label="次にやること">誰でも分かる言葉で書く。完了条件は、AI が合否を判断できる形（何をどう確かめれば完了か）まで具体化する。仕様変更で増えたタスクは「いつ・誰が」Issue にするか決めておく</td></tr>
+            <tr><td class="theme"><span class="no">3</span>裁量とルールの明確化</td><td class="ref" data-label="今回の反省">裁量があいまいで、工夫する余地も迷わず進むルールもなかった</td><td class="next" data-label="次にやること">「自分で決めてよいこと／確認が要ること」を最初に決める（例：デザインの変更は担当者が判断、I/F契約の変更はPMに確認。ベーさんのルールがお手本）</td></tr>
+            <tr><td class="theme"><span class="no">4</span>PR レビューの自動化</td><td class="ref" data-label="今回の反省">コードレビューが PM のはなえさん1人に集中した。重要度や変更の大小を分けず、すべて同じようにレビューを依頼していた</td><td class="next" data-label="次にやること">Claude が1時間に1回 PR をレビューし、マージまで判断する。人は重要度の高い変更だけを見る。前提は 2 の完了条件</td></tr>
+            <tr><td class="theme"><span class="no">5</span>.md のアップデート</td><td class="ref" data-label="今回の反省">用意された仕組み（.md）を、自分たちの開発に合わせてカスタマイズして使いこなせなかった。週1回の自動ナレッジ化も、自動で起動せず機能しなかった</td><td class="next" data-label="次にやること">まず「どの確率を制御したいか」を決め、班の開発に合った仕組みに .md を育てて機能させ、開発の精度・クオリティを上げる</td></tr>
           </tbody>
         </table>
       </div>
