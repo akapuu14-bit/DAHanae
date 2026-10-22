@@ -534,6 +534,57 @@ gh workflow run dashboard.yml</code></pre>
         <dt>対処</dt><dd>PR 上の deploy の fail はマージ可否の判断に使わず、マージ後の main の実行結果で確かめる（mirin の記録。#95 のマージ後に build・deploy とも success）</dd>
         <dt>次に活かす一言</dt><dd>「いつも落ちるチェック」は、理由が分かるまで記録して区別し、本物の失敗と混ぜない</dd>
       </dl>
+
+      <h3 class="grp">2026-10-22 の追記（勉強会資料づくり、PR #197〜#203）</h3>
+      <p>分類: ① 確認前に動いた＝5.20・5.24／② 境界が未記述＝5.21／③ 書式の不一致＝5.23／④ 環境・権限・仕組みの制約＝5.22・5.25</p>
+
+      <h4>5.20 最初の下書きが、本人の骨子と別物で作り直しになった（勉強会資料、2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>勉強会資料の最初の下書き（5工程＋全体像＋まとめ。各章で風船アプリと比べる章立て）を作った後、ユーザーが自分の構成①〜⑦を出した。章立てが別物だったため、①〜⑦で作り直した（PR #197 の前）</dd>
+        <dt>原因</dt><dd>目的・聞き手・形式は確認したが、本人がすでに持っていた骨子を聞く前に、AI 側で章立てを決めて書き始めた</dd>
+        <dt>対処</dt><dd>ユーザーの①〜⑦に合わせて全面的に書き直した。下書きで根拠が無く空欄にしていた12か所（風船アプリ側の「以前」）も、構成の変更で不要になった</dd>
+        <dt>次に活かす一言</dt><dd>資料づくりは「目的・聞き手・形式」の確認の次に、本人の骨子（章立て・言いたいこと）を先にもらってから書く</dd>
+      </dl>
+
+      <h4>5.21 作業中のエージェントへの追加連絡が行き違い、同じ修正が二重になった（2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>R5（表の見た目）を mirin に依頼した後、はなえの役割表記を PM に統一する追加連絡を送った。god も同じ統一を r5b に積んで PR #201 で出したため、mirin 側の統一（73bf9b9）は不要になり、mirin が自分で取り消した</dd>
+        <dt>原因</dt><dd>作業中に追加連絡が届くと、受け手がどこまで反映したかを送り手が把握できない。誰が追加分を反映するかを決めていなかった</dd>
+        <dt>対処</dt><dd>mirin のブランチを bce1a99 に戻し、god が積んだ r5b を正とした。実害は無し</dd>
+        <dt>次に活かす一言</dt><dd>依頼は1通に全部入れる。小さな追加は、報告を受けた後に god が積む</dd>
+      </dl>
+
+      <h4>5.22 main へのマージ直後の Pages 公開が cancelled になり、再実行が必要だった（#199・#201・#202・#203、2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>PR をマージした直後、main への push で動く <code>dashboard.yml</code>（GitHub Pages への公開）が cancelled になった。god の記録では #199・#201・#202・#203 で起き、いずれも手動で再実行して success になった</dd>
+        <dt>原因</dt><dd>PR 側の実行と pages の公開が競合した、と god は記録している。根本原因は調べていない（5.12 の PR 上の失敗との関係も未確認）</dd>
+        <dt>対処</dt><dd><code>gh workflow run dashboard.yml --ref main</code> で再実行し、本番のページを開いて（または curl で）新しい文言が反映されたことを確かめた</dd>
+        <dt>次に活かす一言</dt><dd>マージ後は main の実行結果まで見る。cancelled なら再実行し、本番の内容を確かめてから「反映済み」と報告する</dd>
+      </dl>
+
+      <h4>5.23 表を並べ替えたら、本文中の参照番号がずれた（2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>⑥「次の挑戦」の表の順番を入れ替えた（R4）後も、③の末尾は「⑥の次の挑戦 1 につながります」のままだった。並べ替え後の正しい番号は 2。品質レビューで見つかり、#203 で直した</dd>
+        <dt>原因</dt><dd>並べ替えた表だけを直し、その番号を参照している本文を検索していなかった</dd>
+        <dt>対処</dt><dd>#203 で「2につながります」に修正した（コミット 6a8c9b1）</dd>
+        <dt>次に活かす一言</dt><dd>番号付きの表や章を並べ替えたら、ページ全体で番号の参照箇所を検索して直す</dd>
+      </dl>
+
+      <h4>5.24 役割表記のゆれが、修正のたびに出た（はなえ・だーあさ・人数、2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>勉強会資料の修正で、はなえ（PdM／PM）、だーあさ（PM／BE）、人間メンバーの人数（3名／5名）の表記が何度も変わった。最終的には、はなえ PM・だーあさ BE・あかぷ App/UI の3名になった（だーあさは R2、はなえは R5 でユーザーが訂正。人数は 3名でユーザーが確定）</dd>
+        <dt>原因</dt><dd>体制・役割を本人に確認する前に、記録や CLAUDE.md の記載から書いた。記録どうしにも食い違いがあった（CLAUDE.md は「人間5名」）</dd>
+        <dt>対処</dt><dd>ユーザーの回答を受けるたびに直した。役割の訂正だけで R2・R5 の2回、修正を重ねた</dd>
+        <dt>次に活かす一言</dt><dd>体制・役割・人数は、最初に本人に確認して1か所を正とし、ほかはそれに合わせる</dd>
+      </dl>
+
+      <h4>5.25 他のエージェントが checkout 中のブランチは、ほかの worktree から更新できなかった（2026-10-22）</h4>
+      <dl>
+        <dt>何が起きた</dt><dd>god が勉強会資料を PR にしようとしたとき、ブランチ feature/ai-dev-study は yamapi の worktree（wt-study2）が checkout 中で、更新できなかった。god は同じ内容で新しいブランチ feature/ai-dev-study-v2 を作って PR #197 にした。また最初の下書きは、サンドボックス内で fetch が失敗したため、古いローカルの origin/main（03c0ce0）から分岐していた（god が最新の 29be714 に載せ替えた）</dd>
+        <dt>原因</dt><dd>git は、同じブランチを複数の worktree で同時に checkout できない。fetch の失敗は 5.1 と同じ SSH の遮断で、古い基準から分岐した点は 5.10 と同じ形</dd>
+        <dt>対処</dt><dd>R2 以降は、修正のたびに origin/main から新しいブランチ（r2〜r7）と新しい worktree を作った。サンドボックス内の fetch は、接続先に github.com を許可すると通った（yamapi の記録）</dd>
+        <dt>次に活かす一言</dt><dd>修正の回ごとに、最新の origin/main から新しいブランチを切る。分岐の前に fetch が成功したことを確かめる（5.1・5.10 も参照）</dd>
+      </dl>
     </section>
 
     <section class="sheet" id="s6">
@@ -573,6 +624,7 @@ gh workflow run dashboard.yml</code></pre>
         <li><code>02_プロジェクト/bukatsu_concierge/</code> の各文書と <code>実装ガイド/I-F契約.md</code></li>
         <li>2026-10 追記分（5.8〜5.15）: <code>hive/agents/god/memory.md</code>（2026-10-03〜04）、<code>hive/agents/mirin-tech0/memory.md</code>（T-DASH-JST）、PR #69 #73 #79 #87 #88 #89 #90 #91 #95 の本文と状態（<code>gh pr view</code>）、<code>git log origin/main --since=2026-10-01</code>、<code>gh run list --workflow dashboard.yml</code></li>
         <li>2026-10-11〜15 追記分（5.16〜5.19）: <code>hive/git-safety-rules.md</code>、<code>hive/agents/god/memory.md</code>（2026-10-11〜15）、<code>git show --stat 36fb4a6 93c02d5</code>、<code>02_プロジェクト/bukatsu_concierge/テスト結果.md</code>、<code>evidence/test/S/sxx-ar-realrun-postfix.log</code>、<code>evidence/test/U/u-task-evidence-map-20261012.md</code>、<code>git log --diff-filter=A</code></li>
+        <li>2026-10-22 追記分（5.20〜5.25）: <code>hive/agents/god/memory.md</code>（2026-10-22）、PR #197〜#203 のコミット（<code>git log origin/main</code>、<code>git show 6a8c9b1</code>）、<code>hive/agents/yamapi-tech0/memory.md</code>（2026-10-22）</li>
       </ul>
 
       <h2 id="unconfirmed" style="margin-top:34px">未確認の事項</h2>
@@ -582,6 +634,7 @@ gh workflow run dashboard.yml</code></pre>
           <li><code>9a6a20f</code> 以降に5文書へ加えた変更の有無: コミットIDでは再確認していない。</li>
           <li>ダッシュボード公開URLの現在の表示状態: 今回は再確認していない（memory/tasks の記録どおり）。</li>
           <li>5.12 で PR 上の deploy が失敗する理由（調べていない）。5.13 の公開ページの見た目（PR #95 では未確認とされている）。</li>
+          <li>5.22 の cancelled の根本原因と、#203 のマージ後にも起きたか（god の記録に無く、<code>gh run list</code> はサンドボックスで実行できず未確認）。</li>
         </ul>
       </div>
     </section>
