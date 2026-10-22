@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI駆動開発の取り組み紹介</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#1f2a44">
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    nav a.hub-link {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    mark.tbc { background: var(--warn-bg); color: var(--navy); border: 1px solid var(--yellow); border-radius: 4px; padding: 0 6px; font-size: .85em; font-weight: 700; }
+    details { margin: 8px 0; }
+    summary { cursor: pointer; font-weight: 700; color: var(--navy-2); }
+    td.grade { font-weight: 700; }
+    td.aside { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+    figure.shot { margin: 14px 0 18px; }
+    figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+    figure.shot figcaption { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+    figure.shot .noimg-note { display: none; padding: 14px 16px; background: var(--soft); border: 1px dashed var(--line); font-size: .9rem; }
+    figure.shot.noimg img { display: none; }
+    figure.shot.noimg .noimg-note { display: block; }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+    /* ai-dev-study 追加分 */
+    :root { --ai: #2e426d; --ai-bg: #e6ecf8; --hu: #8a5a00; --hu-bg: #fff3cf; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ai: #a9bde6; --ai-bg: #263452; --hu: #f2c230; --hu-bg: #3a3218; }
+    }
+    .time { display: inline-block; margin-left: 10px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .78rem; font-weight: 700; letter-spacing: 0; vertical-align: middle; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 12px; font-size: .88rem; }
+    .chip { display: inline-block; padding: 1px 10px; border-radius: 6px; font-size: .85rem; font-weight: 700; }
+    .chip.ai { background: var(--ai-bg); color: var(--ai); border: 1px solid var(--ai); }
+    .chip.hu { background: var(--hu-bg); color: var(--hu); border: 1px solid var(--hu); }
+    .flow5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 14px 0 20px; }
+    .flow5 .step { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--soft); border-top: 5px solid var(--navy-2); border-radius: 6px; font-size: .85rem; line-height: 1.5; }
+    .flow5 .step:not(:last-child)::after { content: "▶"; position: absolute; right: -11px; top: 14px; color: var(--muted); font-size: .8rem; }
+    .flow5 .step h4 { margin: 0 0 2px; font-size: .95rem; }
+    .flow5 .ai, .flow5 .hu { padding: 6px 8px; border-radius: 5px; }
+    .flow5 .ai { background: var(--ai-bg); border-left: 4px solid var(--ai); }
+    .flow5 .hu { background: var(--hu-bg); border-left: 4px solid var(--hu); }
+    .flow5 .lbl { display: block; font-size: .72rem; font-weight: 800; letter-spacing: .05em; opacity: .85; }
+    .team { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0 18px; text-align: center; }
+    .team .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .team .box { min-width: 120px; padding: 8px 12px; border-radius: 8px; font-size: .88rem; line-height: 1.45; }
+    .team .human { background: var(--hu-bg); border: 2px solid var(--hu); }
+    .team .boss { background: var(--ai-bg); border: 2px solid var(--ai); font-weight: 700; }
+    .team .staff { background: var(--paper); border: 1px solid var(--ai); }
+    .team .arrow { color: var(--muted); font-size: .8rem; }
+    .chain { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 14px 0 18px; }
+    .chain .node { flex: 1 1 130px; padding: 8px 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; font-size: .84rem; line-height: 1.5; }
+    .chain .node b { display: block; color: var(--green); font-size: .8rem; }
+    .chain .sep { align-self: center; color: var(--muted); }
+    .pattern { display: grid; grid-template-columns: 9em 1fr; gap: 0; margin: 10px 0 18px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .pattern > div { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .pattern > div:nth-last-child(-n+2) { border-bottom: 0; }
+    .pattern .k { background: var(--soft); font-weight: 800; font-size: .9rem; }
+    .pattern .learn { background: var(--ok-bg); font-weight: 700; }
+    .loop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 16px; font-size: .86rem; }
+    .loop span.n { padding: 6px 10px; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); }
+    .loop span.n.ai { background: var(--ai-bg); border-color: var(--ai); }
+    .loop span.n.hu { background: var(--hu-bg); border-color: var(--hu); }
+    .loop span.a { color: var(--muted); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0 18px; }
+    .two > div { padding: 12px 16px; border-radius: 6px; }
+    .two .ai { background: var(--ai-bg); border-left: 5px solid var(--ai); }
+    .two .hu { background: var(--hu-bg); border-left: 5px solid var(--hu); }
+    .two h3 { margin-top: 0; border-bottom: 0; }
+    @media (max-width: 760px) {
+      .flow5 { grid-template-columns: 1fr; }
+      .flow5 .step:not(:last-child)::after { content: "▼"; right: 50%; top: auto; bottom: -14px; }
+      .two { grid-template-columns: 1fr; }
+      .pattern { grid-template-columns: 1fr; }
+      .pattern > div:nth-last-child(2) { border-bottom: 1px solid var(--line); }
+    }
+    .prob { margin: 20px 0 4px; padding: 10px 16px; background: var(--ai-bg); border-left: 5px solid var(--ai); border-radius: 4px; font-weight: 700; }
+    .prob .lbl2 { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 4px; background: var(--ai); color: var(--paper); font-size: .78rem; }
+    .cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 18px; }
+    .cards3 > div, .cards4 > div { padding: 12px 14px; background: var(--soft); border-top: 4px solid var(--navy-2); border-radius: 6px; font-size: .9rem; line-height: 1.6; }
+    .cards3 h4, .cards4 h4 { margin: 0 0 6px; font-size: .98rem; }
+    .cards4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0 18px; }
+    .fb { min-height: 90px; }
+    @media (max-width: 760px) { .cards3, .cards4 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <a class="hub-link" href="hub.html">← 開発ハブ</a>
+    <strong>AI駆動開発の取り組み紹介</strong>
+    <a href="#p1">① キーポイント</a><a href="#p2">② 最初の仕様書</a><a href="#p3">③ 実装環境</a><a href="#p4">④ ダッシュボード</a><a href="#p5">⑤ テスト</a><a href="#p6">⑥ 次の挑戦</a><a href="#p7">⑦ フィードバック</a>
+  </nav>
+
+  <main>
+    <section class="sheet" id="top">
+      <h1>AIエージェント活用による開発自動化と品質向上 ― これまでの取り組み紹介</h1>
+      <p class="meta"><strong>対象:</strong> 風船アプリ／部活コンシェルジュを一緒に開発したメンバー（AI駆動開発の経験あり）</p>
+      <p class="meta"><strong>この会のゴール:</strong> 部活コンシェルジュで新しく試したことを<strong>知ってもらう</strong>こと。真似用のプロンプトやコマンドは載せません。図と実例が中心です</p>
+      <p class="meta"><strong>形式:</strong> 30分・画面共有でスクロールしながら話す読み物。時間配分は ①4分 ②4分 ③5分 ④5分 ⑤4分 ⑥4分 ⑦3分 ＋ 質疑1分</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-22 ／ 根拠: <code>01_ナレッジ/実践ナレッジ.md</code>・<code>01_ナレッジ/log.md</code>・<code>02_プロジェクト/bukatsu_concierge/</code> の inputs・テスト結果、<code>docs/test-knowledge.html</code>、統括（god）の作業記録</p>
+      <div class="callout danger">
+        <p><strong>【書き方】</strong> 数値・日付は出典ファイルで確かめたものだけを書いています。性能・セキュリティは本編に入れていません。</p>
+      </div>
+    </section>
+
+    <section class="sheet" id="p1">
+      <div class="number">①<span class="time">約4分</span></div>
+      <h2>AI駆動開発のキーポイント ―「確率」を仕組みでコントロールする</h2>
+      <p>AIの出力は毎回少しずつ違い、ときどき間違えます。これは普段のAI利用と同じです。だから「1回で正しく出させる」ことより、<strong>間違いが残る確率を仕組みで下げる</strong>ことを考えました。この考え方が、この資料全体の背骨です。</p>
+      <div class="cards3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <h4>例1 .md ファイルで出力を制御する</h4>
+          <p>役割・話し方・やってよいこと／いけないことを .md に書いて、毎回読ませます。たとえば「文書に書いていないことは作らず、『仕様に書かれていません』と報告して止まる」というルールです。ぶれ幅そのものを狭めます。</p>
+        </div>
+        <div>
+          <h4>例2 複数のエージェントでレビューする</h4>
+          <p>1体が書き、別の1体が確かめます。2体とも同じところを見落としたときだけ、ミスが残ります。2回続けてミスする確率は、1回ミスする確率より下がります。</p>
+        </div>
+      </div>
+      <div class="loop">
+        <span class="n ai">書く役（yamapi）</span><span class="a">▶</span>
+        <span class="n ai">検証する役（kurosu）</span><span class="a">▶</span>
+        <span class="n hu">人がレビュー</span><span class="a">▶</span>
+        <span class="n">公開</span>
+      </div>
+      <div class="callout ok">
+        <p><strong>実例:</strong> テストのナレッジページ（<a href="test-knowledge.html">テストの企画から実行まで</a>）では、yamapi の下書きを kurosu が事実確認しました。結果は必須の修正2件・推奨3件・任意2件で、必須の2件を直してから公開に回しました（2026-10-16、統括の記録）。</p>
+      </div>
+      <p class="meta">注意: 同じモデル・同じ前提で見ると、ミスが重なることがあります。今回効いたのは、<strong>「書く役」と「検証する役」を分け、検証する役に元の記録を見に行かせた</strong>ことです。</p>
+      <h3>体制（この資料に出てくる人とAI）</h3>
+      <div class="team">
+        <div class="row"><div class="box human">人間メンバー 3名<br><small>はなえ（PdM）・だーあさ（PM）・あかぷ（App/UI）</small></div></div>
+        <div class="arrow">▲ 提案・確認　▼ 決定（「Aで」「OK、進めて」など）</div>
+        <div class="row"><div class="box boss">りじちょー（統括 AI）<br><small>窓口・割り振り・レビュー。提案はするが決断はしない</small></div></div>
+        <div class="arrow">▼ 依頼　▲ 成果物＋証拠</div>
+        <div class="row">
+          <div class="box staff">takahiro<br><small>設計</small></div>
+          <div class="box staff">mirin<br><small>フロント</small></div>
+          <div class="box staff">terao<br><small>BE/DB</small></div>
+          <div class="box staff">kurosu<br><small>テスト・検証</small></div>
+          <div class="box staff">yamapi<br><small>書記</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p2">
+      <div class="number">②<span class="time">約4分</span></div>
+      <h2>最初の仕様書の質を大事にする</h2>
+      <p>5文書（要求・要件・仕様・設計・テスト設計）をAIと作る前に、<strong>元になる資料の質</strong>を上げておくことが大事でした。特に重要なのは次の2つです。</p>
+      <ol>
+        <li><strong>解決したい課題と要求の具体化</strong> ― 誰が、何に困っていて、どうなれば嬉しいか。</li>
+        <li><strong>仕様のキー部分の具体化</strong> ― どんなフローで動くか。フロントとバックの両方をイメージできるとよい。</li>
+      </ol>
+      <p>今回は、はなえさんが要件定義書と開発仕様書で具体化してくれていたので、スムーズに進みました。</p>
+      <h3>元の資料 → 5文書</h3>
+      <div class="chain">
+        <div class="node"><b>企画書</b>だーあさ作・9/21版<br>ビジョン</div>
+        <div class="node"><b>要件定義書 v1.0 → v1.1</b>はなえ作・9/23作成、9/27更新<br>目的・ユーザー・仮説・利用フロー</div>
+        <div class="node"><b>開発仕様書 v0.1</b>はなえ作・9/27<br>構成・画面S01〜S10・データ</div>
+        <span class="sep">▶</span>
+        <div class="node"><b>5文書</b>要求 R → 要件 F/N → 仕様 SP → 設計 ＋ テスト設計</div>
+      </div>
+      <h3>キー部分の例: 「部活を探す」フロー（要件定義書 v1.1 7章A）</h3>
+      <div class="loop">
+        <span class="n">条件で検索</span><span class="a">▶</span>
+        <span class="n">カード一覧</span><span class="a">▶</span>
+        <span class="n">部活詳細（開催一覧・参加者）</span><span class="a">▶</span>
+        <span class="n">開催を選んで申込</span><span class="a">▶</span>
+        <span class="n ai">DBに保存・幹事にアプリ内通知</span><span class="a">▶</span>
+        <span class="n">申込完了画面</span><span class="a">▶</span>
+        <span class="n">メッセージで幹事とやり取り</span>
+      </div>
+      <p>画面の流れ（フロント）の途中に、「DBに保存・幹事に通知」（バック）が1行で入っています。開発仕様書 v0.1 には、画面の一覧（S01〜S10）と、データの表（社員・部活・開催・申込・メッセージ・通知など）まで書かれていました。</p>
+      <p class="meta">資料は <code>02_プロジェクト/bukatsu_concierge/inputs/</code> にあります（リポジトリには含めていないため、リンクはありません）。5文書は <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要求.md">要求.md</a> から辿れます。</p>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>実装で迷う確率</div>
+    </section>
+
+    <section class="sheet" id="p3">
+      <div class="number">③<span class="time">約5分</span></div>
+      <h2>実装環境の整備（5文書の後にやったこと）</h2>
+      <div class="cards3">
+        <div><h4>1. 開発の全体像の見える化</h4>Wave0〜4 のタイムラインと全タスクの早見表を <a href="overview.html">開発ロードマップ（overview）</a> にまとめました。</div>
+        <div><h4>2. GitHub Issues の具体化</h4>タスクを Issue にして、目的・受入基準・触るファイルを書きました。<code>create_issues.sh</code> で37件を一括作成（2026-09-28）。</div>
+        <div><h4>3. 開発ハブ</h4>日々の入口になるリンク集（<a href="hub.html">開発ハブ</a>）。ダッシュボードは④で紹介します。</div>
+      </div>
+      <h3>苦戦したこと</h3>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>苦戦</th><th>起きたこと</th></tr></thead>
+          <tbody>
+            <tr><td>全体像が見えない</td><td>5文書だけでは全体像が見えず、チームで具体化できなかった</td></tr>
+            <tr><td>Issue が記号だらけ</td><td>Issue の説明が「I/F契約の何番」のような記号と数字だけで、何を作るのかが見えなかった</td></tr>
+            <tr><td>完了条件が難しい</td><td>完了条件が、初心者に分かる言葉になっていなかった</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout ok">
+        <p><strong>⇒ 何を作るのか、受入基準は何かを、簡単に理解できるようにする。</strong>（⑥の「次の挑戦」1につながります）</p>
+      </div>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>何を作るかの取り違え</div>
+    </section>
+
+    <section class="sheet" id="p4">
+      <div class="number">④<span class="time">約5分</span></div>
+      <h2>進捗管理ダッシュボードの自動化</h2>
+      <h3>前提: GitHub Pages の作り方</h3>
+      <div class="loop">
+        <span class="n">docs/ の HTML</span><span class="a">▶</span>
+        <span class="n ai">dashboard.yml が site/ にコピー＋ダッシュボードを生成</span><span class="a">▶</span>
+        <span class="n">GitHub Pages で公開</span>
+      </div>
+      <p>main への push で自動的に動きます。Issue・PR の状態が変わるたびにも、ダッシュボードを作り直します。</p>
+      <div class="callout">
+        <p><strong>小話</strong></p>
+        <ul>
+          <li>新しいページを足したのに、コピー一覧に入れ忘れて、本番だけ404になった（実践ナレッジ 5.11）。</li>
+          <li>PR の上では公開ジョブが毎回失敗し、main では成功した（同 5.12）。統括の記録（2026-10-16）では、環境の保護ルールによるもので想定内とされています。</li>
+        </ul>
+      </div>
+      <h3>狙い</h3>
+      <p>開発段階ごと・人ごとに、進捗を見える化すること。PR本文に <code>Closes #番号</code> と書いてマージすると、Issue が自動でクローズされます。これで、進捗管理の手間をゼロにしました。</p>
+      <div class="loop">
+        <span class="n hu">PR本文に <code>Closes #12</code></span><span class="a">▶</span>
+        <span class="n hu">マージ</span><span class="a">▶</span>
+        <span class="n">Issue が自動クローズ</span><span class="a">▶</span>
+        <span class="n ai">ダッシュボードを再生成</span>
+      </div>
+      <h3>苦戦したこと</h3>
+      <p>開発中に仕様の不備や抜け漏れが見つかり、I/F契約を修正しました。その修正で増えたタスクは Issue 管理の外になり、Issue 側では後から追えませんでした。PR の記録には残っているので、後追いはできます。</p>
+      <p class="meta">実例: 画面が呼ぶ関数が I/F契約に無く、契約に足す PR（#90・#91）を出した（実践ナレッジ 5.8）。契約の文言の修正が先のマージに間に合わず、別の PR（#79）で直した（同 5.9）。</p>
+      <p class="meta">リンク: <a href="./">ダッシュボード</a> ／ <a href="practice-knowledge.html">実践ナレッジ</a></p>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>進捗の見落とし</div>
+    </section>
+
+    <section class="sheet" id="p5">
+      <div class="number">⑤<span class="time">約4分</span></div>
+      <h2>テストは準備が大事</h2>
+      <p class="meta">自動化したもの: AI によるテストの実行と、証拠ログの記録。</p>
+      <div class="cards3" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <h4>1. 先に5文書のミスを直す</h4>
+          <p>実装と文書のずれ、更新漏れを、テストの前に直します。</p>
+          <p><strong>実例:</strong> 2026-10-10 のテストレビューで、仕様と実装のずれが34項目見つかりました。原因は、9/27 の初回提出の後、文書の更新（v0.2）が漏れていたことでした（統括の記録）。</p>
+        </div>
+        <div>
+          <h4>2. テスト実行手順書で工程を見える化</h4>
+          <p>何を、誰が、どうテストするかを1つの手順書にまとめます。分担するときに特に大事です。</p>
+          <p>詳しくは <a href="test-knowledge.html">テストの企画から実行まで</a> にあります。</p>
+        </div>
+      </div>
+      <div class="prob"><span class="lbl2">この章で下げた確率</span>文書と実装のずれの見逃し</div>
+    </section>
+
+    <section class="sheet" id="p6">
+      <div class="number">⑥<span class="time">約4分</span></div>
+      <h2>次の開発でチャレンジしたいこと</h2>
+      <div class="cards4">
+        <div>
+          <h4>1. Issue 設計の具体化</h4>
+          <p>実装しやすく、完了条件がはっきりした Issue にする（③の苦戦から）。</p>
+        </div>
+        <div>
+          <h4>2. PR レビューの自動化</h4>
+          <p>完了条件がはっきりしていれば、1時間に1回の自動レビューで「手動で見るか、自動でよいか」を判断できるはずです。</p>
+          <p class="meta">裏付け: 課題 #43・#44 は、完了条件を「合否と実行ログが記録されること」と決めていたので閉じられた（実践ナレッジ 5.18）。</p>
+        </div>
+        <div>
+          <h4>3. メンバーが判断できる柔軟性と、ルールの明確化</h4>
+          <p>ベーさんのルール設定がステキでした。担当者の裁量・やっていいこと・やってはいけないことが具体化されていました。PM の確認が要ること／確認なしで進めてよいことを、同じようにルールにしたいです。</p>
+          <div class="tablewrap"><table>
+            <thead><tr><th>区分</th><th>例</th></tr></thead>
+            <tbody>
+              <tr><td>担当者の裁量（自分で判断してよい）</td><td>デザインの変更</td></tr>
+              <tr><td>PM の確認が要る（確認なしで進めない）</td><td>I/F契約の変更</td></tr>
+            </tbody>
+          </table></div>
+          <p class="meta">関連: 確定前に発注した画面を AI が先に作り、作り直した（実践ナレッジ 5.4）。</p>
+        </div>
+        <div>
+          <h4>4. .md ファイルのアップデート</h4>
+          <p>これまでの開発のエラー・ミスを、週1回自動でナレッジにする設計にしましたが、うまく機能しませんでした。中身の理解を高めて改善したいです。</p>
+          <p class="meta"><strong>自動で起動していなかった事例:</strong> クラウドの定期実行（Routine）を、cron <code>0 18 * * 0</code>・過去7日の失敗を抜き出して PR にする設定で用意しました。発火した実績は確認できていません（リモートに該当ブランチが無い）。2026-10-15 に、だーあさの判断でナレッジ還元は手動運用に切り替えました（<code>01_ナレッジ/log.md</code>）。原因は特定していません。記録上は「月曜18:00 JST」ですが、cron の <code>0 18 * * 0</code> を UTC で読むと月曜03:00 JST になり、食い違いがあります。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p7">
+      <div class="number">⑦<span class="time">約3分</span></div>
+      <h2>チームメンバーからのフィードバック（あかぷの兄貴）</h2>
+      <p>当日、あかぷの兄貴にお話しいただきます。</p>
+      <div class="cards3">
+        <div class="fb"><h4>感想</h4></div>
+        <div class="fb"><h4>苦労したポイント</h4></div>
+        <div class="fb"><h4>改善点</h4></div>
+      </div>
+      <p class="meta">質疑（約1分）</p>
+      <h3>もっと詳しく</h3>
+      <ul>
+        <li><a href="practice-knowledge.html">📘 Munder Difflinチーム開発 実践ナレッジ</a> ― ハイブの回し方・V字・進捗基盤・ハマりどころ集</li>
+        <li><a href="test-knowledge.html">🧪 テストの企画から実行まで</a> ― U・I・S・A と、実行・確認の流れ</li>
+        <li><a href="perf-knowledge.html">⚡ アクセススピード改善ナレッジ</a> ― 本編では扱っていません</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
