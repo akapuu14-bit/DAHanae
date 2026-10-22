@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI駆動開発の取り組み紹介</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23fffdf2'/%3E%3Ccircle cx='8' cy='8' r='7' fill='%231f2a44'/%3E%3Cpath d='M12.5 3.5 9.5 9.5 6.5 6.5Z' fill='%23f4cb4d'/%3E%3Cpath d='M3.5 12.5 6.5 6.5 9.5 9.5Z' fill='%23c9c5aa'/%3E%3Ccircle cx='8' cy='8' r='1' fill='%23fffdf2'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="hub-assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#1f2a44">
+  <style>
+    :root {
+      --navy: #1f2a44;
+      --navy-2: #2e426d;
+      --pale: #e8ebf2;
+      --paper: #fff;
+      --soft: #f6f7fa;
+      --code-bg: #edf0f5;
+      --yellow: #f2c230;
+      --green: #2e7d5b;
+      --red: #b23a48;
+      --muted: #5b6475;
+      --line: #ccd3df;
+      --warn-bg: #fff8d9;
+      --danger-bg: #fff0f1;
+      --ok-bg: #edf7f2;
+      --nav-bg: rgba(31, 42, 68, .96);
+      --shadow: rgba(31, 42, 68, .11);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #e6eaf3;
+        --navy-2: #8fa6d6;
+        --pale: #12161f;
+        --paper: #1b2130;
+        --soft: #232b3d;
+        --code-bg: #2a3348;
+        --green: #58c194;
+        --red: #ef8a96;
+        --muted: #a3adc2;
+        --line: #38425a;
+        --warn-bg: #3a3218;
+        --danger-bg: #3b2226;
+        --ok-bg: #1d3329;
+        --nav-bg: rgba(10, 13, 20, .96);
+        --shadow: rgba(0, 0, 0, .4);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--pale);
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      line-height: 1.75;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 18px;
+      overflow-x: auto;
+      background: var(--nav-bg);
+      color: #fff;
+    }
+    nav strong { white-space: nowrap; margin-right: 8px; }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: .82rem;
+    }
+    nav a.hub-link {
+      background: var(--yellow);
+      color: var(--navy);
+      font-weight: 800;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 28px 16px 80px; }
+    .sheet {
+      position: relative;
+      margin: 0 0 30px;
+      padding: 44px 52px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px var(--shadow);
+      border-top: 8px solid var(--navy-2);
+      scroll-margin-top: 56px;
+    }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      top: -17px;
+      left: 50%;
+      width: 100px;
+      height: 25px;
+      background: rgba(242, 194, 48, .85);
+      transform: translateX(-50%) rotate(-1deg);
+    }
+    .number { color: var(--green); font-size: .86rem; font-weight: 800; letter-spacing: .12em; }
+    h1 { margin: 4px 0 12px; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.3; }
+    h2 { margin: 4px 0 22px; font-size: clamp(1.5rem, 4vw, 2.1rem); line-height: 1.35; }
+    h3 { margin: 26px 0 8px; font-size: 1.12rem; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+    p { margin: 8px 0 14px; }
+    .meta { color: var(--muted); font-size: .92rem; margin: 2px 0; }
+    .card {
+      margin: 12px 0;
+      padding: 14px 20px;
+      background: var(--soft);
+      border-left: 5px solid var(--navy-2);
+    }
+    .card h3 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
+    .callout {
+      margin: 22px 0;
+      padding: 15px 20px;
+      background: var(--warn-bg);
+      border-left: 6px solid var(--yellow);
+    }
+    .danger { background: var(--danger-bg); border-left-color: var(--red); }
+    .ok { background: var(--ok-bg); border-left-color: var(--green); }
+    .hint { margin: 22px 0 4px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: .9em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 12px 0 20px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #1f2a44;
+      color: #f7f8fb;
+      border-radius: 8px;
+      line-height: 1.65;
+      font-size: .92rem;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; overflow-wrap: normal; }
+    ul, ol { padding-left: 1.4em; }
+    li { margin: 6px 0; }
+    .tablewrap { overflow-x: auto; margin: 12px 0 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+    th { background: var(--soft); white-space: nowrap; }
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding-left: 0; }
+    .checklist li::before { content: "□"; margin-right: 10px; color: var(--green); font-weight: 900; }
+    .pitfall dl { margin: 0; }
+    .pitfall dt { font-weight: 800; color: var(--red); margin-top: 6px; }
+    .pitfall dd { margin: 0 0 6px; }
+    @media (max-width: 760px) {
+      .sheet { padding: 32px 18px 30px; }
+      th, td { padding: 6px 8px; }
+    }
+    @media (max-width: 560px) {
+      .stack table, .stack thead, .stack tbody, .stack tr, .stack th, .stack td { display: block; width: 100%; }
+      .stack thead { display: none; }
+      .stack tr { margin-bottom: 10px; border: 1px solid var(--line); }
+      .stack td { border: 0; border-bottom: 1px solid var(--line); }
+      .stack td:last-child { border-bottom: 0; }
+      .stack td:first-child { background: var(--soft); font-weight: 800; }
+    }
+    mark.tbc { background: var(--warn-bg); color: var(--navy); border: 1px solid var(--yellow); border-radius: 4px; padding: 0 6px; font-size: .85em; font-weight: 700; }
+    details { margin: 8px 0; }
+    summary { cursor: pointer; font-weight: 700; color: var(--navy-2); }
+    td.grade { font-weight: 700; }
+    td.aside { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+    figure.shot { margin: 14px 0 18px; }
+    figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+    figure.shot figcaption { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+    figure.shot .noimg-note { display: none; padding: 14px 16px; background: var(--soft); border: 1px dashed var(--line); font-size: .9rem; }
+    figure.shot.noimg img { display: none; }
+    figure.shot.noimg .noimg-note { display: block; }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .sheet { box-shadow: none; page-break-inside: avoid; }
+    }
+    /* ai-dev-study 追加分 */
+    :root { --ai: #2e426d; --ai-bg: #e6ecf8; --hu: #8a5a00; --hu-bg: #fff3cf; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ai: #a9bde6; --ai-bg: #263452; --hu: #f2c230; --hu-bg: #3a3218; }
+    }
+    .time { display: inline-block; margin-left: 10px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .78rem; font-weight: 700; letter-spacing: 0; vertical-align: middle; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 12px; font-size: .88rem; }
+    .chip { display: inline-block; padding: 1px 10px; border-radius: 6px; font-size: .85rem; font-weight: 700; }
+    .chip.ai { background: var(--ai-bg); color: var(--ai); border: 1px solid var(--ai); }
+    .chip.hu { background: var(--hu-bg); color: var(--hu); border: 1px solid var(--hu); }
+    .flow5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 14px 0 20px; }
+    .flow5 .step { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--soft); border-top: 5px solid var(--navy-2); border-radius: 6px; font-size: .85rem; line-height: 1.5; }
+    .flow5 .step:not(:last-child)::after { content: "▶"; position: absolute; right: -11px; top: 14px; color: var(--muted); font-size: .8rem; }
+    .flow5 .step h4 { margin: 0 0 2px; font-size: .95rem; }
+    .flow5 .ai, .flow5 .hu { padding: 6px 8px; border-radius: 5px; }
+    .flow5 .ai { background: var(--ai-bg); border-left: 4px solid var(--ai); }
+    .flow5 .hu { background: var(--hu-bg); border-left: 4px solid var(--hu); }
+    .flow5 .lbl { display: block; font-size: .72rem; font-weight: 800; letter-spacing: .05em; opacity: .85; }
+    .team { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0 18px; text-align: center; }
+    .team .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .team .box { min-width: 120px; padding: 8px 12px; border-radius: 8px; font-size: .88rem; line-height: 1.45; }
+    .team .human { background: var(--hu-bg); border: 2px solid var(--hu); }
+    .team .boss { background: var(--ai-bg); border: 2px solid var(--ai); font-weight: 700; }
+    .team .staff { background: var(--paper); border: 1px solid var(--ai); }
+    .team .arrow { color: var(--muted); font-size: .8rem; }
+    .chain { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 14px 0 18px; }
+    .chain .node { flex: 1 1 130px; padding: 8px 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; font-size: .84rem; line-height: 1.5; }
+    .chain .node b { display: block; color: var(--green); font-size: .8rem; }
+    .chain .sep { align-self: center; color: var(--muted); }
+    .pattern { display: grid; grid-template-columns: 9em 1fr; gap: 0; margin: 10px 0 18px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .pattern > div { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .pattern > div:nth-last-child(-n+2) { border-bottom: 0; }
+    .pattern .k { background: var(--soft); font-weight: 800; font-size: .9rem; }
+    .pattern .learn { background: var(--ok-bg); font-weight: 700; }
+    .loop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 16px; font-size: .86rem; }
+    .loop span.n { padding: 6px 10px; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); }
+    .loop span.n.ai { background: var(--ai-bg); border-color: var(--ai); }
+    .loop span.n.hu { background: var(--hu-bg); border-color: var(--hu); }
+    .loop span.a { color: var(--muted); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0 18px; }
+    .two > div { padding: 12px 16px; border-radius: 6px; }
+    .two .ai { background: var(--ai-bg); border-left: 5px solid var(--ai); }
+    .two .hu { background: var(--hu-bg); border-left: 5px solid var(--hu); }
+    .two h3 { margin-top: 0; border-bottom: 0; }
+    @media (max-width: 760px) {
+      .flow5 { grid-template-columns: 1fr; }
+      .flow5 .step:not(:last-child)::after { content: "▼"; right: 50%; top: auto; bottom: -14px; }
+      .two { grid-template-columns: 1fr; }
+      .pattern { grid-template-columns: 1fr; }
+      .pattern > div:nth-last-child(2) { border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="資料内ナビゲーション">
+    <a class="hub-link" href="hub.html">← 開発ハブ</a>
+    <strong>AI駆動開発の取り組み紹介</strong>
+    <a href="#p0">0 はじめに</a><a href="#p1">1 全体像</a><a href="#p2">2 5文書</a><a href="#p3">3 Issue</a><a href="#p4">4 GitHub</a><a href="#p5">5 進捗</a><a href="#p6">6 テスト</a><a href="#p7">7 まとめ</a><a href="#pa">付録</a>
+  </nav>
+
+  <main>
+    <section class="sheet" id="top">
+      <h1>AIエージェント活用による開発自動化と品質向上 ― これまでの取り組み紹介</h1>
+      <p class="meta"><strong>対象:</strong> 風船アプリ／部活コンシェルジュを一緒に開発したメンバー（AI駆動開発の経験あり）</p>
+      <p class="meta"><strong>この会のゴール:</strong> 部活コンシェルジュで新しく試したこと（5文書作成・Issueの具体化・GitHub管理・進捗管理・テスト実行計画のAI活用）を<strong>知ってもらう</strong>こと。真似用のプロンプトやコマンドは載せません。図と実例が中心です</p>
+      <p class="meta"><strong>形式:</strong> 30分・画面共有でスクロールしながら話す読み物。各章の右肩に目安時間を書いています</p>
+      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-22 ／ 根拠: <code>01_ナレッジ/実践ナレッジ.md</code>・<code>00_ルール/V字フロー規定.md</code>・<code>02_プロジェクト/bukatsu_concierge/</code> の5文書・実装計画・テスト結果、<code>scripts/</code>、<code>.github/workflows/dashboard.yml</code>（いずれも main <code>03c0ce0</code> 時点）</p>
+      <div class="callout danger">
+        <p><strong>【確認状況】</strong> 風船アプリ側の「以前のやり方」はこのリポジトリに記録がないため、<mark class="tbc">【要確認：ユーザー記入】</mark> としています。部活コンシェルジュ側の数値・日付は、出典ファイルで確かめたものだけを書きました。性能・セキュリティの話は本編に入れていません（付録のリンク先にあります）。</p>
+      </div>
+    </section>
+
+    <section class="sheet" id="p0">
+      <div class="number">0<span class="time">約3分</span></div>
+      <h2>はじめに ― 風船アプリと何が違ったか</h2>
+      <div class="tablewrap stack">
+        <table>
+          <thead><tr><th>観点</th><th>風船アプリ</th><th>部活コンシェルジュ</th></tr></thead>
+          <tbody>
+            <tr><td>AIの使い方</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>りじちょー（統括）＋スタッフAI 5名の「チーム」として役割分担（1章）</td></tr>
+            <tr><td>文書</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>要求・要件・仕様・設計・テスト設計の5文書をIDでつなぎ、対象版をコミットIDで固定（2章）</td></tr>
+            <tr><td>タスク</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>仕様IDからIssue 37件に分解。受入基準・触るファイルつき（3章）</td></tr>
+            <tr><td>GitHub</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>Label・Milestoneをスクリプトで一括作成。PRのマージは人が判断（4章）</td></tr>
+            <tr><td>進捗</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>IssueとPRからダッシュボードが自動更新（5章）</td></tr>
+            <tr><td>テスト</td><td><mark class="tbc">【要確認：ユーザー記入】</mark></td><td>U・I・S・Aの4段で計画し、合否と証拠ログを1行ずつ記録（6章）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout ok">
+        <p><strong>持ち帰ってほしいこと（3つ）</strong></p>
+        <ul>
+          <li>AIに「作業」を任せ、人は「決めること」を持つ。その境目を工程ごとに決めておくと速く進む。</li>
+          <li>文書のIDが、Issue・PR・テストまで1本の糸でつながる。つながっていると、AIに任せても抜けが見える。</li>
+          <li>進捗とテストは「報告する」より「記録から自動で見える」形にする。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="sheet" id="p1">
+      <div class="number">1<span class="time">約4分</span></div>
+      <h2>全体像 ― 5工程と、AI・人の分担</h2>
+      <p>今回の取り組みは、次の5工程です。それぞれで「AIが担当したこと」と「人が決めたこと」を分けて重ねました。</p>
+      <div class="legend"><span class="chip ai">AIの担当</span><span class="chip hu">人が決めた点</span></div>
+      <div class="flow5">
+        <div class="step"><h4>① 5文書の作成</h4>
+          <div class="ai"><span class="lbl">AI</span>資料3種から要求を抽出、要件・仕様の案、資料間の食い違いの検出</div>
+          <div class="hu"><span class="lbl">人</span>保留24項目の裁定、対象版と実装開始の承認</div></div>
+        <div class="step"><h4>② Issueの具体化</h4>
+          <div class="ai"><span class="lbl">AI</span>仕様IDからタスクに分解、受入基準・触るファイル・実装のコツを記入</div>
+          <div class="hu"><span class="lbl">人</span>担当の割り当て、方針（実装は人が各自）</div></div>
+        <div class="step"><h4>③ GitHubの管理</h4>
+          <div class="ai"><span class="lbl">AI</span>Label・Milestone・Issueの一括作成スクリプト</div>
+          <div class="hu"><span class="lbl">人</span>PRのレビューとマージ、Pages有効化（オーナー権限）</div></div>
+        <div class="step"><h4>④ 進捗管理</h4>
+          <div class="ai"><span class="lbl">AI</span>ダッシュボードの生成と自動更新の仕組み</div>
+          <div class="hu"><span class="lbl">人</span>PRに <code>Closes #</code> を書く、公開範囲の判断</div></div>
+        <div class="step"><h4>⑤ テスト実行計画</h4>
+          <div class="ai"><span class="lbl">AI</span>テスト設計、テストの実行と証拠ログの保存</div>
+          <div class="hu"><span class="lbl">人</span>実DB確認の承認、どの方法を合格とするかの指定、課題のクローズ</div></div>
+      </div>
+      <h3>体制</h3>
+      <div class="team">
+        <div class="row"><div class="box human">人間チーム<br><small>だーあさ（Data/Backend）・あかぷ（App/UI）・はなえ（PdM・レビュー）</small></div></div>
+        <div class="arrow">▲ 提案・確認　▼ 「Aで」「OK、進めて」などの決定</div>
+        <div class="row"><div class="box boss">りじちょー（統括）<br><small>窓口・割り振り・レビュー。提案はするが決断はしない</small></div></div>
+        <div class="arrow">▼ 依頼（4部構成）　▲ 成果物＋証拠</div>
+        <div class="row">
+          <div class="box staff">takahiro<br><small>設計</small></div>
+          <div class="box staff">mirin<br><small>フロント</small></div>
+          <div class="box staff">terao<br><small>BE/DB</small></div>
+          <div class="box staff">kurosu<br><small>テスト</small></div>
+          <div class="box staff">yamapi<br><small>書記</small></div>
+        </div>
+      </div>
+      <p>基本の流れは <strong>提案 → 確認 → GO → 実装 → レビュー → 反映</strong> です。人が決める箇所は必ず「提案」として出し、本人の回答を記録してから進めました（<a href="practice-knowledge.html">実践ナレッジ</a> 1章）。</p>
+      <p class="meta">実装はAIではなく人が各自で行う方針に、途中で変えています。AIが書いたコードが衝突したためです（実践ナレッジ 5.5）。</p>
+    </section>
+
+    <section class="sheet" id="p2">
+      <div class="number">2<span class="time">約5分</span></div>
+      <h2>5文書の作成</h2>
+      <div class="pattern">
+        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
+        <div class="k">今回</div><div>
+          <div class="chain">
+            <div class="node"><b>要求 R</b>R-01〜R-49<br>誰が何のために</div><span class="sep">▶</span>
+            <div class="node"><b>要件 F/N</b>F-01〜F-52・N-01〜N-16<br>何を満たせばよいか</div><span class="sep">▶</span>
+            <div class="node"><b>仕様 SP</b>SP-01〜SP-86<br>どう振る舞うか</div><span class="sep">▶</span>
+            <div class="node"><b>設計 ＋ テスト設計</b>どう作るか／どう確かめるか</div>
+          </div>
+          <p>各IDが上の文書のIDを指します。たとえば <strong>R-11・R-12</strong>（「部活を探す」「人を探す」を使いたい）→ <strong>F-10</strong>（ホームに2つの大きな入口）→ <strong>SP-14・SP-15</strong>（見出しとあいさつ文、ボタン2つ）。この糸は3章のIssue、6章のテストまで続きます。</p>
+          <div class="loop">
+            <span class="n ai">AIが資料から案を作る</span><span class="a">▶</span>
+            <span class="n ai">食い違い・未決を表にする</span><span class="a">▶</span>
+            <span class="n hu">人が採否・裁定</span><span class="a">▶</span>
+            <span class="n">文書に書き戻す</span><span class="a">▶</span>
+            <span class="n hu">対象版をコミットIDで固定し承認</span>
+          </div>
+        </div>
+        <div class="k">実例</div><div>
+          <ul>
+            <li>要求: 企画書・要件定義書v1.1・開発仕様書v0.1 の3資料から抽出。<strong>資料間でMVPスコープが食い違う</strong>ことをAIが見つけ、人へ上申した。</li>
+            <li>要件: 保留24項目を表にして、人が裁定した。</li>
+            <li>テスト設計を書く途中で、kurosuが<strong>仕様の穴を5件</strong>見つけ、4件を仕様に反映した。</li>
+            <li>対象版 <code>9a6a20f</code> と実装計画に、PMが承認（2026-09-27）。承認の記録がない会話だけでは実装を始めない決まり。</li>
+          </ul>
+          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要求.md">要求.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要件.md">要件.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/仕様.md">仕様.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装計画.md">実装計画.md</a>（5章 承認欄）</p>
+          <h3>「書いていないことは作らせない」</h3>
+          <p>スタッフAIは文書にあることだけを作り、書いていないことは「仕様に書かれていません」と報告して止まります（V字フロー規定のゲート）。実装中に、画面が呼ぶ関数がI/F契約に無いと分かったこともあります（あかぷが発見）。その場で補わず、「仕様外の補完」ではなく「契約の穴埋め」と判断して、契約に関数を足すPR（#90・#91）を出してから進めました（実践ナレッジ 5.8）。逆に、確定前に発注した画面をAIが先に作ってしまい、作り直したこともあります（同 5.4）。</p>
+        </div>
+        <div class="k">学び</div><div class="learn">文書を先に固めると「何が未決か」が表になり、人の判断が速くなる。</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p3">
+      <div class="number">3<span class="time">約3分</span></div>
+      <h2>Issueの具体化</h2>
+      <div class="pattern">
+        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
+        <div class="k">今回</div><div>
+          <p>仕様IDの束を、<strong>1ファイル1タスク</strong>のIssueに分けました。2章の糸の続きです。</p>
+          <div class="chain">
+            <div class="node"><b>仕様</b>SP-14〜SP-18<br>ホーム画面</div><span class="sep">▶</span>
+            <div class="node"><b>Issue T-F06</b>screens/home.py（S02）</div><span class="sep">▶</span>
+            <div class="node"><b>受入基準</b>0件時の案内文を含め SP-14〜18 どおり</div><span class="sep">▶</span>
+            <div class="node"><b>触るファイル・ラベル</b><code>screens/home.py</code><br>area:ui・wave:2</div>
+          </div>
+          <p>各Issueには「目的・対応SP・依存・受入基準・触るファイル・ラベル・担当」をそろえ、末尾に落とし穴を1行で書いた「💡実装のコツ」を付けました。</p>
+          <h3>AIへの依頼の4部構成</h3>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>部</th><th>書くこと</th></tr></thead>
+              <tbody>
+                <tr><td>目的</td><td>何のためか、読み手は誰か</td></tr>
+                <tr><td>成果物</td><td>置き場所とファイル名、章立て</td></tr>
+                <tr><td>道具・情報源</td><td>事実を拾ってよい場所（創作させない）</td></tr>
+                <tr><td>境界</td><td>触ってよい範囲、やってはいけないこと、完了の条件</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="k">実例</div><div>
+          <ul>
+            <li>Wave0〜4 で <strong>Issue 37件</strong>（5／14／9／6／3件）。</li>
+            <li>💡実装のコツは、タスクバックログ・Issue本文・<code>task_hints.json</code> の3か所に同じ内容で配った（37件、過不足なし）。</li>
+            <li>横断レビューで、Issueが2つのスクリプトから二重に作られる問題が見つかり、1本にまとめた。</li>
+          </ul>
+          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/issues_seed.md">issues_seed.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/実装ガイド/タスクバックログ.md">タスクバックログ.md</a> ／ <a href="overview.html">開発ロードマップ（overview）</a></p>
+        </div>
+        <div class="k">学び</div><div class="learn">「何を作るか」に加えて「どこまで触ってよいか」を書くと、越境と衝突が減る。</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p4">
+      <div class="number">4<span class="time">約3分</span></div>
+      <h2>GitHubの管理</h2>
+      <div class="pattern">
+        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
+        <div class="k">今回</div><div>
+          <div class="loop">
+            <span class="n ai">AIがスクリプトで Label・Milestone・Issue を作成</span><span class="a">▶</span>
+            <span class="n">ブランチで作業 → PR</span><span class="a">▶</span>
+            <span class="n hu">人がレビュー・マージ</span>
+          </div>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>作ったもの</th><th>中身</th></tr></thead>
+              <tbody>
+                <tr><td>Label</td><td>area（be/ui/pdm）・type（feature/bug）・prio（high/mid/low）の8つ＋ wave:0〜4</td></tr>
+                <tr><td>Milestone</td><td>「〜9/29 アプリのカタチ」「〜10/2 8割」「10/7-12 最終」の3つ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>スクリプトは、すでにあるLabel・Milestoneは作らずに飛ばすので、何度流しても重複しません。PRのマージは人が判断し、自分のコードを自分で承認しない形にしました（実装計画 1章）。</p>
+        </div>
+        <div class="k">実例</div><div>
+          <ul>
+            <li>ローカルの main から分岐して、関係ないコミットがPRに混ざった → 基準を常に origin/main にした（実践ナレッジ 5.10）。</li>
+            <li>作業フォルダの状態のせいで、1ファイルの修正が116ファイルの「削除」を巻き込んだ。レビューで見つけて復元し、git の安全ルールを作った（同 5.16）。</li>
+            <li>新しいページを足したのに、公開のコピー一覧に入れ忘れて404になった（同 5.11）。</li>
+          </ul>
+          <p class="meta">リンク: <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/scripts/setup_github.sh">scripts/setup_github.sh</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/docs/github-管理セットアップ.md">github-管理セットアップ.md</a></p>
+        </div>
+        <div class="k">学び</div><div class="learn">作るのはAIに任せ、main に入れる判断は人が持つ。マージ前の差分確認が最後の砦になった。</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p5">
+      <div class="number">5<span class="time">約3分</span></div>
+      <h2>進捗管理の自動化</h2>
+      <div class="pattern">
+        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
+        <div class="k">今回</div><div>
+          <div class="loop">
+            <span class="n hu">PR本文に <code>Closes #12</code></span><span class="a">▶</span>
+            <span class="n hu">マージ</span><span class="a">▶</span>
+            <span class="n">Issueが自動でクローズ</span><span class="a">▶</span>
+            <span class="n ai">ワークフローが集計</span><span class="a">▶</span>
+            <span class="n ai">ダッシュボードを更新・公開</span>
+          </div>
+          <p>集計は、Issue・PRの変化、main への push、毎日1回の定時、手動のいずれでも動きます。人が手で行うのは「Issueを立てる」「PRに <code>Closes #</code> を書く」の2つだけです（進捗管理ガイド 4章）。</p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>場所</th><th>役割</th></tr></thead>
+              <tbody>
+                <tr><td>ダッシュボード</td><td>数字（誰が・どれだけ・遅れているか）。自動更新</td></tr>
+                <tr><td>overview</td><td>地図（全体像と現在地）</td></tr>
+                <tr><td>タスクバックログ</td><td>正本（受入基準・依存・所有境界）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>UTC と JST のずれ</h3>
+          <p>GitHub Actions の時刻は UTC です。定時実行は「UTC 21:00 ＝ JST 06:00」と書いています。ダッシュボードでは、締切の判定は JST なのに、PRの時刻と生成時刻だけ UTC で表示されていました。PR #95 で表示を JST にそろえ、変換をテストで固定しました（実践ナレッジ 5.13）。</p>
+        </div>
+        <div class="k">実例</div><div>
+          <p class="meta">リンク: <a href="./">ダッシュボード</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/.github/workflows/dashboard.yml">dashboard.yml</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/docs/進捗管理ガイド.md">進捗管理ガイド.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/pull/95">PR #95</a></p>
+        </div>
+        <div class="k">学び</div><div class="learn">進捗は「報告する」のではなく、IssueとPRから「勝手に集計される」形にする。</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p6">
+      <div class="number">6<span class="time">約5分</span></div>
+      <h2>テスト実行計画</h2>
+      <div class="pattern">
+        <div class="k">以前（風船アプリ）</div><div><mark class="tbc">【要確認：ユーザー記入】</mark></div>
+        <div class="k">今回</div><div>
+          <div class="chain">
+            <div class="node"><b>U 単体</b>設計と対<br>部品を1つずつ</div><span class="sep">▶</span>
+            <div class="node"><b>I 結合</b>仕様と対<br>部品をつないで</div><span class="sep">▶</span>
+            <div class="node"><b>S システム</b>要件と対<br>全体を本物に近い形で</div><span class="sep">▶</span>
+            <div class="node"><b>A 受入</b>要求と対<br>自己評価 → 他者評価</div>
+          </div>
+          <p>テストの1行は、上流の1つのIDに対応します。2章の糸では、<strong>F-10 → S-10</strong> です。S-10 は 2026-10-11 に合格しましたが、記録には「偽のデータでの確認で、実DBの合格ではない」と書いてあります。</p>
+          <h3>証拠の残し方</h3>
+          <ul>
+            <li>合否は「合格／不合格／対象外／未実行」。空欄は未実行として扱う。</li>
+            <li>合格にするのは、証拠（ログ・スクショ）のパスを書いてから。</li>
+            <li>どの方法で確かめたか（偽のデータ／実DBの読み取り／実機）を行ごとに書き分ける。</li>
+            <li>直したあとの証拠は、全件を通しで取り直した1本にする。修正前と修正後の一部をつなぎ合わせない（実践ナレッジ 5.17）。</li>
+          </ul>
+        </div>
+        <div class="k">実例</div><div>
+          <div class="callout">
+            <p><strong>「全件合格でないと閉じられない」という誤解</strong></p>
+            <p>2026-10-12 時点で、結合テストは合格167／未実行37、システムテストは合格44／対象外2／未実行16でした。全件合格でないと課題を閉じられないのでは、という見方が出かけました。実際の受入基準は「合否と実行ログが記録・添付されること」でした。未実行を合格に数えず、残す理由を書いたうえで、#43・#44 を閉じました（実践ナレッジ 5.18）。</p>
+          </div>
+          <p class="meta">リンク: <a href="test-knowledge.html">テストの企画から実行まで</a>（詳しい流れと件数）／ <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/テスト結果.md">テスト結果.md</a> ／ <a href="https://github.com/akapuu14-bit/DAHanae/issues/43">#43</a> ・ <a href="https://github.com/akapuu14-bit/DAHanae/issues/44">#44</a></p>
+        </div>
+        <div class="k">学び</div><div class="learn">閉じる条件は受入基準の文面で確かめる。未実行は合格と混ぜず、残す理由をその場で書く。</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="p7">
+      <div class="number">7<span class="time">約3分</span></div>
+      <h2>まとめ</h2>
+      <p class="meta">以下は、1〜6章の記録から書記が整理したものです。</p>
+      <div class="two">
+        <div class="ai">
+          <h3>任せてよかったこと</h3>
+          <ul>
+            <li>資料からの抽出と、資料間の食い違いの検出</li>
+            <li>仕様IDからIssueへの分解と、本文の記入</li>
+            <li>Label・Milestone・Issueの一括作成</li>
+            <li>進捗の集計とダッシュボードの更新</li>
+            <li>テストの実行と証拠ログの保存</li>
+            <li>別の担当による横断レビュー（仕様の穴5件、Issueの二重化）</li>
+          </ul>
+        </div>
+        <div class="hu">
+          <h3>人が持つべきだったこと</h3>
+          <ul>
+            <li>案の採否と保留の裁定（「Aで」「決定」）</li>
+            <li>対象版を示したうえでの実装開始の承認</li>
+            <li>PRのレビューとマージ</li>
+            <li>公開範囲の判断</li>
+            <li>テストで何を合格とするかの指定と、課題を閉じる判断</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout ok">
+        <p><strong>失敗の多くは「確認前に動いた」「境界が書かれていなかった」「書式がそろっていなかった」のどれかでした。</strong>この3つを先に潰すと、AIに任せられる範囲が広がります。</p>
+      </div>
+      <p class="meta">発表者からの一言: <mark class="tbc">【要確認：ユーザー記入】</mark></p>
+    </section>
+
+    <section class="sheet" id="pa">
+      <div class="number">付録<span class="time">約1分</span></div>
+      <h2>もっと詳しく</h2>
+      <ul>
+        <li><a href="practice-knowledge.html">📘 Munder Difflinチーム開発 実践ナレッジ</a> ― ハイブの回し方・V字・進捗基盤・ハマりどころ集</li>
+        <li><a href="test-knowledge.html">🧪 テストの企画から実行まで</a> ― U・I・S・A と、実行・確認の流れ、場面別ガイド</li>
+        <li><a href="perf-knowledge.html">⚡ アクセススピード改善ナレッジ</a> ― 遅い画面を数えて直した話（本編では扱っていません）</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
