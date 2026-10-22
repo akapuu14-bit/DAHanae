@@ -258,17 +258,12 @@
       <h1>AIエージェント活用による開発自動化と品質向上 ― これまでの取り組み紹介</h1>
       <p class="meta"><strong>対象:</strong> 風船アプリ／部活コンシェルジュを一緒に開発したメンバー（AI駆動開発の経験あり）</p>
       <p class="meta"><strong>この会のゴール:</strong> 部活コンシェルジュで新しく試したことを<strong>知ってもらう</strong>こと。真似用のプロンプトやコマンドは載せません。図と実例が中心です</p>
-      <p class="meta"><strong>形式:</strong> 30分・画面共有でスクロールしながら話す読み物。時間配分は ①4分 ②4分 ③5分 ④5分 ⑤4分 ⑥4分 ⑦3分 ＋ 質疑1分</p>
-      <p class="meta"><strong>記録:</strong> yamapi（書記）／ 作成日: 2026-10-22 ／ 根拠: <code>01_ナレッジ/実践ナレッジ.md</code>・<code>01_ナレッジ/log.md</code>・<code>02_プロジェクト/bukatsu_concierge/</code> の inputs・テスト結果、<code>docs/test-knowledge.html</code>、統括（god）の作業記録</p>
-      <div class="callout danger">
-        <p><strong>【書き方】</strong> 数値・日付は出典ファイルで確かめたものだけを書いています。性能・セキュリティは本編に入れていません。</p>
-      </div>
     </section>
 
     <section class="sheet" id="p1">
-      <div class="number">①<span class="time">約4分</span></div>
+      <div class="number">①</div>
       <h2>AI駆動開発のキーポイント ―「確率」を仕組みでコントロールする</h2>
-      <p>AIの出力は毎回少しずつ違い、ときどき間違えます。これは普段のAI利用と同じです。だから「1回で正しく出させる」ことより、<strong>間違いが残る確率を仕組みで下げる</strong>ことを考えました。この考え方が、この資料全体の背骨です。</p>
+      <p>AIの出力は毎回ゆらぎ、ときどき間違えます。だから「1回で正しく」より、<strong>正しく進む確率を仕組みで上げる</strong>。これがこの資料全体の背骨です。</p>
       <div class="cards3" style="grid-template-columns:1fr 1fr;">
         <div>
           <h4>例1 .md ファイルで出力を制御する</h4>
@@ -276,7 +271,7 @@
         </div>
         <div>
           <h4>例2 複数のエージェントでレビューする</h4>
-          <p>1体が書き、別の1体が確かめます。2体とも同じところを見落としたときだけ、ミスが残ります。2回続けてミスする確率は、1回ミスする確率より下がります。</p>
+          <p>1体が書き、別の1体が確かめます。2体とも同じところを見落としたときだけ、ミスが残ります。2体で見ることで、正しい成果物が残る確率が上がります。</p>
         </div>
       </div>
       <div class="loop">
@@ -291,7 +286,7 @@
       <p class="meta">注意: 同じモデル・同じ前提で見ると、ミスが重なることがあります。今回効いたのは、<strong>「書く役」と「検証する役」を分け、検証する役に元の記録を見に行かせた</strong>ことです。</p>
       <h3>体制（この資料に出てくる人とAI）</h3>
       <div class="team">
-        <div class="row"><div class="box human">人間メンバー 3名<br><small>はなえ（PdM）・だーあさ（PM）・あかぷ（App/UI）</small></div></div>
+        <div class="row"><div class="box human">メンバー 3名<br><small>はなえ（PdM）・だーあさ（BE）・あかぷ（App/UI）</small></div></div>
         <div class="arrow">▲ 提案・確認　▼ 決定（「Aで」「OK、進めて」など）</div>
         <div class="row"><div class="box boss">りじちょー（統括 AI）<br><small>窓口・割り振り・レビュー。提案はするが決断はしない</small></div></div>
         <div class="arrow">▼ 依頼　▲ 成果物＋証拠</div>
@@ -306,7 +301,7 @@
     </section>
 
     <section class="sheet" id="p2">
-      <div class="number">②<span class="time">約4分</span></div>
+      <div class="number">②</div>
       <h2>最初の仕様書の質を大事にする</h2>
       <p>5文書（要求・要件・仕様・設計・テスト設計）をAIと作る前に、<strong>元になる資料の質</strong>を上げておくことが大事でした。特に重要なのは次の2つです。</p>
       <ol>
@@ -334,11 +329,11 @@
       </div>
       <p>画面の流れ（フロント）の途中に、「DBに保存・幹事に通知」（バック）が1行で入っています。開発仕様書 v0.1 には、画面の一覧（S01〜S10）と、データの表（社員・部活・開催・申込・メッセージ・通知など）まで書かれていました。</p>
       <p class="meta">資料は <code>02_プロジェクト/bukatsu_concierge/inputs/</code> にあります（リポジトリには含めていないため、リンクはありません）。5文書は <a href="https://github.com/akapuu14-bit/DAHanae/blob/main/02_プロジェクト/bukatsu_concierge/要求.md">要求.md</a> から辿れます。</p>
-      <div class="prob"><span class="lbl2">この章で下げた確率</span>実装で迷う確率</div>
+      <div class="prob"><span class="lbl2">この章で上げた確率</span>迷わず実装できる確率</div>
     </section>
 
     <section class="sheet" id="p3">
-      <div class="number">③<span class="time">約5分</span></div>
+      <div class="number">③</div>
       <h2>実装環境の整備（5文書の後にやったこと）</h2>
       <div class="cards3">
         <div><h4>1. 開発の全体像の見える化</h4>Wave0〜4 のタイムラインと全タスクの早見表を <a href="overview.html">開発ロードマップ（overview）</a> にまとめました。</div>
@@ -359,26 +354,32 @@
       <div class="callout ok">
         <p><strong>⇒ 何を作るのか、受入基準は何かを、簡単に理解できるようにする。</strong>（⑥の「次の挑戦」1につながります）</p>
       </div>
-      <div class="prob"><span class="lbl2">この章で下げた確率</span>何を作るかの取り違え</div>
+      <h3>Issue の具体化（before / after）</h3>
+      <figure class="shot">
+        <img src="hub-assets/ai-study-issue40.png" alt="Issue #40（社員プロフィール画面 S09）の本文。上半分に「これは何？」「完成すると何ができる？」、下半分に「対応: SP-53〜SP-57」「受入基準」「触るファイル」がある" loading="lazy">
+        <figcaption>Issue #40（社員プロフィール画面）の本文</figcaption>
+      </figure>
+      <div class="two">
+        <div class="hu"><h3>after（上半分）</h3><p>「💬 これは何？」「✅ 完成すると何ができる？」。初心者向けに書き足した部分です。何を作るのか、できあがると何ができるのかを、普通の言葉で書いています。</p></div>
+        <div class="ai"><h3>before（下半分）</h3><p>「対応: SP-53〜SP-57」「受入基準」「触るファイル」。元の書き方です。記号と番号が中心で、文書を開かないと中身が分かりません。</p></div>
+      </div>
+      <div class="prob"><span class="lbl2">この章で上げた確率</span>狙いどおりのものを作れる確率</div>
     </section>
 
     <section class="sheet" id="p4">
-      <div class="number">④<span class="time">約5分</span></div>
+      <div class="number">④</div>
       <h2>進捗管理ダッシュボードの自動化</h2>
-      <h3>前提: GitHub Pages の作り方</h3>
+      <h3>前提: GitHub Pages とは</h3>
+      <p>GitHub のリポジトリに置いた HTML を、そのまま Web ページとして公開できる機能です。公開リポジトリなら無料プラン（GitHub Free）で使えます。非公開リポジトリで使うには、有料プラン（GitHub Pro・GitHub Team など）が必要です。</p>
+      <h3>使い方の流れ</h3>
       <div class="loop">
-        <span class="n">docs/ の HTML</span><span class="a">▶</span>
-        <span class="n ai">dashboard.yml が site/ にコピー＋ダッシュボードを生成</span><span class="a">▶</span>
-        <span class="n">GitHub Pages で公開</span>
+        <span class="n hu">1. 見せたい内容を決める</span><span class="a">▶</span>
+        <span class="n ai">2. AI に指示して HTML を1枚作る</span><span class="a">▶</span>
+        <span class="n ai">3. docs/ に置いて push</span><span class="a">▶</span>
+        <span class="n">4. GitHub Pages で公開される</span>
       </div>
-      <p>main への push で自動的に動きます。Issue・PR の状態が変わるたびにも、ダッシュボードを作り直します。</p>
-      <div class="callout">
-        <p><strong>小話</strong></p>
-        <ul>
-          <li>新しいページを足したのに、コピー一覧に入れ忘れて、本番だけ404になった（実践ナレッジ 5.11）。</li>
-          <li>PR の上では公開ジョブが毎回失敗し、main では成功した（同 5.12）。統括の記録（2026-10-16）では、環境の保護ルールによるもので想定内とされています。</li>
-        </ul>
-      </div>
+      <p>この案件では、<code>dashboard.yml</code> が main への push のたびに自動で公開しています。</p>
+      <p class="meta">出典: GitHub 公式ドキュメント「<a href="https://docs.github.com/ja/get-started/learning-about-github/githubs-plans">GitHub のプラン</a>」</p>
       <h3>狙い</h3>
       <p>開発段階ごと・人ごとに、進捗を見える化すること。PR本文に <code>Closes #番号</code> と書いてマージすると、Issue が自動でクローズされます。これで、進捗管理の手間をゼロにしました。</p>
       <div class="loop">
@@ -391,11 +392,11 @@
       <p>開発中に仕様の不備や抜け漏れが見つかり、I/F契約を修正しました。その修正で増えたタスクは Issue 管理の外になり、Issue 側では後から追えませんでした。PR の記録には残っているので、後追いはできます。</p>
       <p class="meta">実例: 画面が呼ぶ関数が I/F契約に無く、契約に足す PR（#90・#91）を出した（実践ナレッジ 5.8）。契約の文言の修正が先のマージに間に合わず、別の PR（#79）で直した（同 5.9）。</p>
       <p class="meta">リンク: <a href="./">ダッシュボード</a> ／ <a href="practice-knowledge.html">実践ナレッジ</a></p>
-      <div class="prob"><span class="lbl2">この章で下げた確率</span>進捗の見落とし</div>
+      <div class="prob"><span class="lbl2">この章で上げた確率</span>進捗が正しく見える確率</div>
     </section>
 
     <section class="sheet" id="p5">
-      <div class="number">⑤<span class="time">約4分</span></div>
+      <div class="number">⑤</div>
       <h2>テストは準備が大事</h2>
       <p class="meta">自動化したもの: AI によるテストの実行と、証拠ログの記録。</p>
       <div class="cards3" style="grid-template-columns:1fr 1fr;">
@@ -410,11 +411,11 @@
           <p>詳しくは <a href="test-knowledge.html">テストの企画から実行まで</a> にあります。</p>
         </div>
       </div>
-      <div class="prob"><span class="lbl2">この章で下げた確率</span>文書と実装のずれの見逃し</div>
+      <div class="prob"><span class="lbl2">この章で上げた確率</span>テストで問題を見つける確率</div>
     </section>
 
     <section class="sheet" id="p6">
-      <div class="number">⑥<span class="time">約4分</span></div>
+      <div class="number">⑥</div>
       <h2>次の開発でチャレンジしたいこと</h2>
       <div class="cards4">
         <div>
@@ -423,8 +424,8 @@
         </div>
         <div>
           <h4>2. PR レビューの自動化</h4>
-          <p>完了条件がはっきりしていれば、1時間に1回の自動レビューで「手動で見るか、自動でよいか」を判断できるはずです。</p>
-          <p class="meta">裏付け: 課題 #43・#44 は、完了条件を「合否と実行ログが記録されること」と決めていたので閉じられた（実践ナレッジ 5.18）。</p>
+          <p>Claude が1時間に1回 PR を自動でレビューし、マージの判断までするようにしたいです。</p>
+          <p>そのためには、Issue の完了条件が具体化されている必要があります（1とつながります）。</p>
         </div>
         <div>
           <h4>3. メンバーが判断できる柔軟性と、ルールの明確化</h4>
@@ -440,14 +441,14 @@
         </div>
         <div>
           <h4>4. .md ファイルのアップデート</h4>
-          <p>これまでの開発のエラー・ミスを、週1回自動でナレッジにする設計にしましたが、うまく機能しませんでした。中身の理解を高めて改善したいです。</p>
-          <p class="meta"><strong>自動で起動していなかった事例:</strong> クラウドの定期実行（Routine）を、cron <code>0 18 * * 0</code>・過去7日の失敗を抜き出して PR にする設定で用意しました。発火した実績は確認できていません（リモートに該当ブランチが無い）。2026-10-15 に、だーあさの判断でナレッジ還元は手動運用に切り替えました（<code>01_ナレッジ/log.md</code>）。原因は特定していません。記録上は「月曜18:00 JST」ですが、cron の <code>0 18 * * 0</code> を UTC で読むと月曜03:00 JST になり、食い違いがあります。</p>
+          <p>まず「どの確率を制御したいか」を考えてから、.md を改善したいです。</p>
+          <p><strong>事例:</strong> ナレッジの蓄積とミスの削減（同じミスを繰り返す確率を下げる）を狙って、週1回の自動化を入れました。しかし、うまくいきませんでした。自動で起動していなかったためです。2026-10-15 から、ナレッジへの還元は手動運用にしています（<code>01_ナレッジ/log.md</code>）。</p>
         </div>
       </div>
     </section>
 
     <section class="sheet" id="p7">
-      <div class="number">⑦<span class="time">約3分</span></div>
+      <div class="number">⑦</div>
       <h2>チームメンバーからのフィードバック（あかぷの兄貴）</h2>
       <p>当日、あかぷの兄貴にお話しいただきます。</p>
       <div class="cards3">
@@ -455,12 +456,13 @@
         <div class="fb"><h4>苦労したポイント</h4></div>
         <div class="fb"><h4>改善点</h4></div>
       </div>
-      <p class="meta">質疑（約1分）</p>
+      <p class="meta">質疑</p>
       <h3>もっと詳しく</h3>
       <ul>
         <li><a href="practice-knowledge.html">📘 Munder Difflinチーム開発 実践ナレッジ</a> ― ハイブの回し方・V字・進捗基盤・ハマりどころ集</li>
         <li><a href="test-knowledge.html">🧪 テストの企画から実行まで</a> ― U・I・S・A と、実行・確認の流れ</li>
         <li><a href="perf-knowledge.html">⚡ アクセススピード改善ナレッジ</a> ― 本編では扱っていません</li>
+        <li><a href="https://www.amazon.co.jp/dp/4297157888">📕 『プロフェッショナルAI駆動開発〜確率論から決定論へ AIの揺らぎを制御する開発フレームワーク〜』</a>（松本淳太郎・サカモト 著、技術評論社） ― てらおさんが紹介してくれた本です。表紙には「AI駆動開発に必要な4つの制御」として、コンテキスト／テスト／オーケストレーション／相互レビューが挙げられています。<br><small>小話: 出張中、半分読んだところで機内の前ポケットに差したまま紛失し、2冊目を購入しました。</small></li>
       </ul>
     </section>
   </main>
