@@ -9,6 +9,18 @@
   <link rel="icon" type="image/png" sizes="16x16" href="hub-assets/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="hub-assets/apple-touch-icon.png">
   <meta name="theme-color" content="#1f2a44">
+  <meta name="description" content="部活コンシェルジュの企画→実装→テストで学んだAI駆動開発の取り組みを紹介する、30分の勉強会資料。">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AIエージェント活用による開発自動化と品質向上｜部活コンシェルジュ">
+  <meta property="og:description" content="部活コンシェルジュの企画→実装→テストで学んだAI駆動開発の取り組みを紹介する、30分の勉強会資料。">
+  <meta property="og:url" content="https://akapuu14-bit.github.io/DAHanae/ai-dev-study.html">
+  <meta property="og:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AIエージェント活用による開発自動化と品質向上｜部活コンシェルジュ">
+  <meta name="twitter:description" content="部活コンシェルジュの企画→実装→テストで学んだAI駆動開発の取り組みを紹介する、30分の勉強会資料。">
+  <meta name="twitter:image" content="https://akapuu14-bit.github.io/DAHanae/hub-assets/og-image.png">
   <style>
     :root {
       --navy: #1f2a44;
@@ -214,6 +226,7 @@
     .chain .node { flex: 1 1 130px; padding: 8px 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; font-size: .84rem; line-height: 1.5; }
     .chain .node b { display: block; color: var(--green); font-size: .8rem; }
     .chain .sep { align-self: center; color: var(--muted); }
+    .chain .nw { white-space: nowrap; }
     .pattern { display: grid; grid-template-columns: 9em 1fr; gap: 0; margin: 10px 0 18px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
     .pattern > div { padding: 10px 14px; border-bottom: 1px solid var(--line); }
     .pattern > div:nth-last-child(-n+2) { border-bottom: 0; }
@@ -311,7 +324,7 @@
         <span class="n">公開</span>
       </div>
       <div class="callout ok">
-        <p><strong>実例:</strong> テストのナレッジページ（<a href="test-knowledge.html">テストの企画から実行まで</a>）では、yamapi の下書きを kurosu が事実確認しました。結果は必須の修正2件・推奨3件・任意2件で、必須の2件を直してから公開に回しました（2026-10-16、統括の記録）。</p>
+        <p><strong>実例:</strong> テストのナレッジページ（<a href="test-knowledge.html">テストの企画から実行まで</a>）では、yamapi の下書きを kurosu が事実確認しました。結果は必須の修正2件・推奨3件・任意2件で、必須の2件を直してから公開に回しました（2026-10-16、りじちょーの記録）。</p>
       </div>
       <p class="meta">注意: 同じモデル・同じ前提で見ると、ミスが重なることがあります。今回効いたのは、<strong>「書く役」と「検証する役」を分け、検証する役に元の記録を見に行かせた</strong>ことです。</p>
       <h3>体制（この資料に出てくる人とAI）</h3>
@@ -341,11 +354,11 @@
       <p>今回は、はなえさんが要件定義書と開発仕様書で具体化してくれていたので、スムーズに進みました。</p>
       <h3>元の資料 → 5文書</h3>
       <div class="chain">
-        <div class="node"><b>企画書</b>だーあさ作・9/21版<br>ビジョン</div>
-        <div class="node"><b>要件定義書 v1.0 → v1.1</b>はなえ作・9/23作成、9/27更新<br>目的・ユーザー・仮説・利用フロー</div>
-        <div class="node"><b>開発仕様書 v0.1</b>はなえ作・9/27<br>構成・画面S01〜S10・データ</div>
+        <div class="node"><b>企画書</b><span class="nw">だーあさ作</span>・<span class="nw">9/21版</span><br>ビジョン</div>
+        <div class="node"><b>要件定義書 v1.0 → v1.1</b><span class="nw">はなえ作</span>・<span class="nw">9/23作成</span>、<span class="nw">9/27更新</span><br><span class="nw">目的</span>・<span class="nw">ユーザー</span>・<span class="nw">仮説</span>・<span class="nw">利用フロー</span></div>
+        <div class="node"><b>開発仕様書 v0.1</b><span class="nw">はなえ作</span>・<span class="nw">9/27</span><br><span class="nw">構成</span>・<span class="nw">画面S01〜S10</span>・<span class="nw">データ</span></div>
         <span class="sep">▶</span>
-        <div class="node"><b>5文書</b>要求 R → 要件 F/N → 仕様 SP → 設計 ＋ テスト設計</div>
+        <div class="node"><b>5文書</b><span class="nw">要求 R</span> → <span class="nw">要件 F/N</span> → <span class="nw">仕様 SP</span> → <span class="nw">設計</span> ＋ <span class="nw">テスト設計</span></div>
       </div>
       <h3>キー部分の例: 「部活を探す」フロー（要件定義書 v1.1 7章A）</h3>
       <div class="loop">
@@ -382,7 +395,7 @@
         </table>
       </div>
       <div class="callout ok">
-        <p><strong>⇒ 何を作るのか、受入基準は何かを、簡単に理解できるようにする。</strong>（⑥の「次の挑戦」1につながります）</p>
+        <p><strong>⇒ 何を作るのか、受入基準は何かを、簡単に理解できるようにする。</strong>（⑥の「次の挑戦」2につながります）</p>
       </div>
       <h3>Issue の具体化（before / after）</h3>
       <figure class="shot">
@@ -432,7 +445,7 @@
         <div>
           <h4>1. 先に5文書のミスを直す</h4>
           <p>実装と文書のずれ、更新漏れを、テストの前に直します。</p>
-          <p><strong>実例:</strong> 2026-10-10 のテストレビューで、仕様と実装のずれが34項目見つかりました。原因は、9/27 の初回提出の後、文書の更新（v0.2）が漏れていたことでした（統括の記録）。</p>
+          <p><strong>実例:</strong> 2026-10-10 のテストレビューで、仕様と実装のずれが34項目見つかりました。原因は、9/27 の初回提出の後、文書の更新（v0.2）が漏れていたことでした（りじちょーの記録）。</p>
         </div>
         <div>
           <h4>2. テスト実行手順書で工程を見える化</h4>
@@ -459,7 +472,6 @@
         </table>
       </div>
       <p class="meta">主要フロー図を軸にする理由: 今回の I/F契約の修正のように「処理の順番」が変わる場面が、最も分かりにくかったため。</p>
-      <p class="meta">裁量とルールの関連: 確定前に発注した画面を AI が先に作り、作り直した（実践ナレッジ 5.4）。</p>
     </section>
 
     <section class="sheet" id="p7">
